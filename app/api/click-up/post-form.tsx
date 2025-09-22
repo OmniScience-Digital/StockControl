@@ -12,7 +12,7 @@ export async function POST() {
 
     // Force no caching
     const response = await fetch(
-      `${constants.baseUrl}/clickuppostroute`,
+      `${constants.baseUrl}/clickuppost`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },

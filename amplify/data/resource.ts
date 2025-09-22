@@ -1,10 +1,19 @@
 import { type ClientSchema, a, defineData } from "@aws-amplify/backend";
 
-
 const schema = a.schema({
-  Todo: a
+  Component: a
     .model({
-      content: a.string(),
+      name: a.string(),
+      subComponents: a.hasMany("SubComponent", "componentId"),
+    })
+    .authorization((allow) => [allow.publicApiKey()]),
+    
+  SubComponent: a
+    .model({
+      key: a.string(),
+      value: a.float(),
+      isWithdrawal: a.boolean(),
+      component: a.belongsTo("Component", "componentId"),
     })
     .authorization((allow) => [allow.publicApiKey()]),
 });
@@ -16,8 +25,7 @@ export const data = defineData({
   authorizationModes: {
     defaultAuthorizationMode: "apiKey",
     apiKeyAuthorizationMode: {
-      expiresInDays: 30,
+      expiresInDays: 365,
     },
   },
 });
-

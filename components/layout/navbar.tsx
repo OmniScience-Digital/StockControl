@@ -167,7 +167,7 @@ export default function Navbar() {
       </header>
       
       {isSigningOut && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs">
           <div className="flex items-center gap-2 p-4 bg-white dark:bg-gray-800 rounded-md shadow-md">
             <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
             <span className="text-sm font-medium text-gray-800 dark:text-gray-100">
