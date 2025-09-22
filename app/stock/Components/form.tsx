@@ -152,6 +152,7 @@ export default function ComponentItem({
             <Button
               type="button"
               variant={subComponent.isWithdrawal ? "destructive" : "outline"}
+              className={subComponent.isWithdrawal ? "" : "border-green-500 text-green-600"}
               size="icon"
               onClick={() => toggleWithdrawal(subComponent.id)}
               title={subComponent.isWithdrawal ? "Withdrawal" : "Addition"}
