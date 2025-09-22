@@ -92,7 +92,7 @@ export default function ComponentItem({
           <Input
             value={component.name}
             onChange={(e) => updateComponentName(e.target.value)}
-            placeholder="Component name (e.g., Fruit)"
+            placeholder="Component name (e.g., Speed Sensor)"
             className="w-full"
           />
         </div>

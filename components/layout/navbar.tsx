@@ -49,7 +49,6 @@ export default function Navbar() {
     try {
       const { tokens } = await fetchAuthSession();
 
-      console.log(tokens);
       return tokens?.signInDetails?.loginId || '';
     } catch (error) {
       console.error("Error fetching user:", error);
