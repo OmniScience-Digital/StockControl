@@ -166,7 +166,7 @@ export default function ComponentItem({
           >
             <div className="flex-1 min-w-0">
               {isAddingNewKey === subComponent.id ? (
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <div className="flex gap-2">
                     <Input
                       value={newKeyInput}

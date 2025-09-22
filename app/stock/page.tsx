@@ -3,26 +3,28 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus } from "lucide-react";
+import { Loader2, Plus } from "lucide-react";
 import ComponentItem from "./Components/form";
-import { Component, availableKeys as initialAvailableKeys } from "@/types/form.types";
+import { Component } from "@/types/form.types";
 import Navbar from "@/components/layout/navbar";
+import { formSave } from "@/services/form.service";
 
 export default function ComponentForm() {
   const [components, setComponents] = useState<Component[]>([
-    { id: "1", name: "", subComponents: [{ id: "1-1", key: "", value: 0, isWithdrawal: false }] }
+    // { id: "1", name: "", subComponents: [{ id: "1-1", key: "", value: 0, isWithdrawal: false }] }
   ]);
+  const [loading, setLoading] = useState(false);
 
   // State for available keys that can be updated when new keys are added
-  const [availableKeys, setAvailableKeys] = useState<string[]>(initialAvailableKeys);
+  const [availableKeys, setAvailableKeys] = useState<string[]>([]);
 
   const addComponent = () => {
     setComponents([
       ...components,
-      { 
-        id: Date.now().toString(), 
-        name: "", 
-        subComponents: [{ id: `${Date.now()}-1`, key: "", value: 0, isWithdrawal: false }] 
+      {
+        id: Date.now().toString(),
+        name: "",
+        subComponents: [{ id: `${Date.now()}-1`, key: "", value: 0, isWithdrawal: false }]
       }
     ]);
   };
@@ -35,7 +37,7 @@ export default function ComponentForm() {
 
   const updateComponent = (id: string, updatedComponent: Component) => {
     setComponents(
-      components.map((component) => 
+      components.map((component) =>
         component.id === id ? updatedComponent : component
       )
     );
@@ -49,34 +51,69 @@ export default function ComponentForm() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const [lastSaved, setLastSaved] = useState<
+    Record<string, Record<string, { value: number; isWithdrawal: boolean }>>
+  >();
 
-    // Remove validation to allow submission of whatever is there
-    // Convert to object for final submission
-    const result = components.reduce((acc, component) => {
-      // Only include components that have a name
-      if (component.name.trim() !== "") {
-        acc[component.name] = component.subComponents.reduce((subAcc, sub) => {
-          // Only include subcomponents that have a key
-          if (sub.key.trim() !== "") {
-            subAcc[sub.key] = {
-              value: sub.value,
-              isWithdrawal: sub.isWithdrawal
-            };
+  const handleSubmit = async (e: React.FormEvent) => {
+    try {
+      setLoading(true);
+      e.preventDefault();
+
+      const result = components.reduce((acc, component) => {
+        if (component.name.trim() !== "") {
+          const subAcc = component.subComponents.reduce((subAcc, sub) => {
+            if (sub.key.trim() !== "") {
+              subAcc[sub.key] = {
+                value: sub.value,
+                isWithdrawal: sub.isWithdrawal,
+              };
+            }
+            return subAcc;
+          }, {} as Record<string, { value: number; isWithdrawal: boolean }>);
+
+          if (Object.keys(subAcc).length > 0) {
+            acc[component.name] = subAcc;
           }
-          return subAcc;
-        }, {} as Record<string, { value: number; isWithdrawal: boolean }>);
-      }
-      return acc;
-    }, {} as Record<string, Record<string, { value: number; isWithdrawal: boolean }>>);
+        }
+        return acc;
+      }, {} as Record<string, Record<string, { value: number; isWithdrawal: boolean }>>);
 
-    console.log("Form submitted:", result);
-    // Here you would typically send the data to your API
-    
-    // Optional: Show success message
-    alert("Form submitted successfully! Check console for data.");
+
+      // Prevent saving empty form
+      if (Object.keys(result).length === 0) {
+        console.warn("Skipping save: form is empty");
+        return;
+      }
+
+      // 2️ Prevent saving duplicate form
+      if (lastSaved && JSON.stringify(lastSaved) === JSON.stringify(result)) {
+        console.warn("Skipping save: form has not changed");
+        return;
+      }
+
+  
+     await formSave({ result });
+      setLastSaved(result);
+      
+      const res = await fetch("/api/click-up", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(result),
+      });
+
+      const resResponse = await res.json();
+      
+
+      setComponents([])
+
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
   };
+
 
   const getUsedKeys = () => {
     const usedKeys: string[] = [];
@@ -90,7 +127,7 @@ export default function ComponentForm() {
 
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
-        <Navbar />
+      <Navbar />
       <main className="flex-1 p-6 mt-20">
         <div className="max-w-4xl mx-auto">
           <Card>
@@ -104,7 +141,7 @@ export default function ComponentForm() {
               </div>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-6">
+              <form onSubmit={handleSubmit} className="space-y-4">
                 {components.map((component) => (
                   <ComponentItem
                     key={component.id}
@@ -131,17 +168,13 @@ export default function ComponentForm() {
 
                   <Button type="submit" className="flex-1 cursor-pointer">
                     Submit
+                    {loading && (
+                      <Loader2 className="ml-2 h-8 w-8 animate-spin text-background" />
+                    )}
                   </Button>
+
                 </div>
               </form>
-
-              {/* Clean debug information - only show components */}
-              <div className="mt-8 p-4 bg-muted rounded-lg">
-                <h3 className="font-semibold mb-2">Current State:</h3>
-                <pre className="text-sm max-h-60 overflow-auto">
-                  {JSON.stringify(components, null, 2)}
-                </pre>
-              </div>
             </CardContent>
           </Card>
         </div>
