@@ -153,7 +153,7 @@ export default function ComponentItem({
 
       <div className="space-y-4 pl-6 border-l-2 border-blue-200">
         <div className="flex items-center justify-between">
-          <h4 className="font-medium text-gray-700">Subcomponents</h4>
+          <h4 className="font-medium text-gray-600">Subcomponents</h4>
           <span className="text-sm text-gray-500 bg-background px-2 py-1 rounded">
             {component.subComponents.length} subcomponent(s)
           </span>
@@ -295,7 +295,7 @@ export default function ComponentItem({
           className={`cursor-pointer ${
                 subComponent.isWithdrawal 
                   ? "" 
-                  : "border-green-500 text-green-600 hover:bg-green-50"
+                  : "border-green-500 text-green-600"
               }`}
 
               size="icon"
