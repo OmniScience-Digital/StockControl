@@ -4,7 +4,7 @@ const schema = a.schema({
   Component: a
     .model({
       name: a.string(),
-      subComponents: a.hasMany("SubComponent", "componentId"),
+      subComponents: a.hasMany('SubComponent', 'componentId'),
     })
     .authorization((allow) => [allow.publicApiKey()]),
     
@@ -13,7 +13,9 @@ const schema = a.schema({
       key: a.string(),
       value: a.float(),
       isWithdrawal: a.boolean(),
-      component: a.belongsTo("Component", "componentId"),
+      componentId: a.id(),
+      component: a.belongsTo('Component', 'componentId'),
+
     })
     .authorization((allow) => [allow.publicApiKey()]),
 });
