@@ -106,6 +106,7 @@ export default function ComponentForm() {
       
 
       setComponents([])
+      setAvailableKeys([]);
 
     } catch (error) {
       console.error(error);
