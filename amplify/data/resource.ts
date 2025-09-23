@@ -4,22 +4,37 @@ const schema = a.schema({
   Component: a
     .model({
       name: a.string(),
-      clickupInd:a.string().required(),
       subComponents: a.hasMany('SubComponent', 'componentId'),
-    })
+    }).secondaryIndexes((index) => [index("name")])
     .authorization((allow) => [allow.publicApiKey()]),
-    
+
+  // SubComponent: a
+  //   .model({
+  //     key: a.string(),
+  //     value: a.float(),
+  //     isWithdrawal: a.boolean(),
+  //     componentId: a.id(),
+  //     component: a.belongsTo('Component', 'componentId'),
+  //   })
   SubComponent: a
     .model({
       key: a.string(),
       value: a.float(),
       isWithdrawal: a.boolean(),
-      componentId: a.id(),
-      component: a.belongsTo('Component', 'componentId'),
-
+      componentId: a.id().required(),
+      component: a.belongsTo("Component", "componentId"),
     })
+    .secondaryIndexes((index) => [
+      index("componentId")
+        .sortKeys(["key"])
+        .name("byComponentAndKey")
+        .queryField("listSubComponentByComponentIdAndKey"),
+    ])
     .authorization((allow) => [allow.publicApiKey()]),
 });
+
+
+
 
 export type Schema = ClientSchema<typeof schema>;
 

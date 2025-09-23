@@ -6,7 +6,7 @@ export async function POST(req: Request) {
     const body = await req.json(); // get data from frontend
 
     // Forward body to your external backend
-    const response = await fetch(`${constants.securebaseUrltest}/clickuppost`, {
+    const response = await fetch(`${constants.baseUrl}/clickuppost`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body), // send the body
