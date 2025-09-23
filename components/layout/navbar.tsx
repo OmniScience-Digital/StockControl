@@ -60,12 +60,12 @@ export default function Navbar() {
     
     setIsSigningOut(true);
     try {
-      await signOut();
-      // Redirect immediately without waiting
-      router.push('/');
+      // await signOut();
+      // // Redirect immediately without waiting
+      // router.push('/');
       
-      // Clear any local state
-      setUser('');
+      // // Clear any local state
+      // setUser('');
     
       
     } catch (error) {
@@ -109,21 +109,21 @@ export default function Navbar() {
               
               <DropdownMenuItem className="text-xs font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800 cursor-pointer">
                 <User className="h-4 w-4" />
-                {user}
+                {user}User
               </DropdownMenuItem>
 
             
               <DropdownMenuItem>
                 <Settings className="h-4 w-4" />
                 Settings</DropdownMenuItem>
-              <DropdownMenuItem 
+              {/* <DropdownMenuItem 
                 onClick={handleSignOut}
                 disabled={isSigningOut}
                 className="flex items-center gap-2"
               >
                 <LogOut className="h-4 w-4" />
                 Logout
-              </DropdownMenuItem>
+              </DropdownMenuItem> */}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -147,20 +147,20 @@ export default function Navbar() {
             <DropdownMenuContent align="end">
               <DropdownMenuItem className="text-xs font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800 cursor-pointer">
                 <User className="h-5 w-5" />
-                {user}
+                {user}User
               </DropdownMenuItem>
               <DropdownMenuItem className="cursor-pointer">
                 <Settings className="mr-2 h-4 w-4" />
                 <span>Settings</span>
               </DropdownMenuItem>
-              <DropdownMenuItem 
+              {/* <DropdownMenuItem 
                 onClick={handleSignOut}
-                disabled={isSigningOut}
+                 disabled={isSigningOut}
                 className="flex items-center gap-2 cursor-pointer"
               >
                 <LogOut className="h-4 w-4" />
                 Logout
-              </DropdownMenuItem>
+              </DropdownMenuItem> */}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

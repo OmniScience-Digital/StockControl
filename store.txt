@@ -1,0 +1,44 @@
+// [2025/09/23, 07:26:53] Thabiso MASSKG: 1)Publish intake /Withdraw to the custom field
+// [2025/09/23, 07:26:58] Thabiso MASSKG: 2) username
+// [2025/09/23, 07:27:06] Thabiso MASSKG: 3)remove auth.   ------done
+// [2025/09/23, 07:27:22] Thabiso MASSKG: 4)disable updating db from form. ---done 
+// [2025/09/23, 07:27:59] Thabiso MASSKG: 5)Restrict dropdown to only given list under componets lof production cupboard ----- done
+// [2025/09/23, 07:28:18] Thabiso MASSKG: 6)Setup webhook to update database upon trigger
+
+
+Payload fields:
+[
+  {
+    "field_id": "0714e91c-fb89-43b7-b8f0-deb3d1b4d973",
+    "value": "Withdrawel",
+    "value_options": null,
+    "value_deleted": false,
+    "value_richtext": null,
+    "reasoning": null,
+    "task_id": "869ajadrt",
+    "type": 15
+  },
+  {
+    "field_id": "21c66987-4a5e-4278-8c59-8ae756b63b08",
+    "value": 1758612286344,
+    "value_options": null,
+    "value_deleted": false,
+    "value_richtext": null,
+    "reasoning": null,
+    "task_id": "869ajadrt",
+    "type": 23
+  },
+  {
+    "field_id": "daf6f996-8096-473b-b9e4-9e20f4568d63",
+    "value": "Thabiso",
+    "value_options": null,
+    "value_deleted": false,
+    "value_richtext": null,
+    "reasoning": null,
+    "task_id": "869ajadrt",
+    "type": 15
+  }
+]
+
+
+

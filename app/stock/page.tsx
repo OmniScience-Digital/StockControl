@@ -11,12 +11,25 @@ import { formSave } from "@/services/form.service";
 
 export default function ComponentForm() {
   const [components, setComponents] = useState<Component[]>([
-    // { id: "1", name: "", subComponents: [{ id: "1-1", key: "", value: 0, isWithdrawal: false }] }
+     { id: "1", name: "Production Cupboard", subComponents: [{ id: "1-1", key: "", value: 0, isWithdrawal: false }] }
   ]);
   const [loading, setLoading] = useState(false);
 
+const keys = [
+  "115mm grinding discs",
+  "115mm cutting discs",
+  "Welding lens auto dark",
+  "Welding lens shade",
+  "Welding class clear",
+  "Anti spatter can",
+  "Welding tips and adaptors",
+  "14 mm slugger",
+  "30 mm slugger"
+];
+
+
   // State for available keys that can be updated when new keys are added
-  const [availableKeys, setAvailableKeys] = useState<string[]>([]);
+  const [availableKeys, setAvailableKeys] = useState<string[]>(keys);
 
   const addComponent = () => {
     setComponents([
@@ -80,33 +93,33 @@ export default function ComponentForm() {
       }, {} as Record<string, Record<string, { value: number; isWithdrawal: boolean }>>);
 
 
-      // Prevent saving empty form
-      if (Object.keys(result).length === 0) {
-        console.warn("Skipping save: form is empty");
-        return;
-      }
+      // // Prevent saving empty form
+      // if (Object.keys(result).length === 0) {
+      //   console.warn("Skipping save: form is empty");
+      //   return;
+      // }
 
-      // 2️ Prevent saving duplicate form
-      if (lastSaved && JSON.stringify(lastSaved) === JSON.stringify(result)) {
-        console.warn("Skipping save: form has not changed");
-        return;
-      }
+      // // 2️ Prevent saving duplicate form
+      // if (lastSaved && JSON.stringify(lastSaved) === JSON.stringify(result)) {
+      //   console.warn("Skipping save: form has not changed");
+      //   return;
+      // }
 
   
-     await formSave({ result });
-      setLastSaved(result);
+    // await formSave({ result });
+     // setLastSaved(result);
       
       const res = await fetch("/api/click-up", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(result),
+        body: JSON.stringify({username:'USer 1',result:result}),
       });
 
       const resResponse = await res.json();
       
 
-      setComponents([])
-      setAvailableKeys([]);
+      // setComponents([])
+      // setAvailableKeys([]);
 
     } catch (error) {
       console.error(error);
