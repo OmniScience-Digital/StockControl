@@ -4,6 +4,7 @@ const schema = a.schema({
   Component: a
     .model({
       name: a.string(),
+      clickupInd:a.string().required(),
       subComponents: a.hasMany('SubComponent', 'componentId'),
     })
     .authorization((allow) => [allow.publicApiKey()]),
