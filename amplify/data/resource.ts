@@ -8,14 +8,6 @@ const schema = a.schema({
     }).secondaryIndexes((index) => [index("name")])
     .authorization((allow) => [allow.publicApiKey()]),
 
-  // SubComponent: a
-  //   .model({
-  //     key: a.string(),
-  //     value: a.float(),
-  //     isWithdrawal: a.boolean(),
-  //     componentId: a.id(),
-  //     component: a.belongsTo('Component', 'componentId'),
-  //   })
   SubComponent: a
     .model({
       key: a.string(),

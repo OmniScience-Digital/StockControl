@@ -8,24 +8,29 @@ import ComponentItem from "./Components/form";
 import { Component } from "@/types/form.types";
 import Navbar from "@/components/layout/navbar";
 import { formSave } from "@/services/form.service";
+import ResponseModal from "@/components/response/response";
 
 export default function ComponentForm() {
   const [components, setComponents] = useState<Component[]>([
-     { id: "1", name: "Production Cupboard", subComponents: [{ id: "1-1", key: "", value: 0, isWithdrawal: false }] }
+    { id: "1", name: "Production Cupboard", subComponents: [{ id: "1-1", key: "", value: 0, isWithdrawal: false }] }
   ]);
   const [loading, setLoading] = useState(false);
 
-const keys = [
-  "115mm grinding discs",
-  "115mm cutting discs",
-  "Welding lens auto dark",
-  "Welding lens shade",
-  "Welding class clear",
-  "Anti spatter can",
-  "Welding tips and adaptors",
-  "14 mm slugger",
-  "30 mm slugger"
-];
+  const [show, setShow] = useState(false);
+  const [successful, setSuccessful] = useState(false);
+  const [message, setMessage] = useState("");
+
+  const keys = [
+    "115mm grinding discs",
+    "115mm cutting discs",
+    "Welding lens auto dark",
+    "Welding lens shade",
+    "Welding class clear",
+    "Anti spatter can",
+    "Welding tips and adaptors",
+    "14 mm slugger",
+    "30 mm slugger"
+  ];
 
 
   // State for available keys that can be updated when new keys are added
@@ -105,24 +110,34 @@ const keys = [
       //   return;
       // }
 
-  
-    // await formSave({ result });
-     // setLastSaved(result);
-      
+
+      // await formSave({ result });
+      // setLastSaved(result);
+
       const res = await fetch("/api/click-up", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({username:'USer 1',result:result}),
+        body: JSON.stringify({ username: 'USer 1', result: result }),
       });
 
       const resResponse = await res.json();
+
+      console.log(resResponse);
       
+      setMessage(resResponse.message||"Successfully published to ClickUp");
+      setShow(true);
+      setSuccessful(resResponse.success);
+
 
       // setComponents([])
       // setAvailableKeys([]);
 
     } catch (error) {
       console.error(error);
+
+      setSuccessful(false);
+      setMessage("Failed to publish to ClickUp");
+      setShow(true);
     } finally {
       setLoading(false);
     }
@@ -189,6 +204,13 @@ const keys = [
 
                 </div>
               </form>
+              {show && (
+                <ResponseModal
+                  successful={successful}
+                  message={message}
+                  setShow={setShow}
+                />
+              )}
             </CardContent>
           </Card>
         </div>
