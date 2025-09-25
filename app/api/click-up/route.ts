@@ -6,7 +6,7 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
 
-    const response = await fetch(`${constants.baseUrl}/clickuppost`, {
+    const response = await fetch(`${constants.securebaseUrltest}/clickuppost`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
