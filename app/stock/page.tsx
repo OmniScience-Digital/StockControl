@@ -21,63 +21,71 @@ export default function ComponentForm() {
   const [successful, setSuccessful] = useState(false);
   const [message, setMessage] = useState("");
 
-  function listComponents() {
-    client.models.Component.observeQuery().subscribe({
-      next: async (data) => {
-        try {
-          const componentsWithSubComponents = await Promise.all(
-            data.items.map(async (component) => {
-              
-              console.log(client.models.SubComponent);
-                const { data: subComponents, errors: queryErrors } = 
-              await client.models.SubComponent.listSubComponentByComponentIdAndKey({
-                componentId: component.id,
-                key: { beginsWith: "" } 
-              });
+  // async function listComponents() {
+  //   const { data: subComponents, errors: queryErrors } =
+  //     await client.models.SubComponent.listSubComponentByComponentIdAndKey({
+  //       componentId: "1758793475020-cvo372",
+  //       key: { beginsWith: "" }
+  //     });
 
-              
+  //   console.log(subComponents);
 
-              if (queryErrors) {
-                console.error('Error fetching subcomponents:', queryErrors);
-                return {
-                  id: component.id,
-                  name: component.name || "", // Handle null case
-                  subComponents: []
-                };
-              }
+  //   client.models.Component.observeQuery().subscribe({
+  //     next: async (data) => {
+  //       try {
+  //         const componentsWithSubComponents = await Promise.all(
+  //           data.items.map(async (component) => {
 
-              // Transform the subcomponents to match your expected structure
-              const transformedSubComponents = (subComponents || []).map(sub => ({
-                id: sub.id,
-                key: sub.key || "",
-                value: sub.value || 0,
-                isWithdrawal: sub.isWithdrawal || false,
-                componentId: sub.componentId
-              }));
+  //             const { data: subComponents, errors: queryErrors } =
+  //               await client.models.SubComponent.listSubComponentByComponentIdAndKey({
+  //                 componentId: component.id,
+  //                 key: { beginsWith: component.id }
+  //               });
 
-              return {
-                id: component.id,
-                name: component.name || "",
-                subComponents: transformedSubComponents
-              };
-            })
-          );
 
-          setComponents(componentsWithSubComponents);
 
-        } catch (error) {
-          console.error('Error in observeQuery subscription:', error);
-        }
-      },
-      error: (error: any) => {
-        console.error('Subscription error:', error);
-      }
-    });
-  }
 
-  useEffect(() => {
-    listComponents();
-  }, []);
+  //             if (queryErrors) {
+  //               console.error('Error fetching subcomponents:', queryErrors);
+  //               return {
+  //                 id: component.id,
+  //                 name: component.name || "", // Handle null case
+  //                 subComponents: []
+  //               };
+  //             }
+
+  //             // Transform the subcomponents to match your expected structure
+  //             const transformedSubComponents = (subComponents || []).map(sub => ({
+  //               id: sub.id,
+  //               key: sub.key || "",
+  //               value: sub.value || 0,
+  //               isWithdrawal: sub.isWithdrawal || false,
+  //               componentId: sub.componentId
+  //             }));
+
+  //             return {
+  //               id: component.id,
+  //               name: component.name || "",
+  //               subComponents: transformedSubComponents
+  //             };
+  //           })
+  //         );
+
+  //         setComponents(componentsWithSubComponents);
+
+  //       } catch (error) {
+  //         console.error('Error in observeQuery subscription:', error);
+  //       }
+  //     },
+  //     error: (error: any) => {
+  //       console.error('Subscription error:', error);
+  //     }
+  //   });
+  // }
+
+  // useEffect(() => {
+  //   listComponents();
+  // }, []);
 
 
   const keys = [

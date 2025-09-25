@@ -18,7 +18,6 @@ const schema = a.schema({
     })
     .secondaryIndexes((index) => [
       index("componentId")
-        .sortKeys(["key"])
         .name("byComponentAndKey")
     ])
     .authorization((allow) => [allow.publicApiKey()]),
