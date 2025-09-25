@@ -21,71 +21,70 @@ export default function ComponentForm() {
   const [successful, setSuccessful] = useState(false);
   const [message, setMessage] = useState("");
 
-  // async function listComponents() {
-  //   const { data: subComponents, errors: queryErrors } =
-  //     await client.models.SubComponent.listSubComponentByComponentIdAndKey({
-  //       componentId: "1758793475020-cvo372",
-  //       key: { beginsWith: "" }
-  //     });
+  async function listComponents() {
+    const { data: subComponents, errors: queryErrors } =
+      await client.models.SubComponent.listSubComponentByComponentId({
+        componentId: "1758793475020-cvo372",
+      });
 
-  //   console.log(subComponents);
+    console.log(subComponents);
 
-  //   client.models.Component.observeQuery().subscribe({
-  //     next: async (data) => {
-  //       try {
-  //         const componentsWithSubComponents = await Promise.all(
-  //           data.items.map(async (component) => {
+    // client.models.Component.observeQuery().subscribe({
+    //   next: async (data) => {
+    //     try {
+    //       const componentsWithSubComponents = await Promise.all(
+    //         data.items.map(async (component) => {
 
-  //             const { data: subComponents, errors: queryErrors } =
-  //               await client.models.SubComponent.listSubComponentByComponentIdAndKey({
-  //                 componentId: component.id,
-  //                 key: { beginsWith: component.id }
-  //               });
-
+    //           const { data: subComponents, errors: queryErrors } =
+    //             await client.models.SubComponent.listSubComponentByComponentIdAndKey({
+    //               componentId: component.id,
+    //               key: { beginsWith: component.id }
+    //             });
 
 
 
-  //             if (queryErrors) {
-  //               console.error('Error fetching subcomponents:', queryErrors);
-  //               return {
-  //                 id: component.id,
-  //                 name: component.name || "", // Handle null case
-  //                 subComponents: []
-  //               };
-  //             }
 
-  //             // Transform the subcomponents to match your expected structure
-  //             const transformedSubComponents = (subComponents || []).map(sub => ({
-  //               id: sub.id,
-  //               key: sub.key || "",
-  //               value: sub.value || 0,
-  //               isWithdrawal: sub.isWithdrawal || false,
-  //               componentId: sub.componentId
-  //             }));
+    //           if (queryErrors) {
+    //             console.error('Error fetching subcomponents:', queryErrors);
+    //             return {
+    //               id: component.id,
+    //               name: component.name || "", // Handle null case
+    //               subComponents: []
+    //             };
+    //           }
 
-  //             return {
-  //               id: component.id,
-  //               name: component.name || "",
-  //               subComponents: transformedSubComponents
-  //             };
-  //           })
-  //         );
+    //           // Transform the subcomponents to match your expected structure
+    //           const transformedSubComponents = (subComponents || []).map(sub => ({
+    //             id: sub.id,
+    //             key: sub.key || "",
+    //             value: sub.value || 0,
+    //             isWithdrawal: sub.isWithdrawal || false,
+    //             componentId: sub.componentId
+    //           }));
 
-  //         setComponents(componentsWithSubComponents);
+    //           return {
+    //             id: component.id,
+    //             name: component.name || "",
+    //             subComponents: transformedSubComponents
+    //           };
+    //         })
+    //       );
 
-  //       } catch (error) {
-  //         console.error('Error in observeQuery subscription:', error);
-  //       }
-  //     },
-  //     error: (error: any) => {
-  //       console.error('Subscription error:', error);
-  //     }
-  //   });
-  // }
+    //       setComponents(componentsWithSubComponents);
 
-  // useEffect(() => {
-  //   listComponents();
-  // }, []);
+    //     } catch (error) {
+    //       console.error('Error in observeQuery subscription:', error);
+    //     }
+    //   },
+    //   error: (error: any) => {
+    //     console.error('Subscription error:', error);
+    //   }
+    // });
+  }
+
+  useEffect(() => {
+    listComponents();
+  }, []);
 
 
   const keys = [

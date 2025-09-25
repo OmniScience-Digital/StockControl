@@ -17,9 +17,7 @@ const schema = a.schema({
       component: a.belongsTo("Component", "componentId"),
     })
     .secondaryIndexes((index) => [
-      index("componentId")
-        .name("byComponentAndKey")
-    ])
+      index("componentId")])
     .authorization((allow) => [allow.publicApiKey()]),
 });
 
