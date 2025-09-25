@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, Plus } from "lucide-react";
@@ -9,16 +9,76 @@ import { Component } from "@/types/form.types";
 import Navbar from "@/components/layout/navbar";
 import { formSave } from "@/services/form.service";
 import ResponseModal from "@/components/response/response";
+import { client } from "@/services/schema";
 
 export default function ComponentForm() {
   const [components, setComponents] = useState<Component[]>([
-    { id: "1", name: "Production Cupboard", subComponents: [{ id: "1-1", key: "", value: 0, isWithdrawal: false }] }
+    // { id: "1", name: "Production Cupboard", subComponents: [{ id: "1-1", key: "", value: 0, isWithdrawal: false }] }
   ]);
   const [loading, setLoading] = useState(false);
 
   const [show, setShow] = useState(false);
   const [successful, setSuccessful] = useState(false);
   const [message, setMessage] = useState("");
+
+  function listComponents() {
+    client.models.Component.observeQuery().subscribe({
+      next: async (data) => {
+        try {
+          const componentsWithSubComponents = await Promise.all(
+            data.items.map(async (component) => {
+              
+              console.log(client.models.SubComponent);
+                const { data: subComponents, errors: queryErrors } = 
+              await client.models.SubComponent.listSubComponentByComponentIdAndKey({
+                componentId: component.id,
+                key: { beginsWith: "" } 
+              });
+
+              
+
+              if (queryErrors) {
+                console.error('Error fetching subcomponents:', queryErrors);
+                return {
+                  id: component.id,
+                  name: component.name || "", // Handle null case
+                  subComponents: []
+                };
+              }
+
+              // Transform the subcomponents to match your expected structure
+              const transformedSubComponents = (subComponents || []).map(sub => ({
+                id: sub.id,
+                key: sub.key || "",
+                value: sub.value || 0,
+                isWithdrawal: sub.isWithdrawal || false,
+                componentId: sub.componentId
+              }));
+
+              return {
+                id: component.id,
+                name: component.name || "",
+                subComponents: transformedSubComponents
+              };
+            })
+          );
+
+          setComponents(componentsWithSubComponents);
+
+        } catch (error) {
+          console.error('Error in observeQuery subscription:', error);
+        }
+      },
+      error: (error: any) => {
+        console.error('Subscription error:', error);
+      }
+    });
+  }
+
+  useEffect(() => {
+    listComponents();
+  }, []);
+
 
   const keys = [
     "115mm grinding discs",
@@ -122,9 +182,9 @@ export default function ComponentForm() {
 
       const resResponse = await res.json();
 
-      console.log(resResponse);
-      
-      setMessage(resResponse.message||"Successfully published to ClickUp");
+
+
+      setMessage(resResponse.message || "Successfully published to ClickUp");
       setShow(true);
       setSuccessful(resResponse.success);
 
@@ -170,47 +230,49 @@ export default function ComponentForm() {
               </div>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                {components.map((component) => (
-                  <ComponentItem
-                    key={component.id}
-                    component={component}
-                    availableKeys={availableKeys}
-                    usedKeys={getUsedKeys()}
-                    onUpdate={(updatedComponent) => updateComponent(component.id, updatedComponent)}
-                    onRemove={() => removeComponent(component.id)}
-                    isRemovable={components.length > 1}
-                    onAddNewKey={handleAddNewKey}
+              <div className="overflow-x-auto">
+                <form onSubmit={handleSubmit} className="space-y-4 min-w-[600px]" >
+                  {components.map((component) => (
+                    <ComponentItem
+                      key={component.id}
+                      component={component}
+                      availableKeys={availableKeys}
+                      usedKeys={getUsedKeys()}
+                      onUpdate={(updatedComponent) => updateComponent(component.id, updatedComponent)}
+                      onRemove={() => removeComponent(component.id)}
+                      isRemovable={components.length > 1}
+                      onAddNewKey={handleAddNewKey}
+                    />
+                  ))}
+
+                  <div className="flex gap-4">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={addComponent}
+                      className="flex items-center gap-2 cursor-pointer"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Add Component
+                    </Button>
+
+                    <Button type="submit" className="flex-1 cursor-pointer">
+                      Submit
+                      {loading && (
+                        <Loader2 className="ml-2 h-8 w-8 animate-spin text-background" />
+                      )}
+                    </Button>
+
+                  </div>
+                </form>
+                {show && (
+                  <ResponseModal
+                    successful={successful}
+                    message={message}
+                    setShow={setShow}
                   />
-                ))}
-
-                <div className="flex gap-4">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={addComponent}
-                    className="flex items-center gap-2 cursor-pointer"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Add Component
-                  </Button>
-
-                  <Button type="submit" className="flex-1 cursor-pointer">
-                    Submit
-                    {loading && (
-                      <Loader2 className="ml-2 h-8 w-8 animate-spin text-background" />
-                    )}
-                  </Button>
-
-                </div>
-              </form>
-              {show && (
-                <ResponseModal
-                  successful={successful}
-                  message={message}
-                  setShow={setShow}
-                />
-              )}
+                )}
+              </div>
             </CardContent>
           </Card>
         </div>

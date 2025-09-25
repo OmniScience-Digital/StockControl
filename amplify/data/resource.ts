@@ -20,7 +20,6 @@ const schema = a.schema({
       index("componentId")
         .sortKeys(["key"])
         .name("byComponentAndKey")
-        .queryField("listSubComponentByComponentIdAndKey"),
     ])
     .authorization((allow) => [allow.publicApiKey()]),
 });
