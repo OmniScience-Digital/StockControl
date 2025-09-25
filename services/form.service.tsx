@@ -7,34 +7,34 @@ interface formSaveProps {
     }>>
 }
 
-export const formSave = async ({ result }: formSaveProps) => {
-    try {
+// export const formSave = async ({ result }: formSaveProps) => {
+//     try {
 
-        for (const [componentName, subComponents] of Object.entries(result)) {
-      // 1️ Save Component
-      const { data: comp } = await client.models.Component.create({
-        name: componentName,
-      });
-       if (!comp?.id) continue;
+//         for (const [componentName, subComponents] of Object.entries(result)) {
+//       // 1️ Save Component
+//       const { data: comp } = await client.models.Component.create({
+//         name: componentName,
+//       });
+//        if (!comp?.id) continue;
 
-       console.log(componentName);
-       // 2️ Save SubComponents
-      for (const [key, { value, isWithdrawal }] of Object.entries(subComponents)) {
-        await client.models.SubComponent.create({
-          key,
-          value,
-          isWithdrawal,
-          componentId: comp.id, // foreign key
-        });
-    }
-    }
+//        console.log(componentName);
+//        // 2️ Save SubComponents
+//       for (const [key, { value, isWithdrawal }] of Object.entries(subComponents)) {
+//         await client.models.SubComponent.create({
+//           key,
+//           value,
+//           isWithdrawal,
+//           componentId: comp.id, // foreign key
+//         });
+//     }
+//     }
 
-    } catch (error) {
-         console.error("Error saving form:", error);
-        throw error;
+//     } catch (error) {
+//          console.error("Error saving form:", error);
+//         throw error;
 
-    }
-}
+//     }
+// }
 
 
 

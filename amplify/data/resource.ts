@@ -4,6 +4,7 @@ const schema = a.schema({
   Component: a
     .model({
       name: a.string(),
+      isWithdrawal: a.boolean(),
       subComponents: a.hasMany('SubComponent', 'componentId'),
     }).secondaryIndexes((index) => [index("name")])
     .authorization((allow) => [allow.publicApiKey()]),
@@ -12,7 +13,6 @@ const schema = a.schema({
     .model({
       key: a.string(),
       value: a.float(),
-      isWithdrawal: a.boolean(),
       componentId: a.id().required(),
       component: a.belongsTo("Component", "componentId"),
     })

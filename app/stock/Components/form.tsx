@@ -18,7 +18,9 @@ interface ComponentItemProps {
   onUpdate: (component: Component) => void;
   onRemove: () => void;
   isRemovable: boolean;
-  onAddNewKey?: (newKey: string) => void; // New prop for adding keys
+  onAddNewKey?: (newKey: string) => void;
+  allComponents?: Component[];
+  usedComponentIds?: string[]; // NEW: Track which component IDs are already used
 }
 
 export default function ComponentItem({
@@ -28,22 +30,48 @@ export default function ComponentItem({
   onUpdate,
   onRemove,
   isRemovable,
-  onAddNewKey
+  onAddNewKey,
+  allComponents = [],
+  usedComponentIds = [] // NEW: Default to empty array
 }: ComponentItemProps) {
   const [isAddingNewKey, setIsAddingNewKey] = useState<string | null>(null);
   const [newKeyInput, setNewKeyInput] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [componentSearchTerm, setComponentSearchTerm] = useState("");
 
-  const updateComponentName = (name: string) => {
-    onUpdate({ ...component, name });
+  // NEW: Filter components to disable already used ones (except the current one)
+  const getFilteredComponents = () => {
+    return allComponents.filter(comp =>
+      comp.name?.toLowerCase().includes(componentSearchTerm.toLowerCase())
+    );
+  };
+
+  // NEW: Check if a component is disabled (used by another component item)
+  const isComponentDisabled = (componentId: string) => {
+    // Always enable the currently selected component
+    if (componentId === component.id) return false;
+    // Disable if it's used by another component item
+    return usedComponentIds.includes(componentId);
+  };
+
+  // Update component selection from dropdown
+  const updateComponentSelection = (componentId: string) => {
+    const selectedComponent = allComponents.find(comp => comp.id === componentId);
+    if (selectedComponent) {
+      onUpdate({
+        ...selectedComponent,
+        id: component.id, // Keep the current ID to maintain position in array
+        subComponents: [] // EMPTY array instead of copying subcomponents
+      });
+    }
   };
 
   const addSubComponent = () => {
     const newSubComponent = {
       id: `${component.id}-${Date.now()}`,
       key: "",
-      value: 0,
-      isWithdrawal: false
+      value: 0, // Start with 0 as requested
+      componentId: component.id
     };
     onUpdate({
       ...component,
@@ -77,17 +105,6 @@ export default function ComponentItem({
       ...component,
       subComponents: component.subComponents.map((sub) =>
         sub.id === subComponentId ? { ...sub, value: numValue } : sub
-      )
-    });
-  };
-
-  const toggleWithdrawal = (subComponentId: string) => {
-    onUpdate({
-      ...component,
-      subComponents: component.subComponents.map((sub) =>
-        sub.id === subComponentId
-          ? { ...sub, isWithdrawal: !sub.isWithdrawal }
-          : sub
       )
     });
   };
@@ -128,16 +145,72 @@ export default function ComponentItem({
   // Get unused keys for the "Add new" suggestions
   const unusedKeys = availableKeys.filter(key => !usedKeys.includes(key));
 
+  const filteredComponents = getFilteredComponents();
+
   return (
     <div className="p-4 border rounded-lg space-y-4 bg-background shadow-sm">
       <div className="flex items-center gap-4">
         <div className="flex-1">
-          <Input
-            value={component.name}
-            onChange={(e) => updateComponentName(e.target.value)}
-            placeholder="Component name (e.g., Speed Sensor)"
-            className="w-full"
-          />
+          {/* Component Selection Dropdown with Search */}
+          <Select 
+            value={component.id} 
+            onValueChange={updateComponentSelection}
+          >
+            <SelectTrigger className="w-full cursor-pointer">
+              <SelectValue placeholder="Select a component" >
+                 {component.name || "Select a component..."}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent className="max-h-60">
+              {/* Component Search Input */}
+              <div className="p-2 border-b">
+                <div className="relative">
+                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
+                  <Input
+                    placeholder="Search components..."
+                    value={componentSearchTerm}
+                    onChange={(e) => setComponentSearchTerm(e.target.value)}
+                    className="pl-8 pr-8 h-9"
+                  />
+                  {componentSearchTerm && (
+                    <X
+                      className="absolute right-2 top-2.5 h-4 w-4 text-gray-500 cursor-pointer"
+                      onClick={() => setComponentSearchTerm("")}
+                    />
+                  )}
+                </div>
+              </div>
+
+              {/* Filtered Components List */}
+              {filteredComponents.map((comp) => (
+                <SelectItem 
+                  key={comp.id} 
+                  value={comp.id}
+                  disabled={isComponentDisabled(comp.id)}
+                  className="flex items-center justify-between cursor-pointer"
+                >
+                  <span>{comp.name || `Unnamed Component (${comp.id})`}</span>
+                  {isComponentDisabled(comp.id) && comp.id !== component.id && (
+                    <span className="text-xs text-red-500 ml-2">(already used)</span>
+                  )}
+                </SelectItem>
+              ))}
+
+              {/* Empty State for Component Search */}
+              {filteredComponents.length === 0 && componentSearchTerm && (
+                <div className="p-4 text-center text-gray-500 text-sm">
+                  No components found matching "{componentSearchTerm}"
+                </div>
+              )}
+
+              {/* Empty State when no components available */}
+              {allComponents.length === 0 && (
+                <div className="p-4 text-center text-gray-500 text-sm">
+                  No components available
+                </div>
+              )}
+            </SelectContent>
+          </Select>
         </div>
         <Button
           type="button"
@@ -149,6 +222,37 @@ export default function ComponentItem({
         >
           <Trash2 className="h-4 w-4" />
         </Button>
+      </div>
+
+      {/* Withdrawal/Intake Toggle - Now at component level */}
+      <div className="flex items-center gap-4 p-3 bg-muted/30 rounded-lg">
+        <span className="font-semibold text-sm">Transaction Type:</span>
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            variant={component.isWithdrawal ? "outline" : "default"}
+            size="sm"
+            onClick={() => onUpdate({ ...component, isWithdrawal: false })}
+            className={`flex items-center gap-2 ${
+              !component.isWithdrawal ? "bg-green-600 hover:bg-green-700" : ""
+            }`}
+          >
+            <Plus className="h-3 w-3" />
+            Intake
+          </Button>
+          <Button
+            type="button"
+            variant={component.isWithdrawal ? "default" : "outline"}
+            size="sm"
+            onClick={() => onUpdate({ ...component, isWithdrawal: true })}
+            className={`flex items-center gap-2 ${
+              component.isWithdrawal ? "bg-red-600 hover:bg-red-700" : ""
+            }`}
+          >
+            <Minus className="h-3 w-3" />
+            Withdrawal
+          </Button>
+        </div>
       </div>
 
       <div className="space-y-4 pl-6 border-l-2 border-blue-200">
@@ -245,7 +349,7 @@ export default function ComponentItem({
                       </SelectItem>
                     ))}
 
-                    {/* Add New Option - Always visible */}
+                    {/* Add New Option */}
                     <div className="border-t mt-1 pt-1">
                       <SelectItem 
                         value="__add_new__"
@@ -288,26 +392,6 @@ export default function ComponentItem({
                 className="w-full"
               />
             </div>
-
-            <Button
-              type="button"
-              variant={subComponent.isWithdrawal ? "destructive" : "outline"}
-          className={`cursor-pointer ${
-                subComponent.isWithdrawal 
-                  ? "" 
-                  : "border-green-500 text-green-600"
-              }`}
-
-              size="icon"
-              onClick={() => toggleWithdrawal(subComponent.id)}
-              title={subComponent.isWithdrawal ? "Withdrawal" : "Addition"}
-            >
-              {subComponent.isWithdrawal ? (
-                <Minus className="h-4 w-4" />
-              ) : (
-                <PlusCircle className="h-4 w-4" />
-              )}
-            </Button>
 
             <Button
               type="button"
