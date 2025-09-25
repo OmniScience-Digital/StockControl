@@ -17,9 +17,15 @@ const schema = a.schema({
       component: a.belongsTo("Component", "componentId"),
     })
     .secondaryIndexes((index) => [
-      index("componentId")])
+      index("componentId")
+        .sortKeys(["key"])
+        .name("byComponentAndKey")
+        .queryField("listSubComponentByComponentIdAndKey"),
+    ])
     .authorization((allow) => [allow.publicApiKey()]),
+
 });
+
 
 
 

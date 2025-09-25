@@ -22,9 +22,12 @@ export default function ComponentForm() {
   const [message, setMessage] = useState("");
 
   async function listComponents() {
+
+    
     const { data: subComponents, errors: queryErrors } =
-      await client.models.SubComponent.listSubComponentByComponentId({
+      await client.models.SubComponent.listSubComponentByComponentIdAndKey({
         componentId: "1758793475020-cvo372",
+     
       });
 
     console.log(subComponents);
