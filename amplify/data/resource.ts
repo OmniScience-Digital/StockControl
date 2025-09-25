@@ -4,7 +4,6 @@ const schema = a.schema({
   Component: a
     .model({
       name: a.string(),
-      isWithdrawal: a.boolean(),
       subComponents: a.hasMany('SubComponent', 'componentId'),
     }).secondaryIndexes((index) => [index("name")])
     .authorization((allow) => [allow.publicApiKey()]),

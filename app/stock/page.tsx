@@ -175,6 +175,7 @@ export default function ComponentForm() {
         subComponents: Record<string, { value: string }> 
       }>);
 
+
       const res = await fetch("/api/click-up", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
