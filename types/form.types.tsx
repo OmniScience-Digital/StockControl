@@ -9,6 +9,6 @@ export interface Component {
 export interface SubComponent {
   id: string;
   key: string;
-  value: number;
+  value: string;
   componentId: string;
 }

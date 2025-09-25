@@ -4,14 +4,14 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, Plus } from "lucide-react";
-import ComponentItem from "./Components/form";
+import ComponentItem from "./Components/form"; 
 import { Component } from "@/types/form.types";
 import Navbar from "@/components/layout/navbar";
 import ResponseModal from "@/components/response/response";
 import { client } from "@/services/schema";
 
 export default function ComponentForm() {
-
+  
   const [allComponents, setAllComponents] = useState<Component[]>([]);
   const [displayedComponents, setDisplayedComponents] = useState<Component[]>([]);
   const [loading, setLoading] = useState(false);
@@ -47,9 +47,10 @@ export default function ComponentForm() {
                 const transformedSubComponents = (subComponents || []).map((sub) => ({
                   id: sub.id,
                   key: sub.key || "",
-                  value: sub.value || 0,
+                  value: String(sub.value), 
                   componentId: sub.componentId,
                 }));
+
 
                 return {
                   id: component.id,
@@ -61,7 +62,7 @@ export default function ComponentForm() {
             );
 
             // Set availableKeys AFTER processing all components
-            const allKeys = componentsWithSubComponents.flatMap(comp =>
+            const allKeys = componentsWithSubComponents.flatMap(comp => 
               comp.subComponents.map(sub => sub.key).filter(key => key.trim() !== "")
             );
             setAvailableKeys(allKeys);
@@ -86,12 +87,12 @@ export default function ComponentForm() {
 
   const getFilteredKeysForComponent = (componentName: string): string[] => {
     if (!componentName || componentName === "Select a component") return [];
-
+    
     // Find the selected component from allComponents
     const selectedComponent = allComponents.find(comp => comp.name === componentName);
-
+    
     if (!selectedComponent) return []; // Return empty if component not found
-
+    
     // Return only the keys that belong to this specific component
     return selectedComponent.subComponents.map(sub => sub.key).filter(key => key.trim() !== "");
   };
@@ -113,9 +114,9 @@ export default function ComponentForm() {
       id: Date.now().toString(),
       name: "", // Start with empty name instead of "Select a component"
       isWithdrawal: false,
-      subComponents: [{ id: `${Date.now()}-1`, key: "", value: 0, componentId: Date.now().toString() }]
+      subComponents: [{ id: `${Date.now()}-1`, key: "", value: "", componentId: Date.now().toString() }]
     };
-
+    
     // Add to the beginning of the array (top)
     setDisplayedComponents([newComponent, ...displayedComponents]);
   };
@@ -159,7 +160,7 @@ export default function ComponentForm() {
               };
             }
             return subAcc;
-          }, {} as Record<string, { value: number }>);
+          }, {} as Record<string, { value: string }>);
 
           if (Object.keys(subAcc).length > 0) {
             acc[component.name] = {
@@ -169,17 +170,17 @@ export default function ComponentForm() {
           }
         }
         return acc;
-      }, {} as Record<string, {
-        isWithdrawal: boolean;
-        subComponents: Record<string, { value: number }>
+      }, {} as Record<string, { 
+        isWithdrawal: boolean; 
+        subComponents: Record<string, { value: string }> 
       }>);
 
       const res = await fetch("/api/click-up", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          username: 'User 1',
-          result: result
+        body: JSON.stringify({ 
+          username: 'User 1', 
+          result: result 
         }),
       });
 
@@ -190,16 +191,16 @@ export default function ComponentForm() {
       setSuccessful(resResponse.success);
 
       setDisplayedComponents([
-        {
-          id: Date.now().toString(),
-          name: "",
-          isWithdrawal: false,
-          subComponents: [
-            { id: `${Date.now()}-1`, key: "", value: 0, componentId: Date.now().toString() }
-          ]
-        }
-      ]);
-      setAvailableKeys([]);
+  {
+    id: Date.now().toString(),
+    name: "",
+    isWithdrawal: false,
+    subComponents: [
+      { id: `${Date.now()}-1`, key: "", value: "", componentId: Date.now().toString() }
+    ]
+  }
+]);
+setAvailableKeys([]); 
 
 
     } catch (error) {

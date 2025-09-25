@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/select";
 import { Trash2, Minus, PlusCircle, Plus, Search, X } from "lucide-react";
 import { Component } from "@/types/form.types";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface ComponentItemProps {
   component: Component;
@@ -20,7 +20,7 @@ interface ComponentItemProps {
   isRemovable: boolean;
   onAddNewKey?: (newKey: string) => void;
   allComponents?: Component[];
-  usedComponentIds?: string[]; // NEW: Track which component IDs are already used
+  usedComponentIds?: string[];
 }
 
 export default function ComponentItem({
@@ -32,45 +32,100 @@ export default function ComponentItem({
   isRemovable,
   onAddNewKey,
   allComponents = [],
-  usedComponentIds = [] // NEW: Default to empty array
+  usedComponentIds = []
 }: ComponentItemProps) {
   const [isAddingNewKey, setIsAddingNewKey] = useState<string | null>(null);
   const [newKeyInput, setNewKeyInput] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [componentSearchTerm, setComponentSearchTerm] = useState("");
+  const [isAddingNewComponent, setIsAddingNewComponent] = useState(false);
+  const [newComponentInput, setNewComponentInput] = useState("");
+  const [localAvailableKeys, setLocalAvailableKeys] = useState<string[]>(availableKeys);
 
-  // NEW: Filter components to disable already used ones (except the current one)
+  // Sync local availableKeys with prop changes
+  useEffect(() => {
+    setLocalAvailableKeys(availableKeys);
+  }, [availableKeys]);
+
+  // // Debug logging
+  // useEffect(() => {
+  //   console.log('ComponentItem Debug:', {
+  //     availableKeys,
+  //     localAvailableKeys,
+  //     usedKeys,
+  //     hasOnAddNewKey: !!onAddNewKey,
+  //     componentId: component.id,
+  //     subComponents: component.subComponents.map(sc => ({ id: sc.id, key: sc.key }))
+  //   });
+  // }, [availableKeys, localAvailableKeys, usedKeys, component]);
+
   const getFilteredComponents = () => {
     return allComponents.filter(comp =>
       comp.name?.toLowerCase().includes(componentSearchTerm.toLowerCase())
     );
   };
 
-  // NEW: Check if a component is disabled (used by another component item)
   const isComponentDisabled = (componentId: string) => {
-    // Always enable the currently selected component
     if (componentId === component.id) return false;
-    // Disable if it's used by another component item
     return usedComponentIds.includes(componentId);
   };
 
-  // Update component selection from dropdown
   const updateComponentSelection = (componentId: string) => {
+    if (componentId === "__add_new_component__") {
+      setIsAddingNewComponent(true);
+      setNewComponentInput("");
+      setComponentSearchTerm("");
+      return;
+    }
+
     const selectedComponent = allComponents.find(comp => comp.id === componentId);
     if (selectedComponent) {
       onUpdate({
         ...selectedComponent,
-        id: component.id, // Keep the current ID to maintain position in array
-        subComponents: [] // EMPTY array instead of copying subcomponents
+        id: component.id,
+        subComponents: [
+          { id: `${Date.now()}-1`, key: "", value: "", componentId: Date.now().toString() }
+        ]
       });
     }
+  };
+
+  const startAddingNewComponent = () => {
+    setIsAddingNewComponent(true);
+    setNewComponentInput("");
+    setComponentSearchTerm("");
+  };
+
+  const cancelAddingNewComponent = () => {
+    setIsAddingNewComponent(false);
+    setNewComponentInput("");
+    setComponentSearchTerm("");
+  };
+
+  const confirmNewComponent = () => {
+    if (newComponentInput.trim()) {
+      const newComponent: Component = {
+        id: `new-${Date.now()}`,
+        name: newComponentInput.trim(),
+        subComponents: [
+          { id: `${Date.now()}-1`, key: "", value: "", componentId: Date.now().toString() }
+        ],
+        isWithdrawal: false
+      };
+      
+      onUpdate({
+        ...newComponent,
+        id: component.id
+      });
+    }
+    cancelAddingNewComponent();
   };
 
   const addSubComponent = () => {
     const newSubComponent = {
       id: `${component.id}-${Date.now()}`,
       key: "",
-      value: 0, // Start with 0 as requested
+      value: "",
       componentId: component.id
     };
     onUpdate({
@@ -100,11 +155,11 @@ export default function ComponentItem({
   };
 
   const updateSubComponentValue = (subComponentId: string, value: string) => {
-    const numValue = parseFloat(value) || 0;
+    const stringValue = value || "";
     onUpdate({
       ...component,
       subComponents: component.subComponents.map((sub) =>
-        sub.id === subComponentId ? { ...sub, value: numValue } : sub
+        sub.id === subComponentId ? { ...sub, value: stringValue } : sub
       )
     });
   };
@@ -122,9 +177,23 @@ export default function ComponentItem({
   };
 
   const confirmNewKey = (subComponentId: string) => {
-    if (newKeyInput.trim() && onAddNewKey) {
-      onAddNewKey(newKeyInput.trim());
-      updateSubComponentKey(subComponentId, newKeyInput.trim());
+    if (newKeyInput.trim()) {
+      const trimmedKey = newKeyInput.trim();
+      
+      // Update locally immediately for better UX
+      setLocalAvailableKeys(prev => {
+        const newKeys = prev.includes(trimmedKey) ? prev : [...prev, trimmedKey];
+        return newKeys;
+      });
+
+      // Call parent callback if provided
+      if (onAddNewKey) {
+        console.log('Calling onAddNewKey callback');
+        onAddNewKey(trimmedKey);
+      }
+
+      // Update the subcomponent key
+      updateSubComponentKey(subComponentId, trimmedKey);
     }
     cancelAddingNewKey();
   };
@@ -137,13 +206,12 @@ export default function ComponentItem({
     }
   };
 
-  // Filter available keys based on search term
-  const filteredKeys = availableKeys.filter(key =>
+  // Use localAvailableKeys for filtering to ensure immediate updates
+  const filteredKeys = localAvailableKeys.filter(key =>
     key.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Get unused keys for the "Add new" suggestions
-  const unusedKeys = availableKeys.filter(key => !usedKeys.includes(key));
+  const unusedKeys = localAvailableKeys.filter(key => !usedKeys.includes(key));
 
   const filteredComponents = getFilteredComponents();
 
@@ -151,66 +219,115 @@ export default function ComponentItem({
     <div className="p-4 border rounded-lg space-y-4 bg-background shadow-sm">
       <div className="flex items-center gap-4">
         <div className="flex-1">
-          {/* Component Selection Dropdown with Search */}
-          <Select 
-            value={component.id} 
-            onValueChange={updateComponentSelection}
-          >
-            <SelectTrigger className="w-full cursor-pointer">
-              <SelectValue placeholder="Select a component" >
-                 {component.name || "Select a component..."}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent className="max-h-60">
-              {/* Component Search Input */}
-              <div className="p-2 border-b">
-                <div className="relative">
-                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
-                  <Input
-                    placeholder="Search components..."
-                    value={componentSearchTerm}
-                    onChange={(e) => setComponentSearchTerm(e.target.value)}
-                    className="pl-8 pr-8 h-9"
-                  />
-                  {componentSearchTerm && (
-                    <X
-                      className="absolute right-2 top-2.5 h-4 w-4 text-gray-500 cursor-pointer"
-                      onClick={() => setComponentSearchTerm("")}
-                    />
-                  )}
-                </div>
-              </div>
-
-              {/* Filtered Components List */}
-              {filteredComponents.map((comp) => (
-                <SelectItem 
-                  key={comp.id} 
-                  value={comp.id}
-                  disabled={isComponentDisabled(comp.id)}
-                  className="flex items-center justify-between cursor-pointer"
+          {isAddingNewComponent ? (
+            <div className="space-y-1">
+              <div className="flex gap-2">
+                <Input
+                  value={newComponentInput}
+                  onChange={(e) => setNewComponentInput(e.target.value)}
+                  placeholder="Enter new component name..."
+                  className="flex-1"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') confirmNewComponent();
+                    if (e.key === 'Escape') cancelAddingNewComponent();
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={cancelAddingNewComponent}
                 >
-                  <span>{comp.name || `Unnamed Component (${comp.id})`}</span>
-                  {isComponentDisabled(comp.id) && comp.id !== component.id && (
-                    <span className="text-xs text-red-500 ml-2">(already used)</span>
-                  )}
-                </SelectItem>
-              ))}
-
-              {/* Empty State for Component Search */}
-              {filteredComponents.length === 0 && componentSearchTerm && (
-                <div className="p-4 text-center text-gray-500 text-sm">
-                  No components found matching "{componentSearchTerm}"
+                  <X className="h-4 w-4" />
+                </Button>
+                <Button
+                  type="button"
+                  onClick={confirmNewComponent}
+                  disabled={!newComponentInput.trim()}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <Select 
+              value={component.id} 
+              onValueChange={updateComponentSelection}
+            >
+              <SelectTrigger className="w-full cursor-pointer">
+                <SelectValue placeholder="Select a component" >
+                  {component.name || "Select a component..."}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent className="max-h-60">
+                <div className="p-2 border-b">
+                  <div className="relative">
+                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
+                    <Input
+                      placeholder="Search components..."
+                      value={componentSearchTerm}
+                      onChange={(e) => setComponentSearchTerm(e.target.value)}
+                      className="pl-8 pr-8 h-9"
+                    />
+                    {componentSearchTerm && (
+                      <X
+                        className="absolute right-2 top-2.5 h-4 w-4 text-gray-500 cursor-pointer"
+                        onClick={() => setComponentSearchTerm("")}
+                      />
+                    )}
+                  </div>
                 </div>
-              )}
 
-              {/* Empty State when no components available */}
-              {allComponents.length === 0 && (
-                <div className="p-4 text-center text-gray-500 text-sm">
-                  No components available
+                {filteredComponents.map((comp) => (
+                  <SelectItem 
+                    key={comp.id} 
+                    value={comp.id}
+                    disabled={isComponentDisabled(comp.id)}
+                    className="flex items-center justify-between cursor-pointer"
+                  >
+                    <span>{comp.name || `Unnamed Component (${comp.id})`}</span>
+                    {isComponentDisabled(comp.id) && comp.id !== component.id && (
+                      <span className="text-xs text-red-500 ml-2">(already used)</span>
+                    )}
+                  </SelectItem>
+                ))}
+
+                <div className="border-t mt-1 pt-1">
+                  <SelectItem 
+                    value="__add_new_component__"
+                    className="text-blue-600 font-medium flex items-center gap-2 cursor-pointer"
+                  >
+                    <PlusCircle className="h-4 w-4" />
+                    Add New Component...
+                  </SelectItem>
                 </div>
-              )}
-            </SelectContent>
-          </Select>
+
+                {filteredComponents.length === 0 && componentSearchTerm && (
+                  <div className="p-4 text-center text-gray-500 text-sm">
+                    No components found matching "{componentSearchTerm}"
+                    <div className="mt-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={startAddingNewComponent}
+                        className="text-blue-600 hover:text-blue-700"
+                      >
+                        <PlusCircle className="h-3 w-3 mr-1" />
+                        Add "{componentSearchTerm}" as new component
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {allComponents.length === 0 && (
+                  <div className="p-4 text-center text-gray-500 text-sm">
+                    No components available
+                  </div>
+                )}
+              </SelectContent>
+            </Select>
+          )}
         </div>
         <Button
           type="button"
@@ -224,7 +341,6 @@ export default function ComponentItem({
         </Button>
       </div>
 
-      {/* Withdrawal/Intake Toggle - Now at component level */}
       <div className="flex items-center gap-4 p-3 bg-muted/30 rounded-lg">
         <span className="font-semibold text-sm">Transaction Type:</span>
         <div className="flex gap-2">
@@ -312,10 +428,11 @@ export default function ComponentItem({
                   onValueChange={(value) => handleKeySelect(subComponent.id, value)}
                 >
                   <SelectTrigger className="relative cursor-pointer">
-                    <SelectValue placeholder="Select or add subcomponent" />
+                    <SelectValue placeholder="Select or add subcomponent">
+                      {subComponent.key || "Select a key..."}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent className="max-h-60">
-                    {/* Search Input */}
                     <div className="p-2 border-b">
                       <div className="relative">
                         <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
@@ -334,22 +451,26 @@ export default function ComponentItem({
                       </div>
                     </div>
 
-                    {/* Available Keys */}
-                    {filteredKeys.map((key) => (
-                      <SelectItem
-                        key={key}
-                        value={key}
-                        disabled={usedKeys.includes(key) && subComponent.key !== key}
-                        className="flex items-center justify-between cursor-pointer"
-                      >
-                        <span>{key}</span>
-                        {usedKeys.includes(key) && subComponent.key !== key && (
-                          <span className="text-xs text-red-500 ml-2">(used)</span>
-                        )}
-                      </SelectItem>
-                    ))}
+                    {filteredKeys.length > 0 ? (
+                      filteredKeys.map((key) => (
+                        <SelectItem
+                          key={key}
+                          value={key}
+                          disabled={usedKeys.includes(key) && subComponent.key !== key}
+                          className="flex items-center justify-between cursor-pointer"
+                        >
+                          <span>{key}</span>
+                          {usedKeys.includes(key) && subComponent.key !== key && (
+                            <span className="text-xs text-red-500 ml-2">(used)</span>
+                          )}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <div className="p-2 text-center text-gray-500 text-sm">
+                        No keys available
+                      </div>
+                    )}
 
-                    {/* Add New Option */}
                     <div className="border-t mt-1 pt-1">
                       <SelectItem 
                         value="__add_new__"
@@ -360,7 +481,6 @@ export default function ComponentItem({
                       </SelectItem>
                     </div>
 
-                    {/* Empty State */}
                     {filteredKeys.length === 0 && searchTerm && (
                       <div className="p-2 text-center text-gray-500 text-sm">
                         No keys found matching "{searchTerm}"
@@ -385,7 +505,7 @@ export default function ComponentItem({
             <div className="flex-1">
               <Input
                 type="number"
-                step="0.01"
+                step="1"
                 value={subComponent.value}
                 onChange={(e) => updateSubComponentValue(subComponent.id, e.target.value)}
                 placeholder="Enter value"
