@@ -23,10 +23,13 @@ export default  function ComponentForm() {
 
   const [availableKeys, setAvailableKeys] = useState<string[]>([]);
 
-  async function listComponents() {
+useEffect(() => {
+  let subscription: any;
+
+  const listComponents = () => {
     try {
       setcomponentLoading(true);
-      client.models.Component.observeQuery().subscribe({
+      subscription = client.models.Component.observeQuery().subscribe({
         next: async (componentData) => {
           try {
             const componentsWithSubComponents = await Promise.all(
@@ -53,7 +56,6 @@ export default  function ComponentForm() {
                   componentId: sub.componentId,
                 }));
 
-
                 return {
                   id: component.id,
                   name: component.name || "",
@@ -72,20 +74,30 @@ export default  function ComponentForm() {
             setAllComponents(componentsWithSubComponents);
           } catch (err) {
             console.error("Error in observeQuery processing:", err);
+          } finally {
+            setcomponentLoading(false);
           }
         },
         error: (err) => {
           console.error("Subscription error:", err);
+          setcomponentLoading(false);
         },
       });
     } catch (error) {
       console.error("Error listing components:", error);
+      setcomponentLoading(false);
     }
-  }
+  };
 
-  useEffect(() => {
-    listComponents();
-  }, []);
+  listComponents();
+
+  // Cleanup function - unsubscribe when component unmounts
+  return () => {
+    if (subscription) {
+      subscription.unsubscribe();
+    }
+  };
+}, []);
 
   const getFilteredKeysForComponent = (componentName: string): string[] => {
     if (!componentName || componentName === "Select a component") return [];
