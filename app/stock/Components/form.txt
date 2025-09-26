@@ -1,4 +1,3 @@
-import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -10,14 +9,10 @@ import {
 } from "@/components/ui/select";
 import { Trash2, Minus, PlusCircle, Plus, Search, X } from "lucide-react";
 import { Component } from "@/types/form.types";
-
-import Loading from "../loading";
-
+import { useState, useEffect } from "react";
 
 interface ComponentItemProps {
   component: Component;
-  setcomponentLoading: React.Dispatch<React.SetStateAction<boolean>>;
-  componentsLoading: boolean;
   availableKeys: string[];
   usedKeys: string[];
   onUpdate: (component: Component) => void;
@@ -26,7 +21,6 @@ interface ComponentItemProps {
   onAddNewKey?: (newKey: string) => void;
   allComponents?: Component[];
   usedComponentIds?: string[];
-
 }
 
 export default function ComponentItem({
@@ -37,8 +31,6 @@ export default function ComponentItem({
   onRemove,
   isRemovable,
   onAddNewKey,
-  componentsLoading,
-  setcomponentLoading,
   allComponents = [],
   usedComponentIds = []
 }: ComponentItemProps) {
@@ -120,7 +112,7 @@ export default function ComponentItem({
         ],
         isWithdrawal: false
       };
-
+      
       onUpdate({
         ...newComponent,
         id: component.id
@@ -187,7 +179,7 @@ export default function ComponentItem({
   const confirmNewKey = (subComponentId: string) => {
     if (newKeyInput.trim()) {
       const trimmedKey = newKeyInput.trim();
-
+      
       // Update locally immediately for better UX
       setLocalAvailableKeys(prev => {
         const newKeys = prev.includes(trimmedKey) ? prev : [...prev, trimmedKey];
@@ -196,6 +188,7 @@ export default function ComponentItem({
 
       // Call parent callback if provided
       if (onAddNewKey) {
+        console.log('Calling onAddNewKey callback');
         onAddNewKey(trimmedKey);
       }
 
@@ -221,13 +214,6 @@ export default function ComponentItem({
   const unusedKeys = localAvailableKeys.filter(key => !usedKeys.includes(key));
 
   const filteredComponents = getFilteredComponents();
-
-  useEffect(() => {
-  if (allComponents.length > 0) {
-    setcomponentLoading(false);
-  }
-}, [allComponents, setcomponentLoading]);
-
 
   return (
     <div className="p-4 border rounded-lg space-y-4 bg-background shadow-sm">
@@ -265,8 +251,8 @@ export default function ComponentItem({
               </div>
             </div>
           ) : (
-            <Select
-              value={component.id}
+            <Select 
+              value={component.id} 
               onValueChange={updateComponentSelection}
             >
               <SelectTrigger className="w-full cursor-pointer">
@@ -275,76 +261,70 @@ export default function ComponentItem({
                 </SelectValue>
               </SelectTrigger>
               <SelectContent className="max-h-60">
-
-                {componentsLoading ? (<Loading />) : (
-                  <>
-                    <div className="p-2 border-b">
-                      <div className="relative">
-                        <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
-                        <Input
-                          placeholder="Search components..."
-                          value={componentSearchTerm}
-                          onChange={(e) => setComponentSearchTerm(e.target.value)}
-                          className="pl-8 pr-8 h-9"
-                        />
-                        {componentSearchTerm && (
-                          <X
-                            className="absolute right-2 top-2.5 h-4 w-4 text-gray-500 cursor-pointer"
-                            onClick={() => setComponentSearchTerm("")}
-                          />
-                        )}
-                      </div>
-                    </div>
-                    {allComponents.length === 0 && (
-                      <div className="p-4 text-center text-gray-500 text-sm">
-                        No components available
-                      </div>
+                <div className="p-2 border-b">
+                  <div className="relative">
+                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
+                    <Input
+                      placeholder="Search components..."
+                      value={componentSearchTerm}
+                      onChange={(e) => setComponentSearchTerm(e.target.value)}
+                      className="pl-8 pr-8 h-9"
+                    />
+                    {componentSearchTerm && (
+                      <X
+                        className="absolute right-2 top-2.5 h-4 w-4 text-gray-500 cursor-pointer"
+                        onClick={() => setComponentSearchTerm("")}
+                      />
                     )}
+                  </div>
+                </div>
 
-                    {filteredComponents.map((comp) => (
-                      <SelectItem
-                        key={comp.id}
-                        value={comp.id}
-                        disabled={isComponentDisabled(comp.id)}
-                        className="flex items-center justify-between cursor-pointer"
-                      >
-                        <span>{comp.name || `Unnamed Component (${comp.id})`}</span>
-                        {isComponentDisabled(comp.id) && comp.id !== component.id && (
-                          <span className="text-xs text-red-500 ml-2">(already used)</span>
-                        )}
-                      </SelectItem>
-                    ))}
-
-                    <div className="border-t mt-1 pt-1">
-                      <SelectItem
-                        value="__add_new_component__"
-                        className="text-blue-600 font-medium flex items-center gap-2 cursor-pointer"
-                      >
-                        <PlusCircle className="h-4 w-4" />
-                        Add New Component...
-                      </SelectItem>
-                    </div>
-
-                    {filteredComponents.length === 0 && componentSearchTerm && (
-                      <div className="p-4 text-center text-gray-500 text-sm">
-                        No components found matching "{componentSearchTerm}"
-                        <div className="mt-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={startAddingNewComponent}
-                            className="text-blue-600 hover:text-blue-700"
-                          >
-                            <PlusCircle className="h-3 w-3 mr-1" />
-                            Add "{componentSearchTerm}" as new component
-                          </Button>
-                        </div>
-                      </div>
+                {filteredComponents.map((comp) => (
+                  <SelectItem 
+                    key={comp.id} 
+                    value={comp.id}
+                    disabled={isComponentDisabled(comp.id)}
+                    className="flex items-center justify-between cursor-pointer"
+                  >
+                    <span>{comp.name || `Unnamed Component (${comp.id})`}</span>
+                    {isComponentDisabled(comp.id) && comp.id !== component.id && (
+                      <span className="text-xs text-red-500 ml-2">(already used)</span>
                     )}
-                  </>
+                  </SelectItem>
+                ))}
 
+                <div className="border-t mt-1 pt-1">
+                  <SelectItem 
+                    value="__add_new_component__"
+                    className="text-blue-600 font-medium flex items-center gap-2 cursor-pointer"
+                  >
+                    <PlusCircle className="h-4 w-4" />
+                    Add New Component...
+                  </SelectItem>
+                </div>
+
+                {filteredComponents.length === 0 && componentSearchTerm && (
+                  <div className="p-4 text-center text-gray-500 text-sm">
+                    No components found matching "{componentSearchTerm}"
+                    <div className="mt-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={startAddingNewComponent}
+                        className="text-blue-600 hover:text-blue-700"
+                      >
+                        <PlusCircle className="h-3 w-3 mr-1" />
+                        Add "{componentSearchTerm}" as new component
+                      </Button>
+                    </div>
+                  </div>
                 )}
 
+                {allComponents.length === 0 && (
+                  <div className="p-4 text-center text-gray-500 text-sm">
+                    No components available
+                  </div>
+                )}
               </SelectContent>
             </Select>
           )}
@@ -369,8 +349,9 @@ export default function ComponentItem({
             variant={component.isWithdrawal ? "outline" : "default"}
             size="sm"
             onClick={() => onUpdate({ ...component, isWithdrawal: false })}
-            className={`flex items-center gap-2 ${!component.isWithdrawal ? "bg-green-600 hover:bg-green-700" : ""
-              }`}
+            className={`flex items-center gap-2 ${
+              !component.isWithdrawal ? "bg-green-600 hover:bg-green-700" : ""
+            }`}
           >
             <Plus className="h-3 w-3" />
             Intake
@@ -380,8 +361,9 @@ export default function ComponentItem({
             variant={component.isWithdrawal ? "default" : "outline"}
             size="sm"
             onClick={() => onUpdate({ ...component, isWithdrawal: true })}
-            className={`flex items-center gap-2 ${component.isWithdrawal ? "bg-red-600 hover:bg-red-700" : ""
-              }`}
+            className={`flex items-center gap-2 ${
+              component.isWithdrawal ? "bg-red-600 hover:bg-red-700" : ""
+            }`}
           >
             <Minus className="h-3 w-3" />
             Withdrawal
@@ -396,7 +378,7 @@ export default function ComponentItem({
             {component.subComponents.length} subcomponent(s)
           </span>
         </div>
-
+        
         {component.subComponents.map((subComponent) => (
           <div
             key={subComponent.id}
@@ -490,7 +472,7 @@ export default function ComponentItem({
                     )}
 
                     <div className="border-t mt-1 pt-1">
-                      <SelectItem
+                      <SelectItem 
                         value="__add_new__"
                         className="text-blue-600 font-medium flex items-center gap-2 cursor-pointer"
                       >
