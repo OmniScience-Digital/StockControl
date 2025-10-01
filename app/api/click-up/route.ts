@@ -19,7 +19,7 @@ export async function POST(req: Request) {
 
     const externalResponse = await response.json();
 
-    // ✅ Check if task object exists instead of message
+    // Check if task object exists instead of message
     if (!externalResponse || Object.keys(externalResponse).length === 0) {
       throw new Error("Backend returned no data");
     }

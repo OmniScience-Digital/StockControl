@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from 'next/image';
 import { useRouter } from "next/navigation";
 import { FcGoogle } from "react-icons/fc";
@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { SignInFlow } from "@/types/schema";
-import { signIn } from "aws-amplify/auth";
+import { getCurrentUser, signIn } from "aws-amplify/auth";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 
@@ -30,6 +30,22 @@ export const SignInCard = ({ setState }: SignInCardProps) => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
 
+    //check if user is logged in
+    useEffect(() => {
+        console.log("Checking auth status...");
+
+        getCurrentUser()
+            .then((user) => {
+                console.log("User IS authenticated:", user);
+                console.log("Redirecting to /landing");
+                router.push("/landing");
+            })
+            .catch((error) => {
+                console.log("User is NOT authenticated:", error);
+                console.log("Staying on login page");
+            });
+    }, [router]);
+
     const formik = useFormik({
         initialValues: {
             email: '',
@@ -45,10 +61,10 @@ export const SignInCard = ({ setState }: SignInCardProps) => {
                     username: values.email,
                     password: values.password
                 });
-            
+
                 if (isSignedIn) {
                     setIsSuccess(true);
-                    await new Promise(resolve => setTimeout(resolve, 1500)); 
+                    await new Promise(resolve => setTimeout(resolve, 1500));
                     await router.push('/stock');
                 } else {
                     console.log('Sign in requires additional steps:', nextStep);
@@ -66,7 +82,7 @@ export const SignInCard = ({ setState }: SignInCardProps) => {
         console.log('Google sign-in clicked');
     };
 
-    
+
 
     return (
         <Card className="w-full h-full px-8 py-6">
@@ -150,7 +166,7 @@ export const SignInCard = ({ setState }: SignInCardProps) => {
                 <Separator />
                 <div className="flex flex-col gap-y-2.5">
                     <Button
-                    id='googleSignInButton'
+                        id='googleSignInButton'
                         // disabled={isSubmitting || isSuccess}
                         disabled={true}
                         onClick={handleGoogleSignIn}

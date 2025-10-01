@@ -1,0 +1,46 @@
+import { useEffect } from "react";
+import Image from 'next/image';
+import { useRouter } from "next/navigation";
+import { SignInFlow } from "@/types/schema";
+import { Authenticator } from '@aws-amplify/ui-react';
+import '@aws-amplify/ui-react/styles.css';
+
+interface SignInCardProps {
+    setState: (state: SignInFlow) => void;
+}
+
+export const SignInCard = ({ setState }: SignInCardProps) => {
+    return (
+        <div className="w-full max-w-md mx-auto">
+            <Authenticator
+                components={{
+                    SignIn: {
+                        Header: () => (
+                            <div className="text-center mb-8">
+                                <h2 className="text-2xl font-bold text-gray-900">Welcome back</h2>
+                                <p className="text-gray-600 mt-2">
+                                    Sign in to your account to continue
+                                </p>
+                            </div>
+                        ),
+                    },
+                }}
+                formFields={{
+                    signIn: {
+                        username: {
+                            placeholder: 'Enter your email',
+                            label: 'Email',
+                            required: true,
+                        },
+                        password: {
+                            placeholder: 'Enter your password',
+                            label: 'Password',
+                            required: true,
+                        },
+                    },
+                }}
+            />
+        
+        </div>
+    );
+};
