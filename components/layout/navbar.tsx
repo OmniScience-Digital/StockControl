@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { Sun, Moon, User, Settings, LogOut, Menu, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+// import Breadcrumbs from "./breadcrumbs";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -60,12 +61,12 @@ export default function Navbar() {
     
     setIsSigningOut(true);
     try {
-      // await signOut();
-      // // Redirect immediately without waiting
-      // router.push('/');
+      await signOut();
+      // Redirect immediately without waiting
+      router.push('/');
       
-      // // Clear any local state
-      // setUser('');
+      // Clear any local state
+      setUser('');
     
       
     } catch (error) {
@@ -78,7 +79,7 @@ export default function Navbar() {
 
   return (
     <div className="fixed top-0 left-0 w-full z-50">
-      <header className="flex items-center justify-between bg-[#1B3C53] p-4 border-b shadow-md">
+      <header className="flex items-center justify-between bg-[#165b8c] p-4 border-b shadow-md">
         {/* Logo */}
         <div className="flex items-center">
           <Image
@@ -109,21 +110,21 @@ export default function Navbar() {
               
               <DropdownMenuItem className="text-xs font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800 cursor-pointer">
                 <User className="h-4 w-4" />
-                {user}User
+                {user}
               </DropdownMenuItem>
 
             
               <DropdownMenuItem>
                 <Settings className="h-4 w-4" />
                 Settings</DropdownMenuItem>
-              {/* <DropdownMenuItem 
+              <DropdownMenuItem 
                 onClick={handleSignOut}
                 disabled={isSigningOut}
                 className="flex items-center gap-2"
               >
                 <LogOut className="h-4 w-4" />
                 Logout
-              </DropdownMenuItem> */}
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -147,27 +148,27 @@ export default function Navbar() {
             <DropdownMenuContent align="end">
               <DropdownMenuItem className="text-xs font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800 cursor-pointer">
                 <User className="h-5 w-5" />
-                {user}User
+                {user}
               </DropdownMenuItem>
               <DropdownMenuItem className="cursor-pointer">
                 <Settings className="mr-2 h-4 w-4" />
                 <span>Settings</span>
               </DropdownMenuItem>
-              {/* <DropdownMenuItem 
+              <DropdownMenuItem 
                 onClick={handleSignOut}
-                 disabled={isSigningOut}
+                disabled={isSigningOut}
                 className="flex items-center gap-2 cursor-pointer"
               >
                 <LogOut className="h-4 w-4" />
                 Logout
-              </DropdownMenuItem> */}
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </header>
-      
+       {/* <Breadcrumbs /> */}
       {isSigningOut && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs">
+        <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm">
           <div className="flex items-center gap-2 p-4 bg-white dark:bg-gray-800 rounded-md shadow-md">
             <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
             <span className="text-sm font-medium text-gray-800 dark:text-gray-100">

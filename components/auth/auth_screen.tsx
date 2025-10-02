@@ -12,7 +12,7 @@ export const AuthScreen = () => {
     const [currentFlow, setCurrentFlow] = useState<SignInFlow>('signIn');
     const [resetEmail, setResetEmail] = useState('');
     return (
-        <div className="h-full flex items-center justify-center bg-[#1B3C53]">
+        <div className="h-full flex items-center justify-center bg-[#226392]">
             <div className="md:h-auto md:w-[420px]">
 
                 {currentFlow === 'signIn' && (
