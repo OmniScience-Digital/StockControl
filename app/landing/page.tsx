@@ -9,11 +9,11 @@ import Home from "./Components/dynamicLanding";
 export default function Landing() {
     return (
         <div className="flex flex-col h-screen bg-background text-foreground">
-            <Navbar/>
-
-      <main className="flex-1 p-1 mt-20 ">
-        <Home />
-      </main>
+            <Navbar />
+            <main className="flex-1 p-1 mt-20 ">
+                <Home />
+            </main>
+            <Footer />
         </div>
     )
 }

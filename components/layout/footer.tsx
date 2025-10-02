@@ -1,40 +1,40 @@
 "use client";
 
 export default function Footer() {
-    const currentYear = new Date().getFullYear(); // Get the current year
-  
-    return (
-  <footer className="bg-[#1B3C53] mt-auto">
-  <div className="max-w-screen-xl px-2 pb-4 mx-auto sm:px-6 lg:px-8 lg:pt-10">
+  const currentYear = new Date().getFullYear(); // Get the current year
 
-    <div className="pt-2 border-t border-gray-800">
-      <div className="text-center sm:flex sm:justify-between sm:text-left">
-        <p className="text-sm text-gray-400">
-          <span className="block sm:inline">All rights reserved.</span>
+  return (
+    <footer className=" bg-[#165b8c] mt-auto">
+      <div className="max-w-screen-xl px-2 pb-4 mx-auto sm:px-6 lg:px-8 lg:pt-10">
 
-          <a
-            className="inline-block text-teal-500 underline transition hover:text-teal-500/75"
-            href="/"
-          >
-            Terms & Conditions
-          </a>
+        <div className="pt-2 border-t border-gray-800">
+          <div className="text-center sm:flex sm:justify-between sm:text-left">
+            <p className="text-sm text-gray-400">
+              <span className="block sm:inline">All rights reserved.</span>
 
-          <span>&middot;</span>
+              <a
+                className="inline-block text-teal-500 underline transition hover:text-teal-500/75"
+                href="/"
+              >
+                Terms & Conditions
+              </a>
 
-          <a
-            className="inline-block text-teal-500 underline transition hover:text-teal-500/75"
-            href="/"
-          >
-            Privacy Policy
-          </a>
-        </p>
+              <span>&middot;</span>
 
-        <p className="mt-4 text-sm text-gray-500 sm:order-first sm:mt-0">
-          &copy; {currentYear} Massive Group
-        </p>
+              <a
+                className="inline-block text-teal-500 underline transition hover:text-teal-500/75"
+                href="/"
+              >
+                Privacy Policy
+              </a>
+            </p>
+
+            <p className="mt-4 text-sm text-gray-500 sm:order-first sm:mt-0">
+              &copy; {currentYear} Massive Group
+            </p>
+          </div>
+        </div>
       </div>
-    </div>
-  </div>
-</footer>
-    );
-  };
+    </footer>
+  );
+};
