@@ -5,15 +5,15 @@ import { useRouter } from "next/navigation";
 import Image from 'next/image';
 import { Sun, Moon, User, Settings, LogOut, Menu, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-// import Breadcrumbs from "./breadcrumbs";
+import { Switch } from "@/Components/ui/switch";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
-} from "@/components/ui/dropdown-menu";
+} from "@/Components/ui/dropdown-menu";
 import { fetchAuthSession, signOut } from "aws-amplify/auth";
+import Breadcrumbs from "./breadcrumbs";
 
 export default function Navbar() {
   const router = useRouter();
@@ -166,7 +166,7 @@ export default function Navbar() {
           </DropdownMenu>
         </div>
       </header>
-       {/* <Breadcrumbs /> */}
+       <Breadcrumbs />
       {isSigningOut && (
         <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm">
           <div className="flex items-center gap-2 p-4 bg-white dark:bg-gray-800 rounded-md shadow-md">

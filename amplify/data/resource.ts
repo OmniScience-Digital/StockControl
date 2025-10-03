@@ -3,31 +3,50 @@ import { type ClientSchema, a, defineData } from "@aws-amplify/backend";
 const schema = a.schema({
   Landing: a
     .model({
-      key:a.string(),
+      key: a.string(),
       items: a.string(),
     })
     .authorization((allow) => [allow.publicApiKey()]),
-  Component: a
-    .model({
-      name: a.string(),
-      subComponents: a.hasMany('SubComponent', 'componentId'),
-    }).secondaryIndexes((index) => [index("name")])
-    .authorization((allow) => [allow.publicApiKey()]),
+  Category: a.model({
+    categoryName: a.string().required(),
+    subcategories: a.hasMany('SubCategory', 'categoryId'),
+  }).authorization((allow) => [allow.publicApiKey()])
+    .secondaryIndexes((index) => [index("categoryName")]),
 
-  SubComponent: a
-    .model({
-      key: a.string(),
-      value: a.float(),
-      componentId: a.id().required(),
-      component: a.belongsTo("Component", "componentId"),
-    })
-    .secondaryIndexes((index) => [
-      index("componentId")
-        .sortKeys(["key"])
-        .name("byComponentAndKey")
-        .queryField("listSubComponentByComponentIdAndKey"),
-    ])
-    .authorization((allow) => [allow.publicApiKey()]),
+  SubCategory: a.model({
+    subcategoryName: a.string().required(),
+    categoryId: a.string().required(),
+    category: a.belongsTo('Category', 'categoryId'),
+    components: a.hasMany('Component', 'subcategoryId'),
+  }).secondaryIndexes((index) => [
+    index("categoryId")
+      .sortKeys(["subcategoryName"])
+      .queryField("listSubCategoriesByCategoryIdAndName")
+  ]).authorization((allow) => [allow.publicApiKey()]),
+
+  Component: a.model({
+    componentName: a.string().required(),
+    description: a.string(),
+    primarySupplierId: a.string(),
+    primarySupplier: a.string(),
+    primarySupplierItemCode: a.string(),
+    secondarySupplierId: a.string(),
+    secondarySupplier: a.string(),
+    secondarySupplierItemCode: a.string(),
+    qtyExStock: a.integer(),
+    currentStock: a.integer(),
+    notes: a.string(),
+    history: a.string(),
+    subcategoryId: a.string().required(),
+    subcategory: a.belongsTo('SubCategory', 'subcategoryId'),
+  }).secondaryIndexes((index) => [
+    index("subcategoryId")
+      .sortKeys(["componentName"])
+      .queryField("listComponentsBySubCategoryId"),
+    index("primarySupplierId")
+      .sortKeys(["componentName"])
+      .queryField("listComponentsByPrimarySupplier"),
+  ]).authorization((allow) => [allow.publicApiKey()]),
 
 });
 
