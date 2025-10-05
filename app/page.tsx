@@ -1,6 +1,5 @@
 "use client";
 import { AuthScreen } from "@/components/auth/auth_screen";
-import ComponentForm from "./stock/page";
 import Landing from "./landing/page";
 
 

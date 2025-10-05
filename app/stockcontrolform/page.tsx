@@ -7,9 +7,9 @@ import { Loader2, Plus } from "lucide-react";
 import ComponentItem from "./Components/form";
 import { Component, Category, SubCategory } from "@/types/form.types";
 import Navbar from "@/components/layout/navbar";
-import ResponseModal from "@/Components/widgets/response";
+import ResponseModal from "@/components/widgets/response";
 import { client } from "@/services/schema";
-import Footer from "@/Components/layout/footer";
+import Footer from "@/components/layout/footer";
 
 export default function ComponentForm() {
   const [allComponents, setAllComponents] = useState<Component[]>([]);

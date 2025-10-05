@@ -5,13 +5,13 @@ import { useRouter } from "next/navigation";
 import Image from 'next/image';
 import { Sun, Moon, User, Settings, LogOut, Menu, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/Components/ui/switch";
+import { Switch } from "@/components/ui/switch";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
-} from "@/Components/ui/dropdown-menu";
+} from "@/components/ui/dropdown-menu";
 import { fetchAuthSession, signOut } from "aws-amplify/auth";
 import Breadcrumbs from "./breadcrumbs";
 
