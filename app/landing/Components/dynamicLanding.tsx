@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useEffect } from "react";
 import { client } from "@/services/schema";
 import { useRouter } from "next/navigation";
@@ -88,7 +90,6 @@ export default function Home() {
     const redirectToDashboard = (name: Dashboard) => {
 
         const path = (name.items.toLocaleLowerCase()).replace(/\s+/g, "");
-        console.log(path);
         router.push(`/${path}`);
     };
     // Delete dashboard at a specific index

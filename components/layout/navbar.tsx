@@ -96,15 +96,15 @@ export default function Navbar() {
           <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="relative focus:outline-none focus:ring-0 hover:bg-transparent cursor-pointer">
-                <Menu className="h-5 w-5 text-white" />
+                <Menu className="h-4 w-4 text-white" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
               <DropdownMenuItem onClick={(e) => { e.preventDefault(); setTimeout(() => setMenuOpen(false), 200); }}>
                 <div className="flex items-center gap-2">
-                  <Sun className="h-5 w-5" />
+                  <Sun className="h-4 w-4" />
                   <Switch checked={isDarkMode} onCheckedChange={toggleDarkMode} />
-                  <Moon className="h-5 w-5" />
+                  <Moon className="h-4 w-4" />
                 </div>
               </DropdownMenuItem>
               
@@ -132,9 +132,9 @@ export default function Navbar() {
         {/* Desktop Menu */}
         <div className="hidden sm:flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <Sun className="h-5 w-5 text-white" />
+            <Sun className="h-4 w-4 text-white" />
             <Switch checked={isDarkMode} onCheckedChange={toggleDarkMode} />
-            <Moon className="h-5 w-5 text-white" />
+            <Moon className="h-4 w-4 text-white" />
           </div>
           
 
@@ -142,16 +142,16 @@ export default function Navbar() {
           <DropdownMenu >
             <DropdownMenuTrigger asChild className="cursor-pointer">
               <Button variant="ghost" size="icon" className="focus:outline-none focus:ring-0 hover:bg-transparent">
-                <User className="h-5 w-5 text-white" />
+                <User className="h-4 w-4 text-white" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem className="text-xs font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800 cursor-pointer">
-                <User className="h-5 w-5" />
+                <User className="h-4 w-4" />
                 {user}
               </DropdownMenuItem>
               <DropdownMenuItem className="cursor-pointer">
-                <Settings className="mr-2 h-4 w-4" />
+                <Settings className="h-4 w-4" />
                 <span>Settings</span>
               </DropdownMenuItem>
               <DropdownMenuItem 

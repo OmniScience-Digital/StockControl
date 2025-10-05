@@ -12,6 +12,8 @@ export interface Component {
   currentStock?: number;
   notes?: string;
   history?: string;
+   categoryName?: string; 
+  subcategoryName?: string; 
   subcategoryId: string;
   subcategory?: SubCategory;
   isWithdrawal: boolean;

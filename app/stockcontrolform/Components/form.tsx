@@ -16,6 +16,8 @@ import Loading from "../component_loading";
 
 interface ComponentItemProps {
   component: Component;
+  selectedCategoryId: string;
+  onCategoryChange: (categoryId: string) => void;
   setComponentsLoading: React.Dispatch<React.SetStateAction<boolean>>;
   componentsLoading: boolean;
   availableKeys: string[];
@@ -28,6 +30,7 @@ interface ComponentItemProps {
   categories?: Category[];
   subCategories?: SubCategory[];
   usedComponentIds?: string[];
+  onAddNewSubcategory?: (categoryId: string, subcategoryName: string) => Promise<string | null>;
 }
 
 export default function ComponentItem({
@@ -43,8 +46,10 @@ export default function ComponentItem({
   allComponents = [],
   categories = [],
   subCategories = [],
-  usedComponentIds = []
+  usedComponentIds = [],
+  onAddNewSubcategory
 }: ComponentItemProps) {
+
   const [isAddingNewKey, setIsAddingNewKey] = useState<string | null>(null);
   const [newKeyInput, setNewKeyInput] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -53,7 +58,7 @@ export default function ComponentItem({
   const [newComponentInput, setNewComponentInput] = useState("");
   const [localAvailableKeys, setLocalAvailableKeys] = useState<string[]>(availableKeys);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>("");
-  
+
   // New states for adding categories
   const [isAddingNewCategory, setIsAddingNewCategory] = useState(false);
   const [newCategoryInput, setNewCategoryInput] = useState("");
@@ -63,6 +68,26 @@ export default function ComponentItem({
   useEffect(() => {
     setLocalAvailableKeys(availableKeys);
   }, [availableKeys]);
+
+  // Initialize selectedCategoryId based on component data
+  useEffect(() => {
+    if (component.subcategoryId && !component.subcategoryId.startsWith('new-sub-')) {
+      const subcategory = subCategories.find(sub => sub.id === component.subcategoryId);
+      if (subcategory) {
+        setSelectedCategoryId(subcategory.categoryId);
+      } else {
+        // If subcategory not found, try to find the component in allComponents
+        // to get its correct category
+        const fullComponent = allComponents.find(comp => comp.id === component.id);
+        if (fullComponent && fullComponent.subcategoryId) {
+          const fullSubcategory = subCategories.find(sub => sub.id === fullComponent.subcategoryId);
+          if (fullSubcategory) {
+            setSelectedCategoryId(fullSubcategory.categoryId);
+          }
+        }
+      }
+    }
+  }, [component.subcategoryId, component.id, subCategories, allComponents]);
 
   const getFilteredComponents = () => {
     return allComponents.filter(comp =>
@@ -80,7 +105,6 @@ export default function ComponentItem({
     if (componentId === component.id) return false;
     return usedComponentIds.includes(componentId);
   };
-
   const updateComponentSelection = (componentId: string) => {
     if (componentId === "__add_new_component__") {
       setIsAddingNewComponent(true);
@@ -91,21 +115,31 @@ export default function ComponentItem({
 
     const selectedComponent = allComponents.find(comp => comp.id === componentId);
     if (selectedComponent) {
-      onUpdate({
+      const componentSubcategory = subCategories.find(sub => sub.id === selectedComponent.subcategoryId);
+      const componentCategory = categories.find(cat =>
+        cat.subcategories.some(sub => sub.id === selectedComponent.subcategoryId)
+      );
+
+      const updatedComponent = {
         ...selectedComponent,
         id: component.id,
+        subcategoryId: selectedComponent.subcategoryId,
+        categoryName: componentCategory?.categoryName || "",
+        subcategoryName: componentSubcategory?.subcategoryName || "",
+        isWithdrawal: component.isWithdrawal,
         subComponents: component.subComponents.length > 0 ? component.subComponents : [
           { id: `${Date.now()}-1`, key: "", value: "", componentId: component.id }
         ]
-      });
+      };
+
+      onUpdate(updatedComponent);
+
+      if (componentSubcategory) {
+        setSelectedCategoryId(componentSubcategory.categoryId);
+      }
     }
   };
 
-  const startAddingNewComponent = () => {
-    setIsAddingNewComponent(true);
-    setNewComponentInput("");
-    setComponentSearchTerm("");
-  };
 
   const cancelAddingNewComponent = () => {
     setIsAddingNewComponent(false);
@@ -113,30 +147,32 @@ export default function ComponentItem({
     setComponentSearchTerm("");
   };
 
-  const confirmNewComponent = () => {
+  const confirmNewComponent = async () => {
     if (newComponentInput.trim() && selectedCategoryId) {
+      const selectedCategory = categories.find(cat => cat.id === selectedCategoryId);
+
+      let newSubcategoryId = `new-sub-${Date.now()}`;
+
+      if (onAddNewSubcategory) {
+        const createdSubId = await onAddNewSubcategory(selectedCategoryId, newComponentInput.trim());
+        if (createdSubId) {
+          newSubcategoryId = createdSubId;
+        }
+      }
+
       const newComponent: Component = {
-        id: `new-${Date.now()}`,
+        ...component,
+        id: component.id || `new-${Date.now()}`,
         componentName: newComponentInput.trim(),
-        subcategoryId: selectedCategoryId,
-        subComponents: component.subComponents.length > 0 ? component.subComponents : [
-          { id: `${Date.now()}-1`, key: "", value: "", componentId: `new-${Date.now()}` }
-        ],
+        subcategoryId: newSubcategoryId,
+        categoryName: selectedCategory?.categoryName || "",
+        subcategoryName: newComponentInput.trim(),
         isWithdrawal: component.isWithdrawal,
-        description: "",
-        primarySupplierId: "",
-        primarySupplier: "",
-        primarySupplierItemCode: "",
-        secondarySupplierId: "",
-        secondarySupplier: "",
-        secondarySupplierItemCode: "",
-        qtyExStock: 0,
-        currentStock: 0,
-        notes: "",
-        history: ""
+        subComponents: component.subComponents
       };
 
       onUpdate(newComponent);
+      setSelectedCategoryId(selectedCategoryId);
     }
     cancelAddingNewComponent();
   };
@@ -149,22 +185,41 @@ export default function ComponentItem({
       return;
     }
 
+    // Update the selected category
     setSelectedCategoryId(categoryId);
-    
-    // Also reset component selection when category changes
-    if (component.componentName) {
+
+    const selectedCategory = categories.find(cat => cat.id === categoryId);
+
+    // Only reset the component if:
+    // 1. We have an existing component selected
+    // 2. The component doesn't belong to the newly selected category
+    // 3. It's not a newly created component
+    if (component.id && !component.id.startsWith('new-')) {
+      const currentComponent = allComponents.find(comp => comp.id === component.id);
+      if (currentComponent) {
+        const compSubcategory = subCategories.find(sub => sub.id === currentComponent.subcategoryId);
+        if (compSubcategory?.categoryId !== categoryId) {
+          // Component doesn't belong to the new category, reset it
+          onUpdate({
+            ...component,
+            id: "",
+            componentName: "",
+            subcategoryId: "",
+            categoryName: "",
+            subcategoryName: ""
+          });
+        }
+      }
+    } else if (component.id && component.id.startsWith('new-')) {
+      // For new components, just update the subcategory relationship
+      // but keep the component name and other data
       onUpdate({
         ...component,
-        componentName: "",
-        subcategoryId: ""
+        subcategoryId: `new-sub-${Date.now()}`,
+        categoryName: selectedCategory?.categoryName || "",
+        subcategoryName: component.componentName || "" // Use component name as subcategory name
       });
     }
-  };
-
-  const startAddingNewCategory = () => {
-    setIsAddingNewCategory(true);
-    setNewCategoryInput("");
-    setCategorySearchTerm("");
   };
 
   const cancelAddingNewCategory = () => {
@@ -175,8 +230,29 @@ export default function ComponentItem({
 
   const confirmNewCategory = () => {
     if (newCategoryInput.trim()) {
-      // Just update the local state - no DB interaction
-      setSelectedCategoryId(`new-cat-${Date.now()}`);
+      const newCategoryId = `new-cat-${Date.now()}`;
+      const newCategory: Category = {
+        id: newCategoryId,
+        categoryName: newCategoryInput.trim(),
+        subcategories: []
+      };
+
+      // Add to categories array
+      categories.push(newCategory);
+
+      // Set the selected category to the new one
+      setSelectedCategoryId(newCategoryId);
+
+      // For new category, create a new subcategory and component structure
+      if (component.id) {
+        onUpdate({
+          ...component,
+          subcategoryId: `new-sub-${Date.now()}`,
+          categoryName: newCategoryInput.trim(),
+          subcategoryName: component.componentName || "",
+          componentName: component.componentName || ""
+        });
+      }
     }
     cancelAddingNewCategory();
   };
@@ -276,6 +352,33 @@ export default function ComponentItem({
     return compSubcategory?.categoryId === selectedCategoryId;
   });
 
+  // Get all subcategories for the selected category (including newly created ones)
+  const availableSubcategories = subCategories.filter(sub =>
+    sub.categoryId === selectedCategoryId
+  );
+
+  // Create placeholder components for new subcategories that don't have components
+  const newSubcategoryComponents: Component[] = availableSubcategories
+    .filter(sub =>
+      sub.id.startsWith('new-sub-') &&
+      !allComponents.some(comp => comp.subcategoryId === sub.id)
+    )
+    .map(sub => ({
+      id: `placeholder-${sub.id}`,
+      componentName: sub.subcategoryName,
+      subcategoryId: sub.id,
+      isWithdrawal: false,
+      subComponents: []
+    }));
+
+  // Combine existing components and new subcategories
+  const allAvailableOptions = [...availableComponents, ...newSubcategoryComponents];
+
+  // Filter based on search term
+  const filteredAvailableOptions = allAvailableOptions.filter(option =>
+    option.componentName?.toLowerCase().includes(componentSearchTerm.toLowerCase())
+  );
+
   useEffect(() => {
     if (allComponents.length > 0 && categories.length > 0) {
       setComponentsLoading(false);
@@ -308,21 +411,23 @@ export default function ComponentItem({
                   size="icon"
                   onClick={cancelAddingNewCategory}
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-4 w-4 cursor-pointer" />
                 </Button>
                 <Button
                   type="button"
                   onClick={confirmNewCategory}
                   disabled={!newCategoryInput.trim()}
                 >
-                  <Plus className="h-4 w-4" />
+                  <Plus className="h-4 w-4 cursor-pointer" />
                 </Button>
               </div>
             </div>
           ) : (
             <Select value={selectedCategoryId} onValueChange={handleCategoryChange}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select category" />
+              <SelectTrigger className="cursor-pointer">
+                <SelectValue placeholder="Select category">
+                  {selectedCategoryId ? categories.find(cat => cat.id === selectedCategoryId)?.categoryName : "Select category"}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <div className="p-2 border-b">
@@ -370,7 +475,7 @@ export default function ComponentItem({
           disabled={!isRemovable}
           className="shrink-0 mt-6"
         >
-          <Trash2 className="h-4 w-4" />
+          <Trash2 className="h-4 w-4 cursor-pointer" />
         </Button>
       </div>
 
@@ -397,7 +502,7 @@ export default function ComponentItem({
                 size="icon"
                 onClick={cancelAddingNewComponent}
               >
-                <X className="h-4 w-4" />
+                <X className="h-4 w-4 cursor-pointer" />
               </Button>
               <Button
                 type="button"
@@ -445,7 +550,7 @@ export default function ComponentItem({
                     </div>
                   </div>
 
-                  {availableComponents.map((comp) => (
+                  {filteredAvailableOptions.map((comp) => (
                     <SelectItem
                       key={comp.id}
                       value={comp.id}
@@ -537,14 +642,14 @@ export default function ComponentItem({
                       size="icon"
                       onClick={cancelAddingNewKey}
                     >
-                      <X className="h-4 w-4" />
+                      <X className="h-4 w-4 cursor-pointer" />
                     </Button>
                     <Button
                       type="button"
                       onClick={() => confirmNewKey(subComponent.id)}
                       disabled={!newKeyInput.trim()}
                     >
-                      <Plus className="h-4 w-4" />
+                      <Plus className="h-4 w-4 cursor-pointer" />
                     </Button>
                   </div>
                   {unusedKeys.length > 0 && (
@@ -637,7 +742,7 @@ export default function ComponentItem({
               className="shrink-0 hover:border-red-300 hover:text-red-600 cursor-pointer"
               title="Remove subcomponent"
             >
-              <Trash2 className="h-4 w-4" />
+              <Trash2 className="h-4 w-4 cursor-pointer" />
             </Button>
           </div>
         ))}

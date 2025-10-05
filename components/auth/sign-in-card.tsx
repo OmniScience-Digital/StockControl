@@ -32,17 +32,15 @@ export const SignInCard = ({ setState }: SignInCardProps) => {
 
     //check if user is logged in
     useEffect(() => {
-        console.log("Checking auth status...");
+
 
         getCurrentUser()
             .then((user) => {
-                console.log("User IS authenticated:", user);
-                console.log("Redirecting to /landing");
+
                 router.push("/landing");
             })
             .catch((error) => {
                 console.log("User is NOT authenticated:", error);
-                console.log("Staying on login page");
             });
     }, [router]);
 
@@ -65,7 +63,7 @@ export const SignInCard = ({ setState }: SignInCardProps) => {
                 if (isSignedIn) {
                     setIsSuccess(true);
                     await new Promise(resolve => setTimeout(resolve, 1500));
-                    await router.push('/stock');
+                    await router.push('/landing');
                 } else {
                     console.log('Sign in requires additional steps:', nextStep);
                     setIsSubmitting(false);
