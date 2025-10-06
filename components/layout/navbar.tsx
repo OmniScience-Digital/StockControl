@@ -63,13 +63,15 @@ export default function Navbar() {
 
     setIsSigningOut(true);
     try {
+      localStorage.removeItem("user");
       await signOut();
       // Redirect immediately without waiting
+      
       router.push('/');
 
       // Clear any local state
       setUser('');
-      localStorage.removeItem("user");
+      
 
     } catch (error) {
       console.error("Sign out error:", error);
