@@ -5,17 +5,22 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, Plus } from "lucide-react";
 import ComponentItem from "./Components/form";
-import { Component, Category, SubCategory } from "@/types/form.types";
+import { Component, Category } from "@/types/form.types";
 import Navbar from "@/components/layout/navbar";
 import ResponseModal from "@/components/widgets/response";
 import { client } from "@/services/schema";
 import Footer from "@/components/layout/footer";
 import Loading from "@/components/widgets/loading";
 
+// Helper function to map API data to our types
+const mapApiCategoryToCategory = (apiCategory: any): Category => ({
+  id: apiCategory.id,
+  categoryName: apiCategory.categoryName,
+  subcategories: []
+});
+
 export default function ComponentForm() {
-  const [allComponents, setAllComponents] = useState<Component[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
   const [displayedComponents, setDisplayedComponents] = useState<Component[]>([]);
   const [loading, setLoading] = useState(true);
   const [componentsLoading, setComponentsLoading] = useState(false);
@@ -26,18 +31,16 @@ export default function ComponentForm() {
   const [message, setMessage] = useState("");
 
   const [availableKeys, setAvailableKeys] = useState<string[]>([]);
-  // In parent component, add selectedCategoryIds state
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<Record<string, string>>({});
 
-
-  // Fetch categories, subcategories, and components
+  // Fetch only categories
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       setCategoriesLoading(true);
 
       try {
-        // Fetch categories
+        // Fetch categories only
         const { data: categoriesData, errors: categoriesErrors } =
           await client.models.Category.list();
 
@@ -46,70 +49,9 @@ export default function ComponentForm() {
           return;
         }
 
-        // Fetch all subcategories
-        const { data: subcategoriesData, errors: subcategoriesErrors } =
-          await client.models.SubCategory.list();
-
-        if (subcategoriesErrors) {
-          console.error("Error fetching subcategories:", subcategoriesErrors);
-          return;
-        }
-
-        // Fetch all components
-        const { data: componentsData, errors: componentsErrors } =
-          await client.models.Component.list();
-
-        if (componentsErrors) {
-          console.error("Error fetching components:", componentsErrors);
-          return;
-        }
-
-        // Build categories with subcategories
-        const categoriesWithSubs: Category[] = (categoriesData || []).map(category => ({
-          id: category.id,
-          categoryName: category.categoryName,
-          subcategories: (subcategoriesData || [])
-            .filter(sub => sub.categoryId === category.id)
-            .map(sub => ({
-              id: sub.id,
-              subcategoryName: sub.subcategoryName,
-              categoryId: sub.categoryId,
-              components: (componentsData || [])
-                .filter(comp => comp.subcategoryId === sub.id)
-                .map(comp => ({
-                  id: comp.id,
-                  componentName: comp.componentName || "",
-                  description: comp.description || "",
-                  primarySupplierId: comp.primarySupplierId || "",
-                  primarySupplier: comp.primarySupplier || "",
-                  primarySupplierItemCode: comp.primarySupplierItemCode || "",
-                  secondarySupplierId: comp.secondarySupplierId || "",
-                  secondarySupplier: comp.secondarySupplier || "",
-                  secondarySupplierItemCode: comp.secondarySupplierItemCode || "",
-                  qtyExStock: comp.qtyExStock || 0,
-                  currentStock: comp.currentStock || 0,
-                  notes: comp.notes || "",
-                  history: comp.history || "",
-                  subcategoryId: comp.subcategoryId,
-                  isWithdrawal: false,
-                  subComponents: []
-                }))
-            }))
-        }));
-
-        // Flatten all components for easy access
-        const allComponentsFlat: Component[] = categoriesWithSubs.flatMap(category =>
-          category.subcategories.flatMap(sub => sub.components)
-        );
-
-        // Flatten all subcategories
-        const allSubcategories: SubCategory[] = categoriesWithSubs.flatMap(category =>
-          category.subcategories
-        );
-
-        setCategories(categoriesWithSubs);
-        setSubCategories(allSubcategories);
-        setAllComponents(allComponentsFlat);
+        // Map API data to our Category type
+        const mappedCategories: Category[] = (categoriesData || []).map(mapApiCategoryToCategory);
+        setCategories(mappedCategories);
 
         // Start with one empty component automatically AFTER data is loaded
         if (displayedComponents.length === 0) {
@@ -127,7 +69,6 @@ export default function ComponentForm() {
     fetchData();
   }, []);
 
-  // Update the updateComponent function to handle category changes
   const updateComponent = (id: string, updatedComponent: Component) => {
     setDisplayedComponents(
       displayedComponents.map((component) =>
@@ -136,14 +77,12 @@ export default function ComponentForm() {
     );
   };
 
-  // Add proper type annotation
   const updateComponentCategory = (componentId: string, categoryId: string) => {
     setSelectedCategoryIds(prev => ({
       ...prev,
       [componentId]: categoryId
     }));
   };
-
 
   const getFilteredKeysForComponent = (componentName: string): string[] => {
     if (!componentName) return [];
@@ -159,6 +98,7 @@ export default function ComponentForm() {
   const addNewComponent = () => {
     const newComponent: Component = {
       id: Date.now().toString(),
+      componentId:"",
       componentName: "",
       subcategoryId: "",
       isWithdrawal: false,
@@ -179,7 +119,6 @@ export default function ComponentForm() {
     setDisplayedComponents(displayedComponents.filter((component) => component.id !== id));
   };
 
-
   const handleAddNewKey = (newKey: string) => {
     if (!availableKeys.includes(newKey)) {
       setAvailableKeys(prev => [...prev, newKey]);
@@ -192,8 +131,6 @@ export default function ComponentForm() {
       e.preventDefault();
       
       const savedUser = localStorage.getItem("user");
-
-      console.log(displayedComponents);
 
       const result = displayedComponents.reduce((acc, component) => {
         if (component.componentName.trim() !== "" && component.categoryName) {
@@ -220,10 +157,8 @@ export default function ComponentForm() {
         return acc;
       }, {} as Record<string, any>);
 
-
-      console.log(result);
-
-      //Your existing API call
+    
+      // Your existing API call
       const res = await fetch("/api/click-up", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -239,11 +174,11 @@ export default function ComponentForm() {
       setShow(true);
       setSuccessful(resResponse.success);
 
-
       // Reset form
       setDisplayedComponents([
         {
           id: Date.now().toString(),
+          componentId:"",
           componentName: "",
           subcategoryId: "",
           categoryName: "",
@@ -271,18 +206,25 @@ export default function ComponentForm() {
     }
   };
 
-
   const handleAddNewSubcategory = async (categoryId: string, subcategoryName: string): Promise<string | null> => {
-    const newSubcategory = {
-      id: `new-sub-${Date.now()}`,
-      subcategoryName: subcategoryName,
-      categoryId: categoryId,
-      components: []
-    };
+    try {
+      const { data: newSubcategory, errors } = await client.models.SubCategory.create({
+        subcategoryName: subcategoryName,
+        categoryId: categoryId
+      });
 
-    setSubCategories(prev => [...prev, newSubcategory]);
-    return Promise.resolve(newSubcategory.id); // Wrap in Promise.resolve
+      if (errors) {
+        console.error("Error creating subcategory:", errors);
+        return null;
+      }
+
+      return newSubcategory?.id || null;
+    } catch (error) {
+      console.error("Error creating subcategory:", error);
+      return null;
+    }
   };
+
   const getUsedKeys = () => {
     const usedKeys: string[] = [];
     displayedComponents.forEach(component => {
@@ -292,7 +234,12 @@ export default function ComponentForm() {
     });
     return usedKeys;
   };
-
+  //track used subcategories
+const getUsedSubcategoryIds = (currentComponentId?: string): string[] => {
+  return displayedComponents
+    .filter(comp => comp.id !== currentComponentId && comp.subcategoryId)
+    .map(comp => comp.subcategoryId);
+};
 
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
@@ -312,7 +259,7 @@ export default function ComponentForm() {
               <CardContent>
                 <div className="overflow-x-auto">
                   <form onSubmit={handleSubmit} className="space-y-6 min-w-[600px]">
-                    {/* Add Subcategory Button */}
+                    {/* Add Category Button */}
                     <div className="flex justify-end">
                       <Button
                         type="button"
@@ -325,7 +272,6 @@ export default function ComponentForm() {
                       </Button>
                     </div>
 
-
                     {displayedComponents.map((component) => (
                       <ComponentItem
                         key={component.id}
@@ -337,14 +283,13 @@ export default function ComponentForm() {
                         availableKeys={getFilteredKeysForComponent(component.componentName)}
                         usedKeys={getUsedKeys()}
                         usedComponentIds={getUsedComponentIds(component.id)}
-                        allComponents={allComponents}
                         categories={categories}
-                        subCategories={subCategories}
                         onUpdate={(updatedComponent) => updateComponent(component.id, updatedComponent)}
                         onRemove={() => removeComponent(component.id)}
                         isRemovable={true}
                         onAddNewKey={handleAddNewKey}
                         onAddNewSubcategory={handleAddNewSubcategory}
+                        usedSubcategoryIds={getUsedSubcategoryIds(component.id)}  
                       />
                     ))}
 

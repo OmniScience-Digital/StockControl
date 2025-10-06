@@ -1,5 +1,6 @@
 export interface Component {
   id: string;
+  componentId:string;
   componentName: string;
   description?: string;
   primarySupplierId?: string;
