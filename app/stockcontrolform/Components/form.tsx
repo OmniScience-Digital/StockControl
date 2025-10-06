@@ -35,6 +35,8 @@ interface ComponentItemProps {
 
 export default function ComponentItem({
   component,
+  selectedCategoryId,
+  onCategoryChange,
   availableKeys,
   usedKeys,
   onUpdate,
@@ -57,7 +59,6 @@ export default function ComponentItem({
   const [isAddingNewComponent, setIsAddingNewComponent] = useState(false);
   const [newComponentInput, setNewComponentInput] = useState("");
   const [localAvailableKeys, setLocalAvailableKeys] = useState<string[]>(availableKeys);
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string>("");
 
   // New states for adding categories
   const [isAddingNewCategory, setIsAddingNewCategory] = useState(false);
@@ -68,26 +69,6 @@ export default function ComponentItem({
   useEffect(() => {
     setLocalAvailableKeys(availableKeys);
   }, [availableKeys]);
-
-  // Initialize selectedCategoryId based on component data
-  useEffect(() => {
-    if (component.subcategoryId && !component.subcategoryId.startsWith('new-sub-')) {
-      const subcategory = subCategories.find(sub => sub.id === component.subcategoryId);
-      if (subcategory) {
-        setSelectedCategoryId(subcategory.categoryId);
-      } else {
-        // If subcategory not found, try to find the component in allComponents
-        // to get its correct category
-        const fullComponent = allComponents.find(comp => comp.id === component.id);
-        if (fullComponent && fullComponent.subcategoryId) {
-          const fullSubcategory = subCategories.find(sub => sub.id === fullComponent.subcategoryId);
-          if (fullSubcategory) {
-            setSelectedCategoryId(fullSubcategory.categoryId);
-          }
-        }
-      }
-    }
-  }, [component.subcategoryId, component.id, subCategories, allComponents]);
 
   const getFilteredComponents = () => {
     return allComponents.filter(comp =>
@@ -105,42 +86,98 @@ export default function ComponentItem({
     if (componentId === component.id) return false;
     return usedComponentIds.includes(componentId);
   };
+
+
   const updateComponentSelection = (componentId: string) => {
-    if (componentId === "__add_new_component__") {
-      setIsAddingNewComponent(true);
-      setNewComponentInput("");
-      setComponentSearchTerm("");
-      return;
-    }
+  console.log('🔹 updateComponentSelection called with componentId:', componentId);
+  
+  if (componentId === "__add_new_component__") {
+    console.log('🆕 Add new component triggered');
+    setIsAddingNewComponent(true);
+    setNewComponentInput("");
+    setComponentSearchTerm("");
+    return;
+  }
 
-    const selectedComponent = allComponents.find(comp => comp.id === componentId);
-    if (selectedComponent) {
-      const componentSubcategory = subCategories.find(sub => sub.id === selectedComponent.subcategoryId);
-      const componentCategory = categories.find(cat =>
-        cat.subcategories.some(sub => sub.id === selectedComponent.subcategoryId)
-      );
-
+  // Handle placeholder components (new subcategories)
+  if (componentId.startsWith('placeholder-')) {
+    console.log('📝 Handling placeholder component');
+    const subId = componentId.replace('placeholder-', '');
+    const subcategory = subCategories.find(sub => sub.id === subId);
+    
+    console.log('🔍 Found subcategory:', subcategory);
+    
+    if (subcategory) {
       const updatedComponent = {
-        ...selectedComponent,
+        ...component,
         id: component.id,
-        subcategoryId: selectedComponent.subcategoryId,
-        categoryName: componentCategory?.categoryName || "",
-        subcategoryName: componentSubcategory?.subcategoryName || "",
+        componentName: subcategory.subcategoryName,
+        subcategoryId: subId,
+        categoryName: categories.find(cat => cat.id === selectedCategoryId)?.categoryName || "",
+        subcategoryName: subcategory.subcategoryName,
         isWithdrawal: component.isWithdrawal,
+        // Keep existing subComponents or start with empty one
         subComponents: component.subComponents.length > 0 ? component.subComponents : [
           { id: `${Date.now()}-1`, key: "", value: "", componentId: component.id }
         ]
       };
-
+      
+      console.log('🔄 Updating component with placeholder data:', updatedComponent);
       onUpdate(updatedComponent);
-
-      if (componentSubcategory) {
-        setSelectedCategoryId(componentSubcategory.categoryId);
-      }
     }
-  };
+    return;
+  }
 
+  // Handle regular components
+  console.log('🔍 Looking for component in allComponents. Total components:', allComponents.length);
+  
+  const selectedComponent = allComponents.find(comp => comp.id === componentId);
+  console.log('✅ Found selectedComponent:', selectedComponent);
 
+  if (selectedComponent) {
+    const componentSubcategory = subCategories.find(sub => sub.id === selectedComponent.subcategoryId);
+    console.log('🔍 Found componentSubcategory:', componentSubcategory);
+    
+    const category = categories.find(cat => 
+      cat.subcategories.some(sub => sub.id === selectedComponent.subcategoryId)
+    );
+    console.log('🔍 Found category:', category);
+
+    // Use the selected component's subComponents if they exist, otherwise use current ones
+    const newSubComponents = selectedComponent.subComponents && selectedComponent.subComponents.length > 0 
+      ? selectedComponent.subComponents.map(sub => ({
+          ...sub,
+          componentId: component.id // Update componentId to current component
+        }))
+      : component.subComponents.length > 0 
+        ? component.subComponents 
+        : [{ id: `${Date.now()}-1`, key: "", value: "", componentId: component.id }];
+
+    console.log('📦 SubComponents to use:', newSubComponents);
+
+    const updatedComponent = {
+      ...selectedComponent,
+      id: component.id, // Keep the original component ID
+      subcategoryId: selectedComponent.subcategoryId,
+      categoryName: category?.categoryName || "",
+      subcategoryName: componentSubcategory?.subcategoryName || "",
+      isWithdrawal: component.isWithdrawal,
+      subComponents: newSubComponents
+    };
+
+    console.log('🔄 Final updatedComponent:', updatedComponent);
+    onUpdate(updatedComponent);
+
+    if (componentSubcategory) {
+      console.log('🔄 Updating category to:', componentSubcategory.categoryId);
+      onCategoryChange(componentSubcategory.categoryId);
+    }
+  } else {
+    console.log('❌ Component not found in allComponents');
+    console.log('🔍 Looking for componentId:', componentId);
+    console.log('📋 Available component IDs:', allComponents.map(comp => comp.id));
+  }
+};
   const cancelAddingNewComponent = () => {
     setIsAddingNewComponent(false);
     setNewComponentInput("");
@@ -172,7 +209,7 @@ export default function ComponentItem({
       };
 
       onUpdate(newComponent);
-      setSelectedCategoryId(selectedCategoryId);
+      onCategoryChange(selectedCategoryId);
     }
     cancelAddingNewComponent();
   };
@@ -185,8 +222,8 @@ export default function ComponentItem({
       return;
     }
 
-    // Update the selected category
-    setSelectedCategoryId(categoryId);
+    // Call parent function to update the category
+    onCategoryChange(categoryId);
 
     const selectedCategory = categories.find(cat => cat.id === categoryId);
 
@@ -241,7 +278,7 @@ export default function ComponentItem({
       categories.push(newCategory);
 
       // Set the selected category to the new one
-      setSelectedCategoryId(newCategoryId);
+      onCategoryChange(newCategoryId);
 
       // For new category, create a new subcategory and component structure
       if (component.id) {
@@ -459,7 +496,7 @@ export default function ComponentItem({
                     value="__add_new_category__"
                     className="text-blue-600 font-medium flex items-center gap-2 cursor-pointer"
                   >
-                    <PlusCircle className="h-4 w-4" />
+                    <PlusCircle className="h-4 w-4 cursor-pointer" />
                     Add New Category...
                   </SelectItem>
                 </div>
@@ -509,7 +546,7 @@ export default function ComponentItem({
                 onClick={confirmNewComponent}
                 disabled={!newComponentInput.trim() || !selectedCategoryId}
               >
-                <Plus className="h-4 w-4" />
+                <Plus className="h-4 w-4 cursor-pointer" />
               </Button>
             </div>
             <div className="text-xs text-gray-500">
@@ -518,7 +555,7 @@ export default function ComponentItem({
           </div>
         ) : (
           <Select
-            value={component.id}
+            value={component.subcategoryId}
             onValueChange={updateComponentSelection}
             disabled={!selectedCategoryId}
           >
@@ -569,7 +606,7 @@ export default function ComponentItem({
                       value="__add_new_component__"
                       className="text-blue-600 font-medium flex items-center gap-2 cursor-pointer"
                     >
-                      <PlusCircle className="h-4 w-4" />
+                      <PlusCircle className="h-4 w-4 cursor-pointer" />
                       Add New Subcategory...
                     </SelectItem>
                   </div>
@@ -591,7 +628,7 @@ export default function ComponentItem({
             onClick={() => onUpdate({ ...component, isWithdrawal: false })}
             className={`flex items-center gap-2 ${!component.isWithdrawal ? "bg-green-600 hover:bg-green-700" : ""}`}
           >
-            <Plus className="h-3 w-3" />
+            <Plus className="h-3 w-3 cursor-pointer" />
             Intake
           </Button>
           <Button
@@ -601,7 +638,7 @@ export default function ComponentItem({
             onClick={() => onUpdate({ ...component, isWithdrawal: true })}
             className={`flex items-center gap-2 ${component.isWithdrawal ? "bg-red-600 hover:bg-red-700" : ""}`}
           >
-            <Minus className="h-3 w-3" />
+            <Minus className="h-3 w-3 cursor-pointer" />
             Withdrawal
           </Button>
         </div>
@@ -713,7 +750,7 @@ export default function ComponentItem({
                         value="__add_new__"
                         className="text-blue-600 font-medium flex items-center gap-2 cursor-pointer"
                       >
-                        <PlusCircle className="h-4 w-4" />
+                        <PlusCircle className="h-4 w-4 cursor-pointer" />
                         Add New Subcomponent...
                       </SelectItem>
                     </div>
@@ -753,7 +790,7 @@ export default function ComponentItem({
           onClick={addSubComponent}
           className="flex items-center gap-2 w-full border-dashed hover:border-solid cursor-pointer"
         >
-          <PlusCircle className="h-4 w-4" />
+          <PlusCircle className="h-4 w-4 cursor-pointer" />
           Add Subcomponent
         </Button>
       </div>

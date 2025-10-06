@@ -25,7 +25,8 @@ const schema = a.schema({
   ]).authorization((allow) => [allow.publicApiKey()]),
 
   Component: a.model({
-    componentName: a.string().required(),
+    componentId: a.string().required(),
+    componentName: a.string(),
     description: a.string(),
     primarySupplierId: a.string(),
     primarySupplier: a.string(),
@@ -41,10 +42,10 @@ const schema = a.schema({
     subcategory: a.belongsTo('SubCategory', 'subcategoryId'),
   }).secondaryIndexes((index) => [
     index("subcategoryId")
-      .sortKeys(["componentName"])
+      .sortKeys(["componentId"])
       .queryField("listComponentsBySubCategoryId"),
     index("primarySupplierId")
-      .sortKeys(["componentName"])
+      .sortKeys(["componentId"])
       .queryField("listComponentsByPrimarySupplier"),
   ]).authorization((allow) => [allow.publicApiKey()]),
 

@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { fetchAuthSession, signOut } from "aws-amplify/auth";
 import Breadcrumbs from "./breadcrumbs";
+import Link from "next/link";
 
 export default function Navbar() {
   const router = useRouter();
@@ -31,8 +32,9 @@ export default function Navbar() {
       document.documentElement.classList.toggle("dark", isDark);
 
       const Authuser = await getUser();
-      if (Authuser) {
+       if (Authuser) {
         setUser(Authuser);
+        localStorage.setItem("user", JSON.stringify(Authuser));
       }
     };
 
@@ -58,21 +60,21 @@ export default function Navbar() {
   };
 
   const handleSignOut = async () => {
-    
+
     setIsSigningOut(true);
     try {
       await signOut();
       // Redirect immediately without waiting
       router.push('/');
-      
+
       // Clear any local state
       setUser('');
-    
-      
+      localStorage.removeItem("user");
+
     } catch (error) {
       console.error("Sign out error:", error);
-    } 
-    
+    }
+
   };
 
   if (isDarkMode === null) return null;
@@ -81,7 +83,7 @@ export default function Navbar() {
     <div className="fixed top-0 left-0 w-full z-50">
       <header className="flex items-center justify-between bg-[#165b8c] p-4 border-b shadow-md">
         {/* Logo */}
-        <div className="flex items-center">
+        <Link href={"/"} className="flex items-center cursor-pointer">
           <Image
             src="/assets/logo_white.png"
             alt="Logo"
@@ -89,7 +91,7 @@ export default function Navbar() {
             height={60}
             className="h-10 mr-2"
           />
-        </div>
+        </Link>
 
         {/* Mobile Menu */}
         <div className="sm:hidden">
@@ -107,17 +109,17 @@ export default function Navbar() {
                   <Moon className="h-4 w-4" />
                 </div>
               </DropdownMenuItem>
-              
+
               <DropdownMenuItem className="text-xs font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800 cursor-pointer">
                 <User className="h-4 w-4" />
                 {user}
               </DropdownMenuItem>
 
-            
+
               <DropdownMenuItem>
                 <Settings className="h-4 w-4" />
                 Settings</DropdownMenuItem>
-              <DropdownMenuItem 
+              <DropdownMenuItem
                 onClick={handleSignOut}
                 disabled={isSigningOut}
                 className="flex items-center gap-2"
@@ -136,9 +138,7 @@ export default function Navbar() {
             <Switch checked={isDarkMode} onCheckedChange={toggleDarkMode} />
             <Moon className="h-4 w-4 text-white" />
           </div>
-          
 
-          
           <DropdownMenu >
             <DropdownMenuTrigger asChild className="cursor-pointer">
               <Button variant="ghost" size="icon" className="focus:outline-none focus:ring-0 hover:bg-transparent">
@@ -154,7 +154,7 @@ export default function Navbar() {
                 <Settings className="h-4 w-4" />
                 <span>Settings</span>
               </DropdownMenuItem>
-              <DropdownMenuItem 
+              <DropdownMenuItem
                 onClick={handleSignOut}
                 disabled={isSigningOut}
                 className="flex items-center gap-2 cursor-pointer"
@@ -166,7 +166,7 @@ export default function Navbar() {
           </DropdownMenu>
         </div>
       </header>
-       <Breadcrumbs />
+      <Breadcrumbs />
       {isSigningOut && (
         <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm">
           <div className="flex items-center gap-2 p-4 bg-white dark:bg-gray-800 rounded-md shadow-md">

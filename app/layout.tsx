@@ -8,8 +8,8 @@ const oswald = Oswald({ subsets: ["latin"] });
 
 
 export const metadata: Metadata = {
-  title: "Stock Control",
-  description: "Stock Control Masskg App",
+  title: "Omni-Nexos",
+  description: "Omni-Nexos Masskg App",
 };
 
 export default function RootLayout({
