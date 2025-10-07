@@ -1,12 +1,12 @@
 import { type ClientSchema, a, defineData } from "@aws-amplify/backend";
 
 const schema = a.schema({
-  // Landing: a
-  //   .model({
-  //     key: a.string(),
-  //     items: a.string(),
-  //   })
-  //   .authorization((allow) => [allow.publicApiKey()]),
+  Landing: a
+    .model({
+      key: a.string(),
+      items: a.string(),
+    })
+    .authorization((allow) => [allow.publicApiKey()]),
   Category: a.model({
     categoryName: a.string().required(),
     subcategories: a.hasMany('SubCategory', 'categoryId'),
