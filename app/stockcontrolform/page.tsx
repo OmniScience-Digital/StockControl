@@ -206,24 +206,6 @@ export default function ComponentForm() {
     }
   };
 
-  const handleAddNewSubcategory = async (categoryId: string, subcategoryName: string): Promise<string | null> => {
-    try {
-      const { data: newSubcategory, errors } = await client.models.SubCategory.create({
-        subcategoryName: subcategoryName,
-        categoryId: categoryId
-      });
-
-      if (errors) {
-        console.error("Error creating subcategory:", errors);
-        return null;
-      }
-
-      return newSubcategory?.id || null;
-    } catch (error) {
-      console.error("Error creating subcategory:", error);
-      return null;
-    }
-  };
 
   const getUsedKeys = () => {
     const usedKeys: string[] = [];
@@ -288,7 +270,6 @@ const getUsedSubcategoryIds = (currentComponentId?: string): string[] => {
                         onRemove={() => removeComponent(component.id)}
                         isRemovable={true}
                         onAddNewKey={handleAddNewKey}
-                        onAddNewSubcategory={handleAddNewSubcategory}
                         usedSubcategoryIds={getUsedSubcategoryIds(component.id)}  
                       />
                     ))}

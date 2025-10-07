@@ -30,7 +30,6 @@ interface ComponentItemProps {
   categories?: Category[];
   usedComponentIds?: string[];
   usedSubcategoryIds?: string[];
-  onAddNewSubcategory?: (categoryId: string, subcategoryName: string) => Promise<string | null>;
 }
 
 // Helper functions to map API data to our types
@@ -77,7 +76,6 @@ export default function ComponentItem({
   setComponentsLoading,
   categories = [],
   usedComponentIds = [],
-  onAddNewSubcategory,
   usedSubcategoryIds,
 }: ComponentItemProps) {
 
@@ -240,28 +238,23 @@ export default function ComponentItem({
     setNewComponentInput("");
     setComponentSearchTerm("");
   };
-
   const confirmNewComponent = async () => {
     if (newComponentInput.trim() && selectedCategoryId) {
       const selectedCategory = categories.find(cat => cat.id === selectedCategoryId);
 
-      let newSubcategoryId = `new-sub-${Date.now()}`;
+      // Generate temporary ID for local use only
+      const newSubcategoryId = `temp-sub-${Date.now()}`;
 
-      if (onAddNewSubcategory) {
-        const createdSubId = await onAddNewSubcategory(selectedCategoryId, newComponentInput.trim());
-        if (createdSubId) {
-          newSubcategoryId = createdSubId;
+      // Create local subcategory only
+      const newSubcategory: SubCategory = {
+        id: newSubcategoryId,
+        subcategoryName: newComponentInput.trim(),
+        categoryId: selectedCategoryId,
+        components: []
+      };
 
-          // Add to local subcategories
-          const newSubcategory: SubCategory = {
-            id: createdSubId,
-            subcategoryName: newComponentInput.trim(),
-            categoryId: selectedCategoryId,
-            components: []
-          };
-          setSubCategories(prev => [...prev, newSubcategory]);
-        }
-      }
+      // Update local state only
+      setSubCategories(prev => [...prev, newSubcategory]);
 
       const newComponent: Component = {
         ...component,
@@ -309,36 +302,36 @@ export default function ComponentItem({
     setNewCategoryInput("");
     setCategorySearchTerm("");
   };
-  
+
   const confirmNewCategory = () => {
-  if (newCategoryInput.trim()) {
-    const newCategoryId = `new-cat-${Date.now()}`;
-    const newCategory: Category = {
-      id: newCategoryId,
-      categoryName: newCategoryInput.trim(),
-      subcategories: []
-    };
+    if (newCategoryInput.trim()) {
+      const newCategoryId = `new-cat-${Date.now()}`;
+      const newCategory: Category = {
+        id: newCategoryId,
+        categoryName: newCategoryInput.trim(),
+        subcategories: []
+      };
 
-    // Add to local categories list
-    categories.push(newCategory); // if categories is state, use setCategories([...categories, newCategory])
+      // Add to local categories list
+      categories.push(newCategory); // if categories is state, use setCategories([...categories, newCategory])
 
-    onCategoryChange(newCategoryId);
+      onCategoryChange(newCategoryId);
 
-    onUpdate({
-      ...component,
-      id: component.id,
-      componentName: "",
-      subcategoryId: "",
-      categoryName: newCategoryInput.trim(),
-      subcategoryName: "",
-      isWithdrawal: component.isWithdrawal,
-      subComponents: component.subComponents.length > 0 
-        ? component.subComponents 
-        : [{ id: `${Date.now()}-1`, key: "", value: "", componentId: component.id }]
-    });
-  }
-  cancelAddingNewCategory();
-};
+      onUpdate({
+        ...component,
+        id: component.id,
+        componentName: "",
+        subcategoryId: "",
+        categoryName: newCategoryInput.trim(),
+        subcategoryName: "",
+        isWithdrawal: component.isWithdrawal,
+        subComponents: component.subComponents.length > 0
+          ? component.subComponents
+          : [{ id: `${Date.now()}-1`, key: "", value: "", componentId: component.id }]
+      });
+    }
+    cancelAddingNewCategory();
+  };
 
   const addSubComponent = () => {
     const newSubComponent = {
