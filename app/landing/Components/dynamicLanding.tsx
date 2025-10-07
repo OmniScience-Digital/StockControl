@@ -25,13 +25,9 @@ export default function Home() {
     const [loading, setLoading] = useState(false);
     const [dataArray, setData] = useState<Dashboard[]>([]);
     const [searchQuery, setSearchQuery] = useState("");
-    const [dropdownOpen, setDropdownOpen] = useState(false);
+    const [dropdownOpen, setDropdownOpen] = useState(true);
     const [dashboardToDelete, setDashboardToDelete] = useState<number | null>(null);
 
-    // Debug before useEffect
-
-    console.log("Client models:", client?.models);
-    console.log("Landing model:", client?.models?.Landing);
 
     // Fetch dashboards
     useEffect(() => {
