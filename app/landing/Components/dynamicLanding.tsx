@@ -30,36 +30,36 @@ export default function Home() {
 
     // Debug before useEffect
 
-console.log("Client models:", client?.models);
-console.log("Landing model:", client?.models?.Landing);
+// console.log("Client models:", client?.models);
+// console.log("Landing model:", client?.models?.Landing);
 
-    // Fetch dashboards
-    useEffect(() => {
-        const subscription = client.models.Landing.observeQuery().subscribe({
-            next: (data) => {
+//     // Fetch dashboards
+//     useEffect(() => {
+//         const subscription = client.models.Landing.observeQuery().subscribe({
+//             next: (data) => {
 
-                const dashboardData = data.items
-                    .filter(item => item.items) // Only include items with names
-                    .sort((a, b) => (a.items || "").localeCompare(b.items || ""));
+//                 const dashboardData = data.items
+//                     .filter(item => item.items) // Only include items with names
+//                     .sort((a, b) => (a.items || "").localeCompare(b.items || ""));
 
-                const cleanDashboardData: Dashboard[] = dashboardData.map(d => ({
-                    ...d,
-                    key: d.key ?? "",
-                    items: d.items ?? ""
-                }));
+//                 const cleanDashboardData: Dashboard[] = dashboardData.map(d => ({
+//                     ...d,
+//                     key: d.key ?? "",
+//                     items: d.items ?? ""
+//                 }));
 
-                setDashboards(cleanDashboardData);
-                setLoading(false);
-            },
-            error: () => {
-                setLoading(false);
-            },
-        });
+//                 setDashboards(cleanDashboardData);
+//                 setLoading(false);
+//             },
+//             error: () => {
+//                 setLoading(false);
+//             },
+//         });
 
-        return () => {
-            subscription.unsubscribe();
-        };
-    }, []);
+//         return () => {
+//             subscription.unsubscribe();
+//         };
+//     }, []);
 
 
     // Filter dashboards based on search query
@@ -98,29 +98,29 @@ console.log("Landing model:", client?.models?.Landing);
     };
     // Delete dashboard at a specific index
     const deleteDashboard = async (index: number) => {
-        const dashboardName = dashboards[index].items; // Get the name of the dashboard to delete
+        // const dashboardName = dashboards[index].items; // Get the name of the dashboard to delete
 
-        const foundItem = dataArray.find(
-            (item) => item.items.toUpperCase() === dashboardName.toUpperCase(),
-        ); // Find the item in dataArray
-        console.log(foundItem);
-        setLoading(true);
-        if (foundItem) {
-            // Delete from the database
-            const { errors } = await client.models.Landing.delete({
-                id: foundItem.id,
-            });
+        // const foundItem = dataArray.find(
+        //     (item) => item.items.toUpperCase() === dashboardName.toUpperCase(),
+        // ); // Find the item in dataArray
+        // console.log(foundItem);
+        // setLoading(true);
+        // if (foundItem) {
+        //     // Delete from the database
+        //     const { errors } = await client.models.Landing.delete({
+        //         id: foundItem.id,
+        //     });
 
-            if (errors) {
-                console.error("Error deleting dashboard:", errors);
-            } else {
-                // Update local state
-                const updatedDashboards = dashboards.filter((_, i) => i !== index);
-                setDashboards(updatedDashboards);
-                console.log("Dashboard deleted:", foundItem);
-            }
-        }
-        setLoading(false);
+        //     if (errors) {
+        //         console.error("Error deleting dashboard:", errors);
+        //     } else {
+        //         // Update local state
+        //         const updatedDashboards = dashboards.filter((_, i) => i !== index);
+        //         setDashboards(updatedDashboards);
+        //         console.log("Dashboard deleted:", foundItem);
+        //     }
+        // }
+        // setLoading(false);
     };
 
     // Handle delete confirmation
@@ -134,25 +134,25 @@ console.log("Landing model:", client?.models?.Landing);
 
     // Add a new dashboard
     const addDashboard = async () => {
-        if (!name.trim()) return;
+        // if (!name.trim()) return;
 
-        const key = getInitials(name);
-        setOpen(false);
-        setLoading(true);
+        // const key = getInitials(name);
+        // setOpen(false);
+        // setLoading(true);
 
-        const { errors } = await client.models.Landing.create({
-            key: key,
-            items: name,
-        });
-        setName("");
+        // const { errors } = await client.models.Landing.create({
+        //     key: key,
+        //     items: name,
+        // });
+        // setName("");
 
-        if (errors) {
-            console.error("Error creating dashboard:", errors);
-            setLoading(false);
-        } else {
-            // The subscription will automatically update the list
-            setLoading(false);
-        }
+        // if (errors) {
+        //     console.error("Error creating dashboard:", errors);
+        //     setLoading(false);
+        // } else {
+        //     // The subscription will automatically update the list
+        //     setLoading(false);
+        // }
     };
 
     return (
