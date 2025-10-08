@@ -15,13 +15,6 @@ import { Category, SubCategory, ComponentItemProps } from "@/types/form.types";
 import Loading from "./component_loading";
 import { mapApiComponentToComponent, mapApiSubCategoryToSubCategory } from "./map.categories.helper";
 
-// Add loading props to the interface
-interface ExtendedComponentItemProps extends ComponentItemProps {
-  categoriesLoading?: boolean;
-  subcategoriesLoading?: boolean;
-  componentsLoading?: boolean;
-}
-
 export default function ComponentItem({
   component,
   selectedCategoryId,
@@ -35,10 +28,7 @@ export default function ComponentItem({
   usedSubcategoryIds,
   allSubcategories = [],
   allComponents = [],
-  categoriesLoading = false,
-  subcategoriesLoading = false,
-  componentsLoading = false,
-}: ExtendedComponentItemProps) {
+}: ComponentItemProps) {
 
   const [isAddingNewKey, setIsAddingNewKey] = useState<string | null>(null);
   const [newKeyInput, setNewKeyInput] = useState("");
@@ -47,11 +37,13 @@ export default function ComponentItem({
   const [isAddingNewComponent, setIsAddingNewComponent] = useState(false);
   const [newComponentInput, setNewComponentInput] = useState("");
 
+
   // New states for adding categories
   const [isAddingNewCategory, setIsAddingNewCategory] = useState(false);
   const [newCategoryInput, setNewCategoryInput] = useState("");
   const [categorySearchTerm, setCategorySearchTerm] = useState("");
   const [temporaryCategories, setTemporaryCategories] = useState<Category[]>([]);
+
 
   // Add this state for temporary subcategories at the top with other states
   const [temporarySubcategories, setTemporarySubcategories] = useState<SubCategory[]>([]);
@@ -65,6 +57,8 @@ export default function ComponentItem({
       .map(mapApiSubCategoryToSubCategory);
   }, [allSubcategories, temporarySubcategories, selectedCategoryId]);
 
+
+
   const filteredComponents = useMemo(() => {
     const allComps = [...(allComponents || []), ...temporaryComponents];
     return allComps
@@ -74,6 +68,9 @@ export default function ComponentItem({
       .map(mapApiComponentToComponent);
   }, [allComponents, temporaryComponents, filteredSubcategories]);
 
+
+  const loadingSubcategories = false;
+
   // Memoized filtered categories including temporary ones
   const filteredCategories = useMemo(() => {
     const allCategories = [...categories, ...temporaryCategories];
@@ -81,6 +78,7 @@ export default function ComponentItem({
       cat.categoryName?.toLowerCase().includes(categorySearchTerm.toLowerCase())
     );
   }, [categories, temporaryCategories, categorySearchTerm]);
+
 
   // Get components ONLY for the currently selected subcategory
   const currentSubcategoryComponents = useMemo(() =>
@@ -131,6 +129,7 @@ export default function ComponentItem({
     ),
     [allAvailableOptions, componentSearchTerm]
   );
+
   // 1. Cleanup deleted subcategories - FIXED
   useEffect(() => {
     // Skip if it's a temporary subcategory (just added)
@@ -448,7 +447,7 @@ export default function ComponentItem({
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                <div className="p-2 border-b">
+                <div className="p-2 border-b">       
                   <div className="relative">
                     <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
                     <Input
@@ -457,6 +456,7 @@ export default function ComponentItem({
                       onChange={(e) => setCategorySearchTerm(e.target.value)}
                       className="pl-8 pr-8 h-9"
                     />
+                    <Loading/>
                     {categorySearchTerm && (
                       <X
                         className="absolute right-2 top-2.5 h-4 w-4 text-gray-500 cursor-pointer"
@@ -466,30 +466,21 @@ export default function ComponentItem({
                   </div>
                 </div>
 
-                {/* Show loading in dropdown content when categories are loading */}
-                {categoriesLoading ? (
-                  <div className="p-4 text-center">
-                    <Loading />
-                  </div>
-                ) : (
-                  <>
-                    {filteredCategories.map((category) => (
-                      <SelectItem key={category.id} value={category.id}>
-                        {category.categoryName}
-                      </SelectItem>
-                    ))}
+                {filteredCategories.map((category) => (
+                  <SelectItem key={category.id} value={category.id}>
+                    {category.categoryName}
+                  </SelectItem>
+                ))}
 
-                    <div className="border-t mt-1 pt-1">
-                      <SelectItem
-                        value="__add_new_category__"
-                        className="text-blue-600 font-medium flex items-center gap-2 cursor-pointer"
-                      >
-                        <PlusCircle className="h-4 w-4 cursor-pointer" />
-                        Add New Category...
-                      </SelectItem>
-                    </div>
-                  </>
-                )}
+                <div className="border-t mt-1 pt-1">
+                  <SelectItem
+                    value="__add_new_category__"
+                    className="text-blue-600 font-medium flex items-center gap-2 cursor-pointer"
+                  >
+                    <PlusCircle className="h-4 w-4 cursor-pointer" />
+                    Add New Category...
+                  </SelectItem>
+                </div>
               </SelectContent>
             </Select>
           )}
@@ -551,15 +542,15 @@ export default function ComponentItem({
               : ""
             }
             onValueChange={updateComponentSelection}
-            disabled={!selectedCategoryId || subcategoriesLoading}
+            disabled={!selectedCategoryId || loadingSubcategories}
           >
             <SelectTrigger className="w-full cursor-pointer">
               <SelectValue placeholder="Select a subcategory">
-                {component.componentName || "Select a subcategory..."}
+                {loadingSubcategories ? "Loading..." : (component.componentName || "Select a subcategory...")}
               </SelectValue>
             </SelectTrigger>
             <SelectContent className="max-h-60">
-              {subcategoriesLoading ? (
+              {loadingSubcategories ? (
                 <div className="p-4 text-center">
                   <Loading />
                 </div>
@@ -619,7 +610,6 @@ export default function ComponentItem({
       </div>
 
       {/* Subcomponents Section */}
-
       <div className="space-y-4 pl-6 border-l-2 border-blue-200">
         <div className="flex items-center justify-between">
           <h4 className="font-medium text-gray-600">Subcomponents</h4>
@@ -703,44 +693,35 @@ export default function ComponentItem({
                       </div>
                     </div>
 
-                    {/* Show loading in dropdown content when components are loading */}
-                    {componentsLoading ? (
-                      <div className="p-4 text-center">
-                        <Loading />
-                      </div>
+                    {filteredKeys.length > 0 ? (
+                      filteredKeys.map((key) => (
+                        <SelectItem
+                          key={key}
+                          value={key}
+                          disabled={usedKeys.includes(key) && subComponent.key !== key}
+                          className="flex items-center justify-between cursor-pointer"
+                        >
+                          <span>{key}</span>
+                          {usedKeys.includes(key) && subComponent.key !== key && (
+                            <span className="text-xs text-red-500 ml-2">(used)</span>
+                          )}
+                        </SelectItem>
+                      ))
                     ) : (
-                      <>
-                        {filteredKeys.length > 0 ? (
-                          filteredKeys.map((key) => (
-                            <SelectItem
-                              key={key}
-                              value={key}
-                              disabled={usedKeys.includes(key) && subComponent.key !== key}
-                              className="flex items-center justify-between cursor-pointer"
-                            >
-                              <span>{key}</span>
-                              {usedKeys.includes(key) && subComponent.key !== key && (
-                                <span className="text-xs text-red-500 ml-2">(already used)</span>
-                              )}
-                            </SelectItem>
-                          ))
-                        ) : (
-                          <div className="p-2 text-center text-gray-500 text-sm">
-                            No subcomponents available
-                          </div>
-                        )}
-
-                        <div className="border-t mt-1 pt-1">
-                          <SelectItem
-                            value="__add_new__"
-                            className="text-blue-600 font-medium flex items-center gap-2 cursor-pointer"
-                          >
-                            <PlusCircle className="h-4 w-4 cursor-pointer" />
-                            Add New Subcomponent...
-                          </SelectItem>
-                        </div>
-                      </>
+                      <div className="p-2 text-center text-gray-500 text-sm">
+                        No subcomponents available
+                      </div>
                     )}
+
+                    <div className="border-t mt-1 pt-1">
+                      <SelectItem
+                        value="__add_new__"
+                        className="text-blue-600 font-medium flex items-center gap-2 cursor-pointer"
+                      >
+                        <PlusCircle className="h-4 w-4 cursor-pointer" />
+                        Add New Subcomponent...
+                      </SelectItem>
+                    </div>
                   </SelectContent>
                 </Select>
               )}

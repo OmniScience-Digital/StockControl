@@ -112,7 +112,7 @@ export default function ComponentForm() {
       setLoading(true);
       e.preventDefault();
 
-      const savedUser = localStorage.getItem("user");
+      const savedUser = localStorage.getItem("user");  
       const result = displayedComponents.reduce((acc, component) => {
         if (component.componentName.trim() !== "" && component.categoryName) {
           const subAcc = component.subComponents.reduce((subAcc, sub) => {
@@ -138,6 +138,7 @@ export default function ComponentForm() {
         return acc;
       }, {} as Record<string, any>);
 
+      
       // Your existing API call
       const res = await fetch("/api/click-up", {
         method: "POST",
@@ -284,7 +285,6 @@ export default function ComponentForm() {
                       </Button>
                     </div>
 
-
                     {displayedComponents.map((component) => (
                       <ComponentItem
                         key={component.id}
@@ -300,10 +300,6 @@ export default function ComponentForm() {
                         usedSubcategoryIds={getUsedSubcategoryIds(component.id)}
                         allSubcategories={allSubcategories}
                         allComponents={allComponents}
-                        // Add loading props
-                        categoriesLoading={categoriesLoading}
-                        subcategoriesLoading={allSubcategories.length === 0} // You might want to track this separately
-                        componentsLoading={allComponents.length === 0} // You might want to track this separately
                       />
                     ))}
 
