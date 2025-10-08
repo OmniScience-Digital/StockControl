@@ -17,7 +17,6 @@ export interface Component {
   subcategoryName?: string; 
   subcategoryId: string;
   subcategory?: SubCategory;
-  isWithdrawal: boolean;
   subComponents: SubComponent[]; // These are the "Components" in the UI
 }
 
@@ -40,4 +39,19 @@ export interface SubCategory {
   categoryId: string;
   category?: Category;
   components: Component[];
+}
+
+export interface ComponentItemProps {
+  component: Component;
+  selectedCategoryId: string;
+  onCategoryChange: (categoryId: string) => void;
+  usedKeys: string[];
+  onUpdate: (component: Component) => void;
+  onRemove: () => void;
+  isRemovable: boolean;
+  onAddNewKey?: (newKey: string) => void;
+  categories?: Category[];
+  usedSubcategoryIds?: string[];
+  allSubcategories?: any[];
+  allComponents?: any[];
 }

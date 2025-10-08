@@ -16,8 +16,9 @@ export default function Breadcrumbs() {
     .filter((segment) => segment !== "stockpile") //remove stockpile
     .filter((segment) => segment !== "landing") //remove stockpile
 
+
     .map((segment) => {
-      if (segment === "telegram") return "telegramreporting";
+      if (segment === "subcategories") return "inventorymanagementsystem";
       if (segment === "auditinDashboard") return "auditing";
       if (segment === "progressiveDashboard") return "progressivereporting";
       if (segment === "stockpileDashboard") return "stockpilereporting";
@@ -54,7 +55,7 @@ export default function Breadcrumbs() {
                   {decodeURIComponent(segment)}
                 </span>
               ) : (
-                <Link href={fullPath} className="hover:underline">
+                <Link href={fullPath} className="hover:underline cursor-pointer">
                   {decodeURIComponent(segment)}
                 </Link>
               )}

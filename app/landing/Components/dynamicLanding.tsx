@@ -22,10 +22,10 @@ export default function Home() {
     const [open, setOpen] = useState(false);
     const [opendelete, setOpendelete] = useState(false);
     const [name, setName] = useState("");
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [dataArray, setData] = useState<Dashboard[]>([]);
     const [searchQuery, setSearchQuery] = useState("");
-    const [dropdownOpen, setDropdownOpen] = useState(true);
+    const [dropdownOpen, setDropdownOpen] = useState(false);
     const [dashboardToDelete, setDashboardToDelete] = useState<number | null>(null);
 
 
@@ -184,7 +184,7 @@ export default function Home() {
                     <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm">
                         <CardContent className="p-1 sm:p-2">
                             <div className="space-y-1">
-
+                                
                                 {filteredDashboards.map((dashboard, index) => (
                                     <React.Fragment key={dashboard.id}>
                                         <div className="group p-2 sm:p-3 hover:bg-blue-50/50 dark:hover:bg-blue-950/20 transition-colors duration-200 cursor-pointer rounded-lg border border-transparent hover:border-blue-200 dark:hover:border-blue-800"

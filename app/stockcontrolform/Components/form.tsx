@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -10,73 +10,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Trash2, Minus, PlusCircle, Plus, Search, X } from "lucide-react";
-import { Component, Category, SubCategory } from "@/types/form.types";
-import Loading from "../component_loading";
-import { client } from "@/services/schema";
-
-interface ComponentItemProps {
-  component: Component;
-  selectedCategoryId: string;
-  onCategoryChange: (categoryId: string) => void;
-  setComponentsLoading: React.Dispatch<React.SetStateAction<boolean>>;
-  componentsLoading: boolean;
-  availableKeys: string[];
-  usedKeys: string[];
-  onUpdate: (component: Component) => void;
-  onRemove: () => void;
-  isRemovable: boolean;
-  onAddNewKey?: (newKey: string) => void;
-  categories?: Category[];
-  usedComponentIds?: string[];
-  usedSubcategoryIds?: string[];
-}
-
-// Helper functions to map API data to our types
-const mapApiSubCategoryToSubCategory = (apiSubCategory: any): SubCategory => ({
-  id: apiSubCategory.id,
-  subcategoryName: apiSubCategory.subcategoryName,
-  categoryId: apiSubCategory.categoryId,
-  components: []
-});
-
-const mapApiComponentToComponent = (apiComponent: any): Component => ({
-  id: apiComponent.id,
-  componentId: apiComponent.componentId || "", // Add this line
-  componentName: apiComponent.componentName || "",
-  description: apiComponent.description || "",
-  primarySupplierId: apiComponent.primarySupplierId || "",
-  primarySupplier: apiComponent.primarySupplier || "",
-  primarySupplierItemCode: apiComponent.primarySupplierItemCode || "",
-  secondarySupplierId: apiComponent.secondarySupplierId || "",
-  secondarySupplier: apiComponent.secondarySupplier || "",
-  secondarySupplierItemCode: apiComponent.secondarySupplierItemCode || "",
-  qtyExStock: apiComponent.qtyExStock || 0,
-  currentStock: apiComponent.currentStock || 0,
-  notes: apiComponent.notes || "",
-  history: apiComponent.history || "",
-  subcategoryId: apiComponent.subcategoryId,
-  categoryName: "",
-  subcategoryName: "",
-  isWithdrawal: false,
-  subComponents: []
-});
+import { Trash2, PlusCircle, Plus, Search, X } from "lucide-react";
+import { Category, SubCategory, ComponentItemProps } from "@/types/form.types";
+import Loading from "./component_loading";
+import { mapApiComponentToComponent, mapApiSubCategoryToSubCategory } from "./map.categories.helper";
 
 export default function ComponentItem({
   component,
   selectedCategoryId,
   onCategoryChange,
-  availableKeys,
   usedKeys,
   onUpdate,
   onRemove,
   isRemovable,
   onAddNewKey,
-  componentsLoading,
-  setComponentsLoading,
   categories = [],
-  usedComponentIds = [],
   usedSubcategoryIds,
+  allSubcategories = [],
+  allComponents = [],
 }: ComponentItemProps) {
 
   const [isAddingNewKey, setIsAddingNewKey] = useState<string | null>(null);
@@ -85,120 +36,148 @@ export default function ComponentItem({
   const [componentSearchTerm, setComponentSearchTerm] = useState("");
   const [isAddingNewComponent, setIsAddingNewComponent] = useState(false);
   const [newComponentInput, setNewComponentInput] = useState("");
-  const [localAvailableKeys, setLocalAvailableKeys] = useState<string[]>(availableKeys);
+
 
   // New states for adding categories
   const [isAddingNewCategory, setIsAddingNewCategory] = useState(false);
   const [newCategoryInput, setNewCategoryInput] = useState("");
   const [categorySearchTerm, setCategorySearchTerm] = useState("");
-
-  // States for dynamically fetched data
-  const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
-  const [components, setComponents] = useState<Component[]>([]);
-  const [loadingSubcategories, setLoadingSubcategories] = useState(false);
-  const [dataCache, setDataCache] = useState<Record<string, { subCategories: SubCategory[], components: Component[] }>>({});
-
-  // Sync local availableKeys with prop changes
-  useEffect(() => {
-    setLocalAvailableKeys(availableKeys);
-  }, [availableKeys]);
-
-  // Fetch subcategories and components when category changes
-  useEffect(() => {
-    const fetchSubcategories = async () => {
-      if (!selectedCategoryId) {
-        setSubCategories([]);
-        setComponents([]);
-        return;
-      }
-
-      // Check cache first
-      if (dataCache[selectedCategoryId]) {
-        const cached = dataCache[selectedCategoryId];
-        setSubCategories(cached.subCategories);
-        setComponents(cached.components);
-        return;
-      }
-
-      setLoadingSubcategories(true);
-      try {
-        console.log('🔄 Fetching subcategories for category:', selectedCategoryId);
-
-        // Fetch all subcategories
-        const { data: subcategoriesData, errors: subcategoriesErrors } =
-          await client.models.SubCategory.list();
-
-        if (subcategoriesErrors) {
-          console.error("Error fetching subcategories:", subcategoriesErrors);
-          return;
-        }
-
-        console.log('📋 Raw subcategories data:', subcategoriesData);
-
-        // Filter subcategories by categoryId on client side
-        const subcats: SubCategory[] = (subcategoriesData || [])
-          .filter((sub: any) => sub.categoryId === selectedCategoryId)
-          .map(mapApiSubCategoryToSubCategory);
-
-        console.log('✅ Filtered subcategories:', subcats);
-        setSubCategories(subcats);
-
-        // If we have subcategories, fetch all components and filter
-        if (subcats.length > 0) {
-          const subcategoryIds = subcats.map(sub => sub.id);
-          console.log('🔍 Fetching components for subcategory IDs:', subcategoryIds);
-
-          const { data: componentsData, errors: componentsErrors } =
-            await client.models.Component.list();
-
-          if (componentsErrors) {
-            console.error("Error fetching components:", componentsErrors);
-            return;
-          }
-
-          console.log('📋 Raw components data:', componentsData);
-
-          // Filter components by subcategoryIds on client side
-          const comps: Component[] = (componentsData || [])
-            .filter((comp: any) => subcategoryIds.includes(comp.subcategoryId))
-            .map(mapApiComponentToComponent);
-
-          console.log('✅ Filtered components:', comps);
-          setComponents(comps);
-
-          // Update cache with properly typed data
-          setDataCache(prev => ({
-            ...prev,
-            [selectedCategoryId]: {
-              subCategories: subcats,
-              components: comps
-            }
-          }));
-        } else {
-          console.log('ℹ️ No subcategories found for this category');
-          setComponents([]);
-        }
-      } catch (error) {
-        console.error("Error fetching data:", error);
-      } finally {
-        setLoadingSubcategories(false);
-      }
-    };
-
-    fetchSubcategories();
-  }, [selectedCategoryId, dataCache]);
+  const [temporaryCategories, setTemporaryCategories] = useState<Category[]>([]);
 
 
-  const getFilteredCategories = () => {
-    return categories.filter(cat =>
+  // Add this state for temporary subcategories at the top with other states
+  const [temporarySubcategories, setTemporarySubcategories] = useState<SubCategory[]>([]);
+  const [temporaryComponents, setTemporaryComponents] = useState<any[]>([]);
+
+  // Then update the filteredSubcategories memo to include temporary subcategories
+  const filteredSubcategories = useMemo(() => {
+    const allSubs = [...(allSubcategories || []), ...temporarySubcategories];
+    return allSubs
+      .filter((sub: any) => sub.categoryId === selectedCategoryId)
+      .map(mapApiSubCategoryToSubCategory);
+  }, [allSubcategories, temporarySubcategories, selectedCategoryId]);
+
+
+
+  const filteredComponents = useMemo(() => {
+    const allComps = [...(allComponents || []), ...temporaryComponents];
+    return allComps
+      .filter((comp: any) =>
+        filteredSubcategories.some(sub => sub.id === comp.subcategoryId)
+      )
+      .map(mapApiComponentToComponent);
+  }, [allComponents, temporaryComponents, filteredSubcategories]);
+
+
+  const loadingSubcategories = false;
+
+  // Memoized filtered categories including temporary ones
+  const filteredCategories = useMemo(() => {
+    const allCategories = [...categories, ...temporaryCategories];
+    return allCategories.filter(cat =>
       cat.categoryName?.toLowerCase().includes(categorySearchTerm.toLowerCase())
     );
-  };
+  }, [categories, temporaryCategories, categorySearchTerm]);
 
-  const isComponentDisabled = (componentId: string) => {
-    if (componentId === component.id) return false;
-    return usedComponentIds.includes(componentId);
-  };
+
+  // Get components ONLY for the currently selected subcategory
+  const currentSubcategoryComponents = useMemo(() =>
+    filteredComponents.filter(comp => comp.subcategoryId === component.subcategoryId),
+    [filteredComponents, component.subcategoryId]
+  );
+
+  // Get available component IDs ONLY for current subcategory
+  const availableComponentIds = useMemo(() =>
+    currentSubcategoryComponents.map(comp => comp.componentId).filter(Boolean),
+    [currentSubcategoryComponents]
+  );
+
+  // Memoized filtered keys for subcomponents - ONLY from current subcategory
+  const filteredKeys = useMemo(() =>
+    availableComponentIds.filter(key =>
+      key.toLowerCase().includes(searchTerm.toLowerCase())
+    ),
+    [availableComponentIds, searchTerm]
+  );
+
+  // Memoized unused keys - ONLY from current subcategory
+  const unusedKeys = useMemo(() =>
+    availableComponentIds.filter(key => !usedKeys.includes(key)),
+    [availableComponentIds, usedKeys]
+  );
+
+  // Memoized available subcategories
+  const availableSubcategories = useMemo(() => filteredSubcategories, [filteredSubcategories]);
+
+  // Memoized available options for subcategory selection
+  const allAvailableOptions = useMemo(() =>
+    availableSubcategories.map(sub => ({
+      id: sub.id,
+      componentName: sub.subcategoryName,
+      subcategoryId: sub.id,
+      categoryName: categories.find(cat => cat.id === selectedCategoryId)?.categoryName || "",
+      subcategoryName: sub.subcategoryName,
+      subComponents: []
+    })),
+    [availableSubcategories, categories, selectedCategoryId]
+  );
+
+  // Memoized filtered available options
+  const filteredAvailableOptions = useMemo(() =>
+    allAvailableOptions.filter(option =>
+      option.componentName?.toLowerCase().includes(componentSearchTerm.toLowerCase())
+    ),
+    [allAvailableOptions, componentSearchTerm]
+  );
+
+  // 1. Cleanup deleted subcategories - FIXED
+  useEffect(() => {
+    // Skip if it's a temporary subcategory (just added)
+    if (component.subcategoryId && component.subcategoryId.startsWith("temp-sub-")) {
+      return;
+    }
+
+    if (component.subcategoryId && filteredSubcategories.length > 0) {
+      const selectedSubExists = filteredSubcategories.some(
+        sub => sub.id === component.subcategoryId
+      );
+
+      if (!selectedSubExists) {
+        onUpdate({
+          ...component,
+          componentName: "",
+          subcategoryId: "",
+          subcategoryName: "",
+        });
+      }
+    }
+  }, [filteredSubcategories, component.subcategoryId]);
+
+  // 2. Cleanup deleted subcomponents - FIXED
+  useEffect(() => {
+    if (component.subComponents.some(sub => sub.key) && availableComponentIds.length > 0) {
+      let needsUpdate = false;
+      const updatedSubComponents = component.subComponents.map(sub => {
+        // Skip if it's a newly added key (empty or just being added)
+        if (!sub.key || isAddingNewKey === sub.id) {
+          return sub;
+        }
+
+        if (sub.key && !availableComponentIds.includes(sub.key)) {
+          needsUpdate = true;
+          return { ...sub, key: "", value: "" };
+        }
+        return sub;
+      });
+
+      if (needsUpdate) {
+        onUpdate({
+          ...component,
+          subComponents: updatedSubComponents,
+        });
+      }
+    }
+  }, [availableComponentIds, isAddingNewKey]); // Add isAddingNewKey dependency
 
   const updateComponentSelection = async (subcategoryId: string) => {
     try {
@@ -210,18 +189,20 @@ export default function ComponentItem({
       }
 
       // Find the selected subcategory
-      const selectedSubcategory = subCategories.find(sub => sub.id === subcategoryId);
+      const selectedSubcategory = filteredSubcategories.find(sub => sub.id === subcategoryId);
 
       if (selectedSubcategory) {
+        // Search in both categories and temporary categories
+        const allCategories = [...categories, ...temporaryCategories];
+        const selectedCategory = allCategories.find(cat => cat.id === selectedCategoryId);
+
         const updatedComponent = {
           ...component,
           id: component.id,
           componentName: selectedSubcategory.subcategoryName,
           subcategoryId: selectedSubcategory.id,
-          categoryName: categories.find(cat => cat.id === selectedCategoryId)?.categoryName || "",
+          categoryName: selectedCategory?.categoryName || "", // This should now work
           subcategoryName: selectedSubcategory.subcategoryName,
-          isWithdrawal: component.isWithdrawal,
-          // DON'T auto-populate subcomponents - keep them empty for manual selection
           subComponents: component.subComponents.length > 0 ? component.subComponents : [
             { id: `${Date.now()}-1`, key: "", value: "", componentId: component.id }
           ]
@@ -238,14 +219,16 @@ export default function ComponentItem({
     setNewComponentInput("");
     setComponentSearchTerm("");
   };
+
+
   const confirmNewComponent = async () => {
     if (newComponentInput.trim() && selectedCategoryId) {
-      const selectedCategory = categories.find(cat => cat.id === selectedCategoryId);
+      // Search in both categories and temporary categories
+      const allCategories = [...categories, ...temporaryCategories];
+      const selectedCategory = allCategories.find(cat => cat.id === selectedCategoryId);
 
-      // Generate temporary ID for local use only
       const newSubcategoryId = `temp-sub-${Date.now()}`;
 
-      // Create local subcategory only
       const newSubcategory: SubCategory = {
         id: newSubcategoryId,
         subcategoryName: newComponentInput.trim(),
@@ -253,21 +236,20 @@ export default function ComponentItem({
         components: []
       };
 
-      // Update local state only
-      setSubCategories(prev => [...prev, newSubcategory]);
+      // Add to temporary subcategories
+      setTemporarySubcategories(prev => [...prev, newSubcategory]);
 
-      const newComponent: Component = {
+      const updatedComponent = {
         ...component,
         id: component.id,
         componentName: newComponentInput.trim(),
         subcategoryId: newSubcategoryId,
-        categoryName: selectedCategory?.categoryName || "",
+        categoryName: selectedCategory?.categoryName || "", // This should now work
         subcategoryName: newComponentInput.trim(),
-        isWithdrawal: component.isWithdrawal,
         subComponents: component.subComponents
       };
 
-      onUpdate(newComponent);
+      onUpdate(updatedComponent);
     }
     cancelAddingNewComponent();
   };
@@ -290,7 +272,6 @@ export default function ComponentItem({
       subcategoryId: "",
       categoryName: categories.find(cat => cat.id === categoryId)?.categoryName || "",
       subcategoryName: "",
-      isWithdrawal: component.isWithdrawal,
       subComponents: component.subComponents.length > 0 ? component.subComponents : [
         { id: `${Date.now()}-1`, key: "", value: "", componentId: component.id }
       ]
@@ -312,8 +293,8 @@ export default function ComponentItem({
         subcategories: []
       };
 
-      // Add to local categories list
-      categories.push(newCategory); // if categories is state, use setCategories([...categories, newCategory])
+      // Add to temporary categories
+      setTemporaryCategories(prev => [...prev, newCategory]);
 
       onCategoryChange(newCategoryId);
 
@@ -324,7 +305,6 @@ export default function ComponentItem({
         subcategoryId: "",
         categoryName: newCategoryInput.trim(),
         subcategoryName: "",
-        isWithdrawal: component.isWithdrawal,
         subComponents: component.subComponents.length > 0
           ? component.subComponents
           : [{ id: `${Date.now()}-1`, key: "", value: "", componentId: component.id }]
@@ -388,14 +368,22 @@ export default function ComponentItem({
     setSearchTerm("");
   };
 
+
   const confirmNewKey = (subComponentId: string) => {
     if (newKeyInput.trim()) {
       const trimmedKey = newKeyInput.trim();
 
-      setLocalAvailableKeys(prev => {
-        const newKeys = prev.includes(trimmedKey) ? prev : [...prev, trimmedKey];
-        return newKeys;
-      });
+      // Create temporary component
+      const newComponent = {
+        id: `temp-comp-${Date.now()}`,
+        componentId: trimmedKey,
+        componentName: trimmedKey,
+        subcategoryId: component.subcategoryId,
+        categoryId: selectedCategoryId
+      };
+
+      // Add to temporary components
+      setTemporaryComponents(prev => [...prev, newComponent]);
 
       if (onAddNewKey) {
         onAddNewKey(trimmedKey);
@@ -413,51 +401,6 @@ export default function ComponentItem({
       updateSubComponentKey(subComponentId, value);
     }
   };
-
-
-
-  // Replace the current filteredKeys logic:
-  const availableComponentIds = components.map(comp => comp.componentId).filter(Boolean);
-  const filteredKeys = availableComponentIds.filter(key =>
-    key.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const unusedKeys = availableComponentIds.filter(key => !usedKeys.includes(key));
-
-  const allAvailableKeys = [...localAvailableKeys, ...availableComponentIds];
-
-  const filteredCategories = getFilteredCategories();
-
-  // Get all subcategories for the selected category
-  const availableSubcategories = subCategories;
-
-  // Show subcategories as the main options, not components
-  const allAvailableOptions = availableSubcategories.map(sub => ({
-    id: sub.id,
-    componentName: sub.subcategoryName, // Use subcategory name for display
-    subcategoryId: sub.id,
-    categoryName: categories.find(cat => cat.id === selectedCategoryId)?.categoryName || "",
-    subcategoryName: sub.subcategoryName,
-    isWithdrawal: false,
-    subComponents: []
-  }));
-
-  // Filter based on search term
-  const filteredAvailableOptions = allAvailableOptions.filter(option =>
-    option.componentName?.toLowerCase().includes(componentSearchTerm.toLowerCase())
-  );
-
-
-
-  // console.log('📊 Current state:', {
-  //   selectedCategoryId,
-  //   subCategories,
-  //   components,
-  //   availableSubcategories,
-  //   filteredAvailableOptions,
-  //   loadingSubcategories
-  // });
-
 
   return (
     <div className="p-4 border rounded-lg space-y-4 bg-background shadow-sm">
@@ -500,7 +443,7 @@ export default function ComponentItem({
             <Select value={selectedCategoryId} onValueChange={handleCategoryChange}>
               <SelectTrigger className="cursor-pointer">
                 <SelectValue placeholder="Select category">
-                  {selectedCategoryId ? categories.find(cat => cat.id === selectedCategoryId)?.categoryName : "Select category"}
+                  {selectedCategoryId ? filteredCategories.find(cat => cat.id === selectedCategoryId)?.categoryName : "Select category"}
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
@@ -592,7 +535,11 @@ export default function ComponentItem({
           </div>
         ) : (
           <Select
-            value={component.subcategoryId}
+            key={filteredSubcategories.length}
+            value={component.subcategoryId && filteredSubcategories.some(sub => sub.id === component.subcategoryId)
+              ? component.subcategoryId
+              : ""
+            }
             onValueChange={updateComponentSelection}
             disabled={!selectedCategoryId || loadingSubcategories}
           >
@@ -661,34 +608,6 @@ export default function ComponentItem({
         )}
       </div>
 
-
-      {/* Transaction Type */}
-      <div className="flex items-center gap-4 p-3 bg-muted/30 rounded-lg">
-        <span className="font-semibold text-sm">Transaction Type:</span>
-        <div className="flex gap-2">
-          <Button
-            type="button"
-            variant={component.isWithdrawal ? "outline" : "default"}
-            size="sm"
-            onClick={() => onUpdate({ ...component, isWithdrawal: false })}
-            className={`flex items-center gap-2 ${!component.isWithdrawal ? "bg-green-600 hover:bg-green-700" : ""}`}
-          >
-            <Plus className="h-3 w-3 cursor-pointer" />
-            Intake
-          </Button>
-          <Button
-            type="button"
-            variant={component.isWithdrawal ? "default" : "outline"}
-            size="sm"
-            onClick={() => onUpdate({ ...component, isWithdrawal: true })}
-            className={`flex items-center gap-2 ${component.isWithdrawal ? "bg-red-600 hover:bg-red-700" : ""}`}
-          >
-            <Minus className="h-3 w-3 cursor-pointer" />
-            Withdrawal
-          </Button>
-        </div>
-      </div>
-
       {/* Subcomponents Section */}
       <div className="space-y-4 pl-6 border-l-2 border-blue-200">
         <div className="flex items-center justify-between">
@@ -743,7 +662,10 @@ export default function ComponentItem({
                 </div>
               ) : (
                 <Select
-                  value={subComponent.key}
+                  value={subComponent.key && availableComponentIds.includes(subComponent.key)
+                    ? subComponent.key
+                    : ""
+                  }
                   onValueChange={(value) => handleKeySelect(subComponent.id, value)}
                 >
                   <SelectTrigger className="relative cursor-pointer">
@@ -842,4 +764,3 @@ export default function ComponentItem({
     </div>
   );
 }
-

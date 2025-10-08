@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Plus } from "lucide-react";
+import { Loader2, Plus, Minus } from "lucide-react";
 import ComponentItem from "./Components/form";
 import { Component, Category } from "@/types/form.types";
 import Navbar from "@/components/layout/navbar";
@@ -11,20 +11,16 @@ import ResponseModal from "@/components/widgets/response";
 import { client } from "@/services/schema";
 import Footer from "@/components/layout/footer";
 import Loading from "@/components/widgets/loading";
+import { mapApiCategoryToCategory } from "./Components/map.categories.helper";
 
-// Helper function to map API data to our types
-const mapApiCategoryToCategory = (apiCategory: any): Category => ({
-  id: apiCategory.id,
-  categoryName: apiCategory.categoryName,
-  subcategories: []
-});
 
 export default function ComponentForm() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [displayedComponents, setDisplayedComponents] = useState<Component[]>([]);
   const [loading, setLoading] = useState(true);
-  const [componentsLoading, setComponentsLoading] = useState(false);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [transactionType, setTransactionType] = useState<boolean>(false);
+
 
   const [show, setShow] = useState(false);
   const [successful, setSuccessful] = useState(false);
@@ -33,41 +29,57 @@ export default function ComponentForm() {
   const [availableKeys, setAvailableKeys] = useState<string[]>([]);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<Record<string, string>>({});
 
+
+  const [allSubcategories, setAllSubcategories] = useState<any[]>([]);
+  const [allComponents, setAllComponents] = useState<any[]>([]);
+
+  const addNewComponent = () => {
+    const newComponent: Component = {
+      id: Date.now().toString(),
+      componentId: "",
+      componentName: "",
+      subcategoryId: "",
+      subComponents: [
+        {
+          id: `${Date.now()}-1`,
+          key: "",
+          value: "",
+          componentId: Date.now().toString()
+        }
+      ]
+    };
+
+    setDisplayedComponents([newComponent, ...displayedComponents]);
+  };
+
   // Fetch only categories
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      setCategoriesLoading(true);
+    const subscription = client.models.Category.observeQuery().subscribe({
+      next: ({ items: categoriesData, isSynced }) => {
+        if (isSynced) {
 
-      try {
-        // Fetch categories only
-        const { data: categoriesData, errors: categoriesErrors } =
-          await client.models.Category.list();
+          // Map API data to our Category type
+          const mappedCategories: Category[] = (categoriesData || []).map(mapApiCategoryToCategory);
+          setCategories(mappedCategories);
 
-        if (categoriesErrors) {
-          console.error("Error fetching categories:", categoriesErrors);
-          return;
+          // Start with one empty component automatically AFTER data is loaded
+          if (displayedComponents.length === 0) {
+            addNewComponent();
+          }
+
+          setCategoriesLoading(false);
+          setLoading(false);
         }
-
-        // Map API data to our Category type
-        const mappedCategories: Category[] = (categoriesData || []).map(mapApiCategoryToCategory);
-        setCategories(mappedCategories);
-
-        // Start with one empty component automatically AFTER data is loaded
-        if (displayedComponents.length === 0) {
-          addNewComponent();
-        }
-
-      } catch (error) {
-        console.error("Error fetching data:", error);
-      } finally {
+      },
+      error: (error) => {
+        console.error("Error subscribing to categories:", error);
         setCategoriesLoading(false);
         setLoading(false);
       }
-    };
+    });
 
-    fetchData();
-  }, []);
+    return () => subscription.unsubscribe();
+  }, [addNewComponent, displayedComponents.length]);
 
   const updateComponent = (id: string, updatedComponent: Component) => {
     setDisplayedComponents(
@@ -84,36 +96,6 @@ export default function ComponentForm() {
     }));
   };
 
-  const getFilteredKeysForComponent = (componentName: string): string[] => {
-    if (!componentName) return [];
-    return availableKeys;
-  };
-
-  const getUsedComponentIds = (currentComponentId?: string): string[] => {
-    return displayedComponents
-      .filter(comp => comp.id !== currentComponentId && comp.componentName.trim() !== "")
-      .map(comp => comp.id);
-  };
-
-  const addNewComponent = () => {
-    const newComponent: Component = {
-      id: Date.now().toString(),
-      componentId:"",
-      componentName: "",
-      subcategoryId: "",
-      isWithdrawal: false,
-      subComponents: [
-        {
-          id: `${Date.now()}-1`,
-          key: "",
-          value: "",
-          componentId: Date.now().toString()
-        }
-      ]
-    };
-
-    setDisplayedComponents([newComponent, ...displayedComponents]);
-  };
 
   const removeComponent = (id: string) => {
     setDisplayedComponents(displayedComponents.filter((component) => component.id !== id));
@@ -129,9 +111,8 @@ export default function ComponentForm() {
     try {
       setLoading(true);
       e.preventDefault();
-      
-      const savedUser = localStorage.getItem("user");
 
+      const savedUser = localStorage.getItem("user");  
       const result = displayedComponents.reduce((acc, component) => {
         if (component.componentName.trim() !== "" && component.categoryName) {
           const subAcc = component.subComponents.reduce((subAcc, sub) => {
@@ -149,7 +130,7 @@ export default function ComponentForm() {
             const subKey = component.subcategoryName || component.componentName;
 
             acc[component.categoryName][subKey] = {
-              isWithdrawal: component.isWithdrawal,
+              isWithdrawal: transactionType,
               subComponents: subAcc
             };
           }
@@ -157,7 +138,7 @@ export default function ComponentForm() {
         return acc;
       }, {} as Record<string, any>);
 
-    
+      
       // Your existing API call
       const res = await fetch("/api/click-up", {
         method: "POST",
@@ -178,12 +159,11 @@ export default function ComponentForm() {
       setDisplayedComponents([
         {
           id: Date.now().toString(),
-          componentId:"",
+          componentId: "",
           componentName: "",
           subcategoryId: "",
           categoryName: "",
           subcategoryName: "",
-          isWithdrawal: false,
           subComponents: [
             {
               id: `${Date.now()}-1`,
@@ -217,11 +197,35 @@ export default function ComponentForm() {
     return usedKeys;
   };
   //track used subcategories
-const getUsedSubcategoryIds = (currentComponentId?: string): string[] => {
-  return displayedComponents
-    .filter(comp => comp.id !== currentComponentId && comp.subcategoryId)
-    .map(comp => comp.subcategoryId);
-};
+  const getUsedSubcategoryIds = (currentComponentId?: string): string[] => {
+    return displayedComponents
+      .filter(comp => comp.id !== currentComponentId && comp.subcategoryId)
+      .map(comp => comp.subcategoryId);
+  };
+
+  // Update child subscriptions to store data
+  useEffect(() => {
+    const subSubscription = client.models.SubCategory.observeQuery().subscribe({
+      next: ({ items: subcategoriesData, isSynced }) => {
+        if (isSynced) {
+          setAllSubcategories(subcategoriesData || []);
+        }
+      }
+    });
+
+    const compSubscription = client.models.Component.observeQuery().subscribe({
+      next: ({ items: componentsData, isSynced }) => {
+        if (isSynced) {
+          setAllComponents(componentsData || []);
+        }
+      }
+    });
+
+    return () => {
+      subSubscription.unsubscribe();
+      compSubscription.unsubscribe();
+    };
+  }, [addNewComponent, displayedComponents.length]);
 
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
@@ -241,6 +245,33 @@ const getUsedSubcategoryIds = (currentComponentId?: string): string[] => {
               <CardContent>
                 <div className="overflow-x-auto">
                   <form onSubmit={handleSubmit} className="space-y-6 min-w-[600px]">
+                    {/* Transaction Type */}
+
+                    <div className="flex items-center gap-4 p-3 bg-muted/30 rounded-lg">
+                      <span className="font-semibold text-sm">Transaction Type:</span>
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          variant={transactionType ? "outline" : "default"}
+                          size="sm"
+                          onClick={() => setTransactionType(false)}
+                          className={`flex items-center gap-2 ${!transactionType ? "bg-green-600 hover:bg-green-700" : ""}`}
+                        >
+                          <Plus className="h-3 w-3 cursor-pointer" />
+                          Intake
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={transactionType ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setTransactionType(true)}
+                          className={`flex items-center gap-2 ${transactionType ? "bg-red-600 hover:bg-red-700" : ""}`}
+                        >
+                          <Minus className="h-3 w-3 cursor-pointer" />
+                          Withdrawal
+                        </Button>
+                      </div>
+                    </div>
                     {/* Add Category Button */}
                     <div className="flex justify-end">
                       <Button
@@ -257,20 +288,18 @@ const getUsedSubcategoryIds = (currentComponentId?: string): string[] => {
                     {displayedComponents.map((component) => (
                       <ComponentItem
                         key={component.id}
-                        componentsLoading={componentsLoading || categoriesLoading}
-                        setComponentsLoading={setComponentsLoading}
                         component={component}
                         selectedCategoryId={selectedCategoryIds[component.id] || ""}
                         onCategoryChange={(categoryId) => updateComponentCategory(component.id, categoryId)}
-                        availableKeys={getFilteredKeysForComponent(component.componentName)}
                         usedKeys={getUsedKeys()}
-                        usedComponentIds={getUsedComponentIds(component.id)}
                         categories={categories}
                         onUpdate={(updatedComponent) => updateComponent(component.id, updatedComponent)}
                         onRemove={() => removeComponent(component.id)}
                         isRemovable={true}
                         onAddNewKey={handleAddNewKey}
-                        usedSubcategoryIds={getUsedSubcategoryIds(component.id)}  
+                        usedSubcategoryIds={getUsedSubcategoryIds(component.id)}
+                        allSubcategories={allSubcategories}
+                        allComponents={allComponents}
                       />
                     ))}
 
