@@ -34,7 +34,7 @@ const schema = a.schema({
     secondarySupplierId: a.string(),
     secondarySupplier: a.string(),
     secondarySupplierItemCode: a.string(),
-    qtyExStock: a.integer(),
+    minimumStock: a.integer(),
     currentStock: a.integer(),
     notes: a.string(),
     history: a.string(),

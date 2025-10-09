@@ -21,7 +21,7 @@ export interface Component {
   secondarySupplierId: string;
   secondarySupplier: string;
   secondarySupplierItemCode: string;
-  qtyExStock: number;
+  minimumStock: number;
   currentStock: number;
   notes: string;
   history: string;

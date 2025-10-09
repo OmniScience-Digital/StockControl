@@ -99,7 +99,7 @@ export default function SubcategoriesPage() {
               secondarySupplierId: item.secondarySupplierId || "",
               secondarySupplier: item.secondarySupplier || "",
               secondarySupplierItemCode: item.secondarySupplierItemCode || "",
-              qtyExStock: item.qtyExStock || 0,
+              minimumStock: item.minimumStock || 0,
               currentStock: item.currentStock || 0,
               notes: item.notes || "",
               history: item.history || "",
@@ -138,7 +138,7 @@ export default function SubcategoriesPage() {
         primarySupplierItemCode: updatedComponent.primarySupplierItemCode,
         secondarySupplier: updatedComponent.secondarySupplier,
         secondarySupplierItemCode: updatedComponent.secondarySupplierItemCode,
-        qtyExStock: updatedComponent.qtyExStock,
+        minimumStock: updatedComponent.minimumStock,
         currentStock: updatedComponent.currentStock,
         notes: updatedComponent.notes,
       });

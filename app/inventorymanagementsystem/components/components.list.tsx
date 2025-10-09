@@ -22,10 +22,10 @@ interface ComponentsListProps {
   onComponentDelete: (componentId: string) => void;
 }
 
-export function ComponentsList({ 
-  components, 
-  onComponentUpdate, 
-  onComponentDelete 
+export function ComponentsList({
+  components,
+  onComponentUpdate,
+  onComponentDelete
 }: ComponentsListProps) {
   const [editingComponent, setEditingComponent] = useState<Component | null>(null);
   const [editedComponent, setEditedComponent] = useState<Partial<Component>>({});
@@ -36,16 +36,16 @@ export function ComponentsList({
 
   const filteredComponents = useMemo(() => {
     return components.filter(component => {
-      const matchesSearch = 
+      const matchesSearch =
         component.componentId.toLowerCase().includes(searchTerm.toLowerCase()) ||
         component.componentName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         component.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         component.primarySupplier?.toLowerCase().includes(searchTerm.toLowerCase());
 
-      const matchesStock = 
+      const matchesStock =
         stockFilter === 'all' ||
-        (stockFilter === 'in-stock' && (component.currentStock > 0 || component.qtyExStock > 0)) ||
-        (stockFilter === 'out-of-stock' && component.currentStock === 0 && component.qtyExStock === 0);
+        (stockFilter === 'in-stock' && (component.currentStock > component.minimumStock)) ||
+        (stockFilter === 'out-of-stock' && (component.currentStock < component.minimumStock));
 
       return matchesSearch && matchesStock;
     });
@@ -86,9 +86,9 @@ export function ComponentsList({
 
   const handleDelete = (componentId: string, componentName: string) => {
     console.log("Deleting component:", componentId, componentName);
-   //if (confirm(`Are you sure you want to delete "${componentName || componentId}"? This action cannot be undone.`)) {
-      onComponentDelete(componentId);
-   // }
+    //if (confirm(`Are you sure you want to delete "${componentName || componentId}"? This action cannot be undone.`)) {
+    onComponentDelete(componentId);
+    // }
   };
 
   if (components.length === 0) {
@@ -112,7 +112,7 @@ export function ComponentsList({
               {filteredComponents.length}
             </Badge>
           </CardTitle>
-          
+
           <div className="flex flex-col sm:flex-row gap-2">
             <div className="relative flex-1 sm:w-64">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -123,7 +123,7 @@ export function ComponentsList({
                 className="pl-8 h-9 text-sm"
               />
             </div>
-            
+
             <div className="flex gap-1">
               <Button
                 variant={stockFilter === 'all' ? "default" : "outline"}
@@ -153,7 +153,7 @@ export function ComponentsList({
           </div>
         </div>
       </CardHeader>
-      
+
       <CardContent className="pt-0">
         {/* Components Table */}
         <div className="space-y-2">
@@ -229,8 +229,8 @@ export function ComponentsList({
                       <label className="text-sm font-medium">Qty Ex Stock</label>
                       <Input
                         type="number"
-                        value={editedComponent.qtyExStock || 0}
-                        onChange={(e) => handleChange("qtyExStock", parseInt(e.target.value) || 0)}
+                        value={editedComponent.minimumStock || 0}
+                        onChange={(e) => handleChange("minimumStock", parseInt(e.target.value) || 0)}
                         className="h-9"
                       />
                     </div>
@@ -333,8 +333,8 @@ export function ComponentsList({
                           <div className="flex items-center gap-2">
                             <Warehouse className="h-4 w-4 text-muted-foreground" />
                             <span className="text-muted-foreground text-sm">Ex Stock: </span>
-                            <span className={component.qtyExStock > 0 ? "text-green-600 font-medium" : "text-red-600"}>
-                              {component.qtyExStock}
+                            <span className={component.minimumStock > 0 ? "text-green-600 font-medium" : "text-red-600"}>
+                              {component.minimumStock}
                             </span>
                           </div>
                           <div className="flex items-center gap-2">
@@ -363,7 +363,7 @@ export function ComponentsList({
                       </div>
                     </div>
                   </div>
-                  
+
                   {/* Action Buttons */}
                   <div className="flex gap-2 lg:flex-col lg:self-start">
                     <Button
@@ -375,7 +375,7 @@ export function ComponentsList({
                       <Edit2 className="h-3 w-3 mr-1" />
                       Edit
                     </Button>
-                    
+
                     <Button
                       size="sm"
                       variant="destructive"
