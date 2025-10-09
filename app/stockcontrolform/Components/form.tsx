@@ -131,7 +131,7 @@ export default function ComponentItem({
     ),
     [allAvailableOptions, componentSearchTerm]
   );
-  // 1. Cleanup deleted subcategories - FIXED
+  // 1. Cleanup deleted subcategories
   useEffect(() => {
     // Skip if it's a temporary subcategory (just added)
     if (component.subcategoryId && component.subcategoryId.startsWith("temp-sub-")) {
@@ -221,6 +221,7 @@ export default function ComponentItem({
     setComponentSearchTerm("");
   };
 
+  
 
   const confirmNewComponent = async () => {
     if (newComponentInput.trim() && selectedCategoryId) {
@@ -285,35 +286,85 @@ export default function ComponentItem({
     setCategorySearchTerm("");
   };
 
-  const confirmNewCategory = () => {
-    if (newCategoryInput.trim()) {
-      const newCategoryId = `new-cat-${Date.now()}`;
-      const newCategory: Category = {
-        id: newCategoryId,
-        categoryName: newCategoryInput.trim(),
-        subcategories: []
-      };
+  // const confirmNewCategory = () => {
+  //   if (newCategoryInput.trim()) {
+  //     const newCategoryId = `new-cat-${Date.now()}`;
+  //     const newCategory: Category = {
+  //       id: newCategoryId,
+  //       categoryName: newCategoryInput.trim(),
+  //       subcategories: []
+  //     };
 
-      // Add to temporary categories
-      setTemporaryCategories(prev => [...prev, newCategory]);
+  //     // Add to temporary categories
+  //     setTemporaryCategories(prev => [...prev, newCategory]);
 
-      onCategoryChange(newCategoryId);
+  //     onCategoryChange(newCategoryId);
 
-      onUpdate({
-        ...component,
-        id: component.id,
-        componentName: "",
-        subcategoryId: "",
-        categoryName: newCategoryInput.trim(),
-        subcategoryName: "",
-        subComponents: component.subComponents.length > 0
-          ? component.subComponents
-          : [{ id: `${Date.now()}-1`, key: "", value: "", componentId: component.id }]
-      });
-    }
-    cancelAddingNewCategory();
-  };
+  //     onUpdate({
+  //       ...component,
+  //       id: component.id,
+  //       componentName: "",
+  //       subcategoryId: "",
+  //       categoryName: newCategoryInput.trim(),
+  //       subcategoryName: "",
+  //       subComponents: component.subComponents.length > 0
+  //         ? component.subComponents
+  //         : [{ id: `${Date.now()}-1`, key: "", value: "", componentId: component.id }]
+  //     });
+  //   }
+  //   cancelAddingNewCategory();
+  // };
 
+
+  // Add this useEffect to debug the category flow
+useEffect(() => {
+  console.log("=== CATEGORY DEBUG ===");
+  console.log("selectedCategoryId:", selectedCategoryId);
+  console.log("isAddingNewCategory:", isAddingNewCategory);
+  console.log("temporaryCategories:", temporaryCategories);
+  console.log("Subcategory Select DISABLED:", !selectedCategoryId || subcategoriesLoading);
+  console.log("!selectedCategoryId:", !selectedCategoryId);
+  console.log("subcategoriesLoading:", subcategoriesLoading);
+}, [selectedCategoryId, isAddingNewCategory, temporaryCategories, subcategoriesLoading]);
+
+// Debug the confirmNewCategory function
+const confirmNewCategory = () => {
+  console.log("=== CONFIRM NEW CATEGORY CLICKED ===");
+  console.log("Current selectedCategoryId (before):", selectedCategoryId);
+  
+  if (newCategoryInput.trim()) {
+    const newCategoryId = `new-cat-${Date.now()}`;
+    console.log("Setting newCategoryId:", newCategoryId);
+
+    const newCategory: Category = {
+      id: newCategoryId,
+      categoryName: newCategoryInput.trim(),
+      subcategories: []
+    };
+
+    setTemporaryCategories(prev => {
+      console.log("Updating temporaryCategories with:", newCategory);
+      return [...prev, newCategory];
+    });
+
+    console.log("Calling onCategoryChange with:", newCategoryId);
+    onCategoryChange(newCategoryId);
+
+    console.log("Calling onUpdate - this might be the problem");
+    onUpdate({
+      ...component,
+      id: component.id,
+      componentName: "",
+      subcategoryId: "", // RESETTING SUBCATEGORY
+      categoryName: newCategoryInput.trim(),
+      subcategoryName: "",
+      subComponents: component.subComponents.length > 0
+        ? component.subComponents
+        : [{ id: `${Date.now()}-1`, key: "", value: "", componentId: component.id }]
+    });
+  }
+  cancelAddingNewCategory();
+};
   const addSubComponent = () => {
     const newSubComponent = {
       id: `${component.id}-${Date.now()}`,
@@ -326,6 +377,8 @@ export default function ComponentItem({
       subComponents: [...component.subComponents, newSubComponent]
     });
   };
+
+
 
   const removeSubComponent = (subComponentId: string) => {
     if (component.subComponents.length > 1) {
@@ -508,116 +561,109 @@ export default function ComponentItem({
 
       {/* Subcategory Selection */}
       <div className="space-y-2">
-        <label className="text-sm font-medium">Subcategory</label>
-        {isAddingNewComponent ? (
-          <div className="space-y-1">
-            <div className="flex gap-2">
+  <label className="text-sm font-medium">Subcategory</label>
+  {isAddingNewComponent ? (
+    <div className="space-y-1">
+      <div className="flex gap-2">
+        <Input
+          value={newComponentInput}
+          onChange={(e) => setNewComponentInput(e.target.value)}
+          placeholder="Enter new subcategory name..."
+          className="flex-1"
+          autoFocus
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') confirmNewComponent();
+            if (e.key === 'Escape') cancelAddingNewComponent();
+          }}
+        />
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          onClick={cancelAddingNewComponent}
+        >
+          <X className="h-4 w-4 cursor-pointer" />
+        </Button>
+        <Button
+          type="button"
+          onClick={confirmNewComponent}
+          disabled={!newComponentInput.trim() || !selectedCategoryId}
+        >
+          <Plus className="h-4 w-4 cursor-pointer" />
+        </Button>
+      </div>
+      <div className="text-xs text-gray-500">
+        Subcategory will be added to selected category
+      </div>
+    </div>
+  ) : (
+    <Select
+      key={filteredSubcategories.length}
+      value={component.subcategoryId && filteredSubcategories.some(sub => sub.id === component.subcategoryId)
+        ? component.subcategoryId
+        : ""
+      }
+      onValueChange={updateComponentSelection}
+      disabled={!selectedCategoryId}
+    >
+      <SelectTrigger className="w-full cursor-pointer">
+        <SelectValue placeholder="Select a subcategory">
+          {component.componentName || "Select a subcategory..."}
+        </SelectValue>
+      </SelectTrigger>
+      <SelectContent className="max-h-60">
+        <>
+          <div className="p-2 border-b">
+            <div className="relative">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
               <Input
-                value={newComponentInput}
-                onChange={(e) => setNewComponentInput(e.target.value)}
-                placeholder="Enter new subcategory name..."
-                className="flex-1"
-                autoFocus
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') confirmNewComponent();
-                  if (e.key === 'Escape') cancelAddingNewComponent();
-                }}
+                placeholder="Search subcategories..."
+                value={componentSearchTerm}
+                onChange={(e) => setComponentSearchTerm(e.target.value)}
+                className="pl-8 pr-8 h-9"
               />
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                onClick={cancelAddingNewComponent}
-              >
-                <X className="h-4 w-4 cursor-pointer" />
-              </Button>
-              <Button
-                type="button"
-                onClick={confirmNewComponent}
-                disabled={!newComponentInput.trim() || !selectedCategoryId}
-              >
-                <Plus className="h-4 w-4 cursor-pointer" />
-              </Button>
-            </div>
-            <div className="text-xs text-gray-500">
-              Subcategory will be added to selected category
+              {componentSearchTerm && (
+                <X
+                  className="absolute right-2 top-2.5 h-4 w-4 text-gray-500 cursor-pointer"
+                  onClick={() => setComponentSearchTerm("")}
+                />
+              )}
             </div>
           </div>
-        ) : (
-          <Select
-            key={filteredSubcategories.length}
-            value={component.subcategoryId && filteredSubcategories.some(sub => sub.id === component.subcategoryId)
-              ? component.subcategoryId
-              : ""
-            }
-            onValueChange={updateComponentSelection}
-            disabled={!selectedCategoryId || subcategoriesLoading}
-          >
-            <SelectTrigger className="w-full cursor-pointer">
-              <SelectValue placeholder="Select a subcategory">
-                {component.componentName || "Select a subcategory..."}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent className="max-h-60">
-              {subcategoriesLoading ? (
-                <div className="p-4 text-center">
-                  <Loading />
-                </div>
-              ) : (
-                <>
-                  <div className="p-2 border-b">
-                    <div className="relative">
-                      <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
-                      <Input
-                        placeholder="Search subcategories..."
-                        value={componentSearchTerm}
-                        onChange={(e) => setComponentSearchTerm(e.target.value)}
-                        className="pl-8 pr-8 h-9"
-                      />
-                      {componentSearchTerm && (
-                        <X
-                          className="absolute right-2 top-2.5 h-4 w-4 text-gray-500 cursor-pointer"
-                          onClick={() => setComponentSearchTerm("")}
-                        />
-                      )}
-                    </div>
-                  </div>
-                  {filteredAvailableOptions.length > 0 ? (
-                    filteredAvailableOptions.map((comp) => (
-                      <SelectItem
-                        key={comp.id}
-                        value={comp.id}
-                        disabled={usedSubcategoryIds?.includes(comp.id) && component.subcategoryId !== comp.id}
-                        className="flex items-center justify-between cursor-pointer"
-                      >
-                        <span>{comp.componentName}</span>
-                        {usedSubcategoryIds?.includes(comp.id) && component.subcategoryId !== comp.id && (
-                          <span className="text-xs text-red-500 ml-2">(already used)</span>
-                        )}
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <div className="p-2 text-center text-gray-500 text-sm">
-                      {selectedCategoryId ? "No subcategories available for this category" : "Please select a category first"}
-                    </div>
-                  )}
+          {filteredAvailableOptions.length > 0 ? (
+            filteredAvailableOptions.map((comp) => (
+              <SelectItem
+                key={comp.id}
+                value={comp.id}
+                disabled={usedSubcategoryIds?.includes(comp.id) && component.subcategoryId !== comp.id}
+                className="flex items-center justify-between cursor-pointer"
+              >
+                <span>{comp.componentName}</span>
+                {usedSubcategoryIds?.includes(comp.id) && component.subcategoryId !== comp.id && (
+                  <span className="text-xs text-red-500 ml-2">(already used)</span>
+                )}
+              </SelectItem>
+            ))
+          ) : (
+            <div className="p-2 text-center text-gray-500 text-sm">
+              {selectedCategoryId ? "No subcategories available for this category" : "Please select a category first"}
+            </div>
+          )}
 
-                  <div className="border-t mt-1 pt-1">
-                    <SelectItem
-                      value="__add_new_component__"
-                      className="text-blue-600 font-medium flex items-center gap-2 cursor-pointer"
-                    >
-                      <PlusCircle className="h-4 w-4 cursor-pointer" />
-                      Add New Subcategory...
-                    </SelectItem>
-                  </div>
-                </>
-              )}
-            </SelectContent>
-          </Select>
-        )}
-      </div>
-
+          <div className="border-t mt-1 pt-1">
+            <SelectItem
+              value="__add_new_component__"
+              className="text-blue-600 font-medium flex items-center gap-2 cursor-pointer"
+            >
+              <PlusCircle className="h-4 w-4 cursor-pointer" />
+              Add New Subcategory...
+            </SelectItem>
+          </div>
+        </>
+      </SelectContent>
+    </Select>
+  )}
+</div>
       {/* Subcomponents Section */}
 
       <div className="space-y-4 pl-6 border-l-2 border-blue-200">
