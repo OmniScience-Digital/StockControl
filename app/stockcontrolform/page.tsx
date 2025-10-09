@@ -13,14 +13,14 @@ import Footer from "@/components/layout/footer";
 import Loading from "@/components/widgets/loading";
 import { mapApiCategoryToCategory } from "./Components/map.categories.helper";
 
+
 export default function ComponentForm() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [displayedComponents, setDisplayedComponents] = useState<Component[]>([]);
   const [loading, setLoading] = useState(true);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
-  const [subcategoriesLoading, setSubcategoriesLoading] = useState(true);
-  const [componentsLoading, setComponentsLoading] = useState(true);
   const [transactionType, setTransactionType] = useState<boolean>(false);
+
 
   const [show, setShow] = useState(false);
   const [successful, setSuccessful] = useState(false);
@@ -28,6 +28,7 @@ export default function ComponentForm() {
 
   const [availableKeys, setAvailableKeys] = useState<string[]>([]);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<Record<string, string>>({});
+
 
   const [allSubcategories, setAllSubcategories] = useState<any[]>([]);
   const [allComponents, setAllComponents] = useState<any[]>([]);
@@ -56,6 +57,7 @@ export default function ComponentForm() {
     const subscription = client.models.Category.observeQuery().subscribe({
       next: ({ items: categoriesData, isSynced }) => {
         if (isSynced) {
+
           // Map API data to our Category type
           const mappedCategories: Category[] = (categoriesData || []).map(mapApiCategoryToCategory);
           setCategories(mappedCategories);
@@ -77,7 +79,7 @@ export default function ComponentForm() {
     });
 
     return () => subscription.unsubscribe();
-  }, [displayedComponents.length]);
+  }, [addNewComponent, displayedComponents.length]);
 
   const updateComponent = (id: string, updatedComponent: Component) => {
     setDisplayedComponents(
@@ -93,6 +95,7 @@ export default function ComponentForm() {
       [componentId]: categoryId
     }));
   };
+
 
   const removeComponent = (id: string) => {
     setDisplayedComponents(displayedComponents.filter((component) => component.id !== id));
@@ -182,6 +185,7 @@ export default function ComponentForm() {
     }
   };
 
+
   const getUsedKeys = () => {
     const usedKeys: string[] = [];
     displayedComponents.forEach(component => {
@@ -191,7 +195,6 @@ export default function ComponentForm() {
     });
     return usedKeys;
   };
-
   //track used subcategories
   const getUsedSubcategoryIds = (currentComponentId?: string): string[] => {
     return displayedComponents
@@ -199,18 +202,13 @@ export default function ComponentForm() {
       .map(comp => comp.subcategoryId);
   };
 
-  // Update child subscriptions to store data - KEEP THE DEPENDENCIES
+  // Update child subscriptions to store data
   useEffect(() => {
     const subSubscription = client.models.SubCategory.observeQuery().subscribe({
       next: ({ items: subcategoriesData, isSynced }) => {
         if (isSynced) {
           setAllSubcategories(subcategoriesData || []);
-          setSubcategoriesLoading(false);
         }
-      },
-      error: (error) => {
-        console.error("Error subscribing to subcategories:", error);
-        setSubcategoriesLoading(false);
       }
     });
 
@@ -218,12 +216,7 @@ export default function ComponentForm() {
       next: ({ items: componentsData, isSynced }) => {
         if (isSynced) {
           setAllComponents(componentsData || []);
-          setComponentsLoading(false);
         }
-      },
-      error: (error) => {
-        console.error("Error subscribing to components:", error);
-        setComponentsLoading(false);
       }
     });
 
@@ -231,7 +224,7 @@ export default function ComponentForm() {
       subSubscription.unsubscribe();
       compSubscription.unsubscribe();
     };
-  }, [addNewComponent, displayedComponents.length]); // KEEP THESE DEPENDENCIES
+  }, [addNewComponent, displayedComponents.length]);
 
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
@@ -252,6 +245,7 @@ export default function ComponentForm() {
                 <div className="overflow-x-auto">
                   <form onSubmit={handleSubmit} className="space-y-6 min-w-[600px]">
                     {/* Transaction Type */}
+
                     <div className="flex items-center gap-4 p-3 bg-muted/30 rounded-lg">
                       <span className="font-semibold text-sm">Transaction Type:</span>
                       <div className="flex gap-2">
@@ -277,7 +271,6 @@ export default function ComponentForm() {
                         </Button>
                       </div>
                     </div>
-                    
                     {/* Add Category Button */}
                     <div className="flex justify-end">
                       <Button
@@ -290,6 +283,7 @@ export default function ComponentForm() {
                         Add Category
                       </Button>
                     </div>
+
 
                     {displayedComponents.map((component) => (
                       <ComponentItem
@@ -306,10 +300,10 @@ export default function ComponentForm() {
                         usedSubcategoryIds={getUsedSubcategoryIds(component.id)}
                         allSubcategories={allSubcategories}
                         allComponents={allComponents}
-                        // Add proper loading props
+                        // Add loading props
                         categoriesLoading={categoriesLoading}
-                        subcategoriesLoading={subcategoriesLoading}
-                        componentsLoading={componentsLoading}
+                        subcategoriesLoading={allSubcategories.length === 0} // You might want to track this separately
+                        componentsLoading={allComponents.length === 0} // You might want to track this separately
                       />
                     ))}
 
