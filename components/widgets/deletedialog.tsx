@@ -29,7 +29,7 @@ export function ConfirmDialog({
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <Button variant="destructive" onClick={handleConfirm}>
+          <Button variant="destructive" onClick={handleConfirm} className="cursor-pointer">
             Delete
           </Button>
         </DialogFooter>

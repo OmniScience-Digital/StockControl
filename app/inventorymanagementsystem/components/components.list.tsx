@@ -14,6 +14,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useState, useMemo } from "react";
+import { ConfirmDialog } from "@/components/widgets/deletedialog";
 import { Component } from "@/types/ims.types";
 
 interface ComponentsListProps {
@@ -34,17 +35,20 @@ export function ComponentsList({
   const [stockFilter, setStockFilter] = useState<'all' | 'in-stock' | 'out-of-stock'>('all');
   const itemsPerPage = 10;
 
+  const [opendelete, setOpendelete] = useState(false); // Dialog visibility state for deleting dashboard
+
   const filteredComponents = useMemo(() => {
     return components.filter(component => {
       const matchesSearch =
         component.componentId.toLowerCase().includes(searchTerm.toLowerCase()) ||
         component.componentName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         component.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        component.secondarySupplier?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         component.primarySupplier?.toLowerCase().includes(searchTerm.toLowerCase());
 
       const matchesStock =
         stockFilter === 'all' ||
-        (stockFilter === 'in-stock' && (component.currentStock > component.minimumStock)) ||
+        (stockFilter === 'in-stock' && (component.currentStock >= component.minimumStock)) ||
         (stockFilter === 'out-of-stock' && (component.currentStock < component.minimumStock));
 
       return matchesSearch && matchesStock;
@@ -64,7 +68,47 @@ export function ComponentsList({
 
   const handleSave = () => {
     if (editingComponent && editedComponent) {
-      onComponentUpdate({ ...editingComponent, ...editedComponent });
+      // Get user from localStorage - proper way to handle it
+      let storedName = "Unknown User";
+      try {
+        const userData = localStorage.getItem("user");
+        if (userData) {
+          // Remove any quotes and trim
+          storedName = userData.replace(/^"|"$/g, '').trim();
+        }
+      } catch (error) {
+        console.error("Error getting user from localStorage:", error);
+      }
+
+      // Get Johannesburg time
+      const johannesburgTime = new Date().toLocaleString("en-ZA", {
+        timeZone: "Africa/Johannesburg"
+      });
+
+      let historyEntries = "";
+
+      // Check if minimumStock changed
+      if (editedComponent.minimumStock !== undefined &&
+        editedComponent.minimumStock !== editingComponent.minimumStock) {
+        historyEntries += `${storedName} updated minimumStock from ${editingComponent.minimumStock} to ${editedComponent.minimumStock} at ${johannesburgTime}\n`;
+      }
+
+      // Check if currentStock changed
+      if (editedComponent.currentStock !== undefined &&
+        editedComponent.currentStock !== editingComponent.currentStock) {
+        historyEntries += `${storedName} updated currentStock from ${editingComponent.currentStock} to ${editedComponent.currentStock} at ${johannesburgTime}\n`;
+      }
+
+      // Create the updated component with history
+      const updatedComponent = {
+        ...editingComponent,
+        ...editedComponent,
+        history: historyEntries ? (editingComponent.history || "") + historyEntries : editingComponent.history
+      };
+
+      console.log("Saving component with history:", updatedComponent); // Debug log
+
+      onComponentUpdate(updatedComponent);
       setEditingComponent(null);
       setEditedComponent({});
     }
@@ -74,8 +118,8 @@ export function ComponentsList({
     setEditingComponent(null);
     setEditedComponent({});
   };
-
   const handleChange = (field: keyof Component, value: string | number) => {
+    // For all fields, update normally w
     setEditedComponent(prev => ({ ...prev, [field]: value }));
   };
 
@@ -84,12 +128,42 @@ export function ComponentsList({
     setCurrentPage(1);
   };
 
+  // Add state to track the component to be deleted
+  const [componentToDelete, setComponentToDelete] = useState<{ id: string, name: string } | null>(null);
+
+  // Modify your delete handler
   const handleDelete = (componentId: string, componentName: string) => {
-    console.log("Deleting component:", componentId, componentName);
-    //if (confirm(`Are you sure you want to delete "${componentName || componentId}"? This action cannot be undone.`)) {
-    onComponentDelete(componentId);
-    // }
+    try {
+      setOpendelete(false);
+      console.log("Deleting component:", componentId, componentName);
+
+      if (!componentId) {
+        console.warn("No ID provided for deletion.");
+        return;
+      }
+
+      onComponentDelete(componentId);
+      setComponentToDelete(null); // Clear after deletion
+    } catch (error) {
+      console.error("Error deleting component:", error);
+    }
   };
+
+  // Create a wrapper function with NO parameters
+  const handleConfirmWrapper = () => {
+    if (componentToDelete) {
+      handleDelete(componentToDelete.id, componentToDelete.name);
+    }
+  };
+
+  // Update your delete button click handler
+  const handleDeleteClick = (componentId: string, componentName: string) => {
+    setComponentToDelete({ id: componentId, name: componentName });
+    setOpendelete(true);
+  };
+
+
+
 
   if (components.length === 0) {
     return (
@@ -165,7 +239,8 @@ export function ComponentsList({
                   <div className="flex justify-between items-start">
                     <h4 className="font-semibold text-base">Editing Component</h4>
                     <div className="flex gap-2">
-                      <Button size="sm" onClick={handleSave} className="h-8 text-xs cursor-pointer">
+                      <Button size="sm" onClick={handleSave}
+                        className="h-8 text-xs cursor-pointer bg-[#165b8c] text-white hover:bg-[#1e6fae] transition-colors duration-200">
                         <Save className="h-3 w-3 mr-1 " />
                         Save
                       </Button>
@@ -226,7 +301,7 @@ export function ComponentsList({
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-sm font-medium">Qty Ex Stock</label>
+                      <label className="text-sm font-medium">Min Stock</label>
                       <Input
                         type="number"
                         value={editedComponent.minimumStock || 0}
@@ -274,7 +349,8 @@ export function ComponentsList({
                       value={editedComponent.history || ""}
                       onChange={(e) => handleChange("history", e.target.value)}
                       className="min-h-[80px] text-sm resize-vertical"
-                      placeholder="Enter component history, changes, or maintenance records..."
+                      placeholder="Component history, changes, or maintenance records..."
+                      readOnly
                     />
                   </div>
                 </div>
@@ -296,7 +372,7 @@ export function ComponentsList({
                         {component.description && (
                           <div className="mb-2">
                             <p className="text-sm text-muted-foreground mb-1 font-medium">Description:</p>
-                            <p className="text-sm bg-muted/50 p-2 rounded-md whitespace-pre-wrap">
+                             <p className="text-sm bg-muted/50 p-2 rounded-md whitespace-nowrap overflow-hidden text-ellipsis">
                               {component.description}
                             </p>
                           </div>
@@ -332,7 +408,7 @@ export function ComponentsList({
                         <div className="flex items-center gap-4">
                           <div className="flex items-center gap-2">
                             <Warehouse className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-muted-foreground text-sm">Ex Stock: </span>
+                            <span className="text-muted-foreground text-sm">Min Stock: </span>
                             <span className={component.minimumStock > 0 ? "text-green-600 font-medium" : "text-red-600"}>
                               {component.minimumStock}
                             </span>
@@ -347,16 +423,17 @@ export function ComponentsList({
                         {component.notes && (
                           <div>
                             <p className="text-muted-foreground text-sm mb-1">Notes:</p>
-                            <p className="text-sm bg-muted/50 p-2 rounded-md whitespace-pre-wrap">
+                            <p className="text-sm bg-muted/50 p-2 rounded-md whitespace-nowrap overflow-hidden text-ellipsis">
                               {component.notes}
                             </p>
                           </div>
                         )}
+
                         {component.history && (
                           <div>
                             <p className="text-muted-foreground text-sm mb-1">History:</p>
                             <p className="bg-muted/50 p-2 rounded-md whitespace-pre-wrap text-xs">
-                              {component.history}
+                              {component.history.split('\n').filter(line => line.trim()).slice(-1)[0]}
                             </p>
                           </div>
                         )}
@@ -379,7 +456,7 @@ export function ComponentsList({
                     <Button
                       size="sm"
                       variant="destructive"
-                      onClick={() => handleDelete(component.id, component.componentName || component.componentId)}
+                      onClick={() => handleDeleteClick(component.id, component.componentName || component.componentId)}
                       className="h-8 text-xs flex-1 lg:flex-none cursor-pointer"
                     >
                       <Trash2 className="h-3 w-3 mr-1 cursor-pointer" />
@@ -424,6 +501,15 @@ export function ComponentsList({
           </div>
         )}
       </CardContent>
+      <ConfirmDialog
+        open={opendelete}
+        setOpen={setOpendelete}
+        handleConfirm={handleConfirmWrapper}
+      />
     </Card>
   );
 }
+
+
+
+

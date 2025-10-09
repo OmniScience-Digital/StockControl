@@ -141,6 +141,7 @@ export default function SubcategoriesPage() {
         minimumStock: updatedComponent.minimumStock,
         currentStock: updatedComponent.currentStock,
         notes: updatedComponent.notes,
+        history: updatedComponent.history,
       });
     } catch (error) {
       console.error("Error updating component:", error);
@@ -210,7 +211,7 @@ export default function SubcategoriesPage() {
                     onClick={handleBackToSubcategories}
                     className="h-8 w-8 p-0"
                   >
-                    <ArrowLeft className="h-4 w-4" />
+                    <ArrowLeft className="h-4 w-4 cursor-pointer" />
                   </Button>
                   <Package className="h-5 w-5 text-primary" />
                   <div>
