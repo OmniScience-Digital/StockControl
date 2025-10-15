@@ -71,7 +71,7 @@ export default function SubcategoriesPage() {
     };
     fetchSubcategories();
   
-  }, [id]);
+  }, [subcategories]);
 
 
   // Fetch components when a subcategory is selected
