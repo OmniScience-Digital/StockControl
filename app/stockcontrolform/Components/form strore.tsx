@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -56,6 +56,29 @@ export default function ComponentItem({
   // Add this state for temporary subcategories at the top with other states
   const [temporarySubcategories, setTemporarySubcategories] = useState<SubCategory[]>([]);
   const [temporaryComponents, setTemporaryComponents] = useState<any[]>([]);
+
+
+  // Handle input search avoid losing focus on search
+  const categorySearchRef = useRef<HTMLInputElement>(null);
+  const componentSearchRef = useRef<HTMLInputElement>(null);
+  const subcomponentSearchRef = useRef<HTMLInputElement>(null);
+  // Focus handler to restore focus after re-render
+  const useAutoFocus = (ref: React.RefObject<HTMLInputElement>, value: string) => {
+    useEffect(() => {
+      if (ref.current) {
+        ref.current.focus();
+        // Keep cursor at the end
+        const val = ref.current.value;
+        ref.current.value = "";
+        ref.current.value = val;
+      }
+    }, [value]);
+  };
+
+  // Apply this to each search
+  useAutoFocus(categorySearchRef, categorySearchTerm);
+  useAutoFocus(componentSearchRef, componentSearchTerm);
+  useAutoFocus(subcomponentSearchRef, searchTerm);
 
   // Then update the filteredSubcategories memo to include temporary subcategories
   const filteredSubcategories = useMemo(() => {
@@ -131,7 +154,7 @@ export default function ComponentItem({
     ),
     [allAvailableOptions, componentSearchTerm]
   );
-  // 1. Cleanup deleted subcategories - FIXED
+  // 1. Cleanup deleted subcategories
   useEffect(() => {
     // Skip if it's a temporary subcategory (just added)
     if (component.subcategoryId && component.subcategoryId.startsWith("temp-sub-")) {
@@ -222,6 +245,7 @@ export default function ComponentItem({
   };
 
 
+
   const confirmNewComponent = async () => {
     if (newComponentInput.trim() && selectedCategoryId) {
       // Search in both categories and temporary categories
@@ -285,25 +309,35 @@ export default function ComponentItem({
     setCategorySearchTerm("");
   };
 
+  // Debug the confirmNewCategory function
   const confirmNewCategory = () => {
+    console.log("=== CONFIRM NEW CATEGORY CLICKED ===");
+    console.log("Current selectedCategoryId (before):", selectedCategoryId);
+
     if (newCategoryInput.trim()) {
       const newCategoryId = `new-cat-${Date.now()}`;
+      console.log("Setting newCategoryId:", newCategoryId);
+
       const newCategory: Category = {
         id: newCategoryId,
         categoryName: newCategoryInput.trim(),
         subcategories: []
       };
 
-      // Add to temporary categories
-      setTemporaryCategories(prev => [...prev, newCategory]);
+      setTemporaryCategories(prev => {
+        console.log("Updating temporaryCategories with:", newCategory);
+        return [...prev, newCategory];
+      });
 
+      console.log("Calling onCategoryChange with:", newCategoryId);
       onCategoryChange(newCategoryId);
 
+      console.log("Calling onUpdate - this might be the problem");
       onUpdate({
         ...component,
         id: component.id,
         componentName: "",
-        subcategoryId: "",
+        subcategoryId: "", // RESETTING SUBCATEGORY
         categoryName: newCategoryInput.trim(),
         subcategoryName: "",
         subComponents: component.subComponents.length > 0
@@ -313,7 +347,6 @@ export default function ComponentItem({
     }
     cancelAddingNewCategory();
   };
-
   const addSubComponent = () => {
     const newSubComponent = {
       id: `${component.id}-${Date.now()}`,
@@ -326,6 +359,8 @@ export default function ComponentItem({
       subComponents: [...component.subComponents, newSubComponent]
     });
   };
+
+
 
   const removeSubComponent = (subComponentId: string) => {
     if (component.subComponents.length > 1) {
@@ -452,6 +487,7 @@ export default function ComponentItem({
                   <div className="relative">
                     <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
                     <Input
+                     ref={categorySearchRef}
                       placeholder="Search categories..."
                       value={categorySearchTerm}
                       onChange={(e) => setCategorySearchTerm(e.target.value)}
@@ -551,7 +587,7 @@ export default function ComponentItem({
               : ""
             }
             onValueChange={updateComponentSelection}
-            disabled={!selectedCategoryId || subcategoriesLoading}
+            disabled={!selectedCategoryId}
           >
             <SelectTrigger className="w-full cursor-pointer">
               <SelectValue placeholder="Select a subcategory">
@@ -559,65 +595,59 @@ export default function ComponentItem({
               </SelectValue>
             </SelectTrigger>
             <SelectContent className="max-h-60">
-              {subcategoriesLoading ? (
-                <div className="p-4 text-center">
-                  <Loading />
-                </div>
-              ) : (
-                <>
-                  <div className="p-2 border-b">
-                    <div className="relative">
-                      <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
-                      <Input
-                        placeholder="Search subcategories..."
-                        value={componentSearchTerm}
-                        onChange={(e) => setComponentSearchTerm(e.target.value)}
-                        className="pl-8 pr-8 h-9"
+              <>
+                <div className="p-2 border-b">
+                  <div className="relative">
+                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
+                    <Input
+                    ref={componentSearchRef}
+                      placeholder="Search subcategories..."
+                      value={componentSearchTerm}
+                      onChange={(e) => setComponentSearchTerm(e.target.value)}
+                      className="pl-8 pr-8 h-9"
+                    />
+                    {componentSearchTerm && (
+                      <X
+                        className="absolute right-2 top-2.5 h-4 w-4 text-gray-500 cursor-pointer"
+                        onClick={() => setComponentSearchTerm("")}
                       />
-                      {componentSearchTerm && (
-                        <X
-                          className="absolute right-2 top-2.5 h-4 w-4 text-gray-500 cursor-pointer"
-                          onClick={() => setComponentSearchTerm("")}
-                        />
-                      )}
-                    </div>
+                    )}
                   </div>
-                  {filteredAvailableOptions.length > 0 ? (
-                    filteredAvailableOptions.map((comp) => (
-                      <SelectItem
-                        key={comp.id}
-                        value={comp.id}
-                        disabled={usedSubcategoryIds?.includes(comp.id) && component.subcategoryId !== comp.id}
-                        className="flex items-center justify-between cursor-pointer"
-                      >
-                        <span>{comp.componentName}</span>
-                        {usedSubcategoryIds?.includes(comp.id) && component.subcategoryId !== comp.id && (
-                          <span className="text-xs text-red-500 ml-2">(already used)</span>
-                        )}
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <div className="p-2 text-center text-gray-500 text-sm">
-                      {selectedCategoryId ? "No subcategories available for this category" : "Please select a category first"}
-                    </div>
-                  )}
-
-                  <div className="border-t mt-1 pt-1">
+                </div>
+                {filteredAvailableOptions.length > 0 ? (
+                  filteredAvailableOptions.map((comp) => (
                     <SelectItem
-                      value="__add_new_component__"
-                      className="text-blue-600 font-medium flex items-center gap-2 cursor-pointer"
+                      key={comp.id}
+                      value={comp.id}
+                      disabled={usedSubcategoryIds?.includes(comp.id) && component.subcategoryId !== comp.id}
+                      className="flex items-center justify-between cursor-pointer"
                     >
-                      <PlusCircle className="h-4 w-4 cursor-pointer" />
-                      Add New Subcategory...
+                      <span>{comp.componentName}</span>
+                      {usedSubcategoryIds?.includes(comp.id) && component.subcategoryId !== comp.id && (
+                        <span className="text-xs text-red-500 ml-2">(already used)</span>
+                      )}
                     </SelectItem>
+                  ))
+                ) : (
+                  <div className="p-2 text-center text-gray-500 text-sm">
+                    {selectedCategoryId ? "No subcategories available for this category" : "Please select a category first"}
                   </div>
-                </>
-              )}
+                )}
+
+                <div className="border-t mt-1 pt-1">
+                  <SelectItem
+                    value="__add_new_component__"
+                    className="text-blue-600 font-medium flex items-center gap-2 cursor-pointer"
+                  >
+                    <PlusCircle className="h-4 w-4 cursor-pointer" />
+                    Add New Subcategory...
+                  </SelectItem>
+                </div>
+              </>
             </SelectContent>
           </Select>
         )}
       </div>
-
       {/* Subcomponents Section */}
 
       <div className="space-y-4 pl-6 border-l-2 border-blue-200">
@@ -689,6 +719,7 @@ export default function ComponentItem({
                       <div className="relative">
                         <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
                         <Input
+                        ref={subcomponentSearchRef}
                           placeholder="Search subcomponents..."
                           value={searchTerm}
                           onChange={(e) => setSearchTerm(e.target.value)}

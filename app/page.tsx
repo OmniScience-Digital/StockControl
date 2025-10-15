@@ -2,7 +2,6 @@
 import { AuthScreen } from "@/components/auth/auth_screen";
 
 
-
 //this is the starting entry of the application
 
 export default function App() {

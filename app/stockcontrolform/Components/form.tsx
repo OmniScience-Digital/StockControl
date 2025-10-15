@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -57,12 +57,17 @@ export default function ComponentItem({
   const [temporarySubcategories, setTemporarySubcategories] = useState<SubCategory[]>([]);
   const [temporaryComponents, setTemporaryComponents] = useState<any[]>([]);
 
+  //category select
+  const [isCategoryOpen, setIsCategoryOpen] = useState(false);
+
+
+
   // Then update the filteredSubcategories memo to include temporary subcategories
   const filteredSubcategories = useMemo(() => {
     const allSubs = [...(allSubcategories || []), ...temporarySubcategories];
     return allSubs
       .filter((sub: any) => sub.categoryId === selectedCategoryId)
-      .map(mapApiSubCategoryToSubCategory);
+      .map(mapApiSubCategoryToSubCategory).sort((a, b) => a.subcategoryName?.localeCompare(b.subcategoryName));
   }, [allSubcategories, temporarySubcategories, selectedCategoryId]);
 
   const filteredComponents = useMemo(() => {
@@ -79,7 +84,8 @@ export default function ComponentItem({
     const allCategories = [...categories, ...temporaryCategories];
     return allCategories.filter(cat =>
       cat.categoryName?.toLowerCase().includes(categorySearchTerm.toLowerCase())
-    );
+    )
+    .sort((a, b) => a.categoryName?.localeCompare(b.categoryName)); 
   }, [categories, temporaryCategories, categorySearchTerm]);
 
   // Get components ONLY for the currently selected subcategory
@@ -98,7 +104,7 @@ export default function ComponentItem({
   const filteredKeys = useMemo(() =>
     availableComponentIds.filter(key =>
       key.toLowerCase().includes(searchTerm.toLowerCase())
-    ),
+    ).sort((a, b) => a.localeCompare(b)),
     [availableComponentIds, searchTerm]
   );
 
@@ -120,7 +126,7 @@ export default function ComponentItem({
       categoryName: categories.find(cat => cat.id === selectedCategoryId)?.categoryName || "",
       subcategoryName: sub.subcategoryName,
       subComponents: []
-    })),
+    })).sort((a, b) => a.componentName?.localeCompare(b.componentName)),
     [availableSubcategories, categories, selectedCategoryId]
   );
 
@@ -285,17 +291,21 @@ export default function ComponentItem({
     setCategorySearchTerm("");
   };
 
+  // Debug the confirmNewCategory function
   const confirmNewCategory = () => {
     if (newCategoryInput.trim()) {
       const newCategoryId = `new-cat-${Date.now()}`;
+
       const newCategory: Category = {
         id: newCategoryId,
         categoryName: newCategoryInput.trim(),
         subcategories: []
       };
 
-      // Add to temporary categories
-      setTemporaryCategories(prev => [...prev, newCategory]);
+      setTemporaryCategories(prev => {
+        return [...prev, newCategory];
+      });
+
 
       onCategoryChange(newCategoryId);
 
@@ -313,7 +323,6 @@ export default function ComponentItem({
     }
     cancelAddingNewCategory();
   };
-
   const addSubComponent = () => {
     const newSubComponent = {
       id: `${component.id}-${Date.now()}`,
@@ -447,11 +456,12 @@ export default function ComponentItem({
                   {selectedCategoryId ? filteredCategories.find(cat => cat.id === selectedCategoryId)?.categoryName : "Select category"}
                 </SelectValue>
               </SelectTrigger>
-              <SelectContent>
-                <div className="p-2 border-b">
+              <SelectContent     onCloseAutoFocus={(e) => e.preventDefault()}>
+                <div className="sticky top-0 z-10 bg-background p-2 border-b">
                   <div className="relative">
                     <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
                     <Input
+
                       placeholder="Search categories..."
                       value={categorySearchTerm}
                       onChange={(e) => setCategorySearchTerm(e.target.value)}
@@ -551,73 +561,66 @@ export default function ComponentItem({
               : ""
             }
             onValueChange={updateComponentSelection}
-            disabled={!selectedCategoryId || subcategoriesLoading}
+            disabled={!selectedCategoryId}
           >
             <SelectTrigger className="w-full cursor-pointer">
               <SelectValue placeholder="Select a subcategory">
                 {component.componentName || "Select a subcategory..."}
               </SelectValue>
             </SelectTrigger>
-            <SelectContent className="max-h-60">
-              {subcategoriesLoading ? (
-                <div className="p-4 text-center">
-                  <Loading />
-                </div>
-              ) : (
-                <>
-                  <div className="p-2 border-b">
-                    <div className="relative">
-                      <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
-                      <Input
-                        placeholder="Search subcategories..."
-                        value={componentSearchTerm}
-                        onChange={(e) => setComponentSearchTerm(e.target.value)}
-                        className="pl-8 pr-8 h-9"
+            <SelectContent className="max-h-60" onCloseAutoFocus={(e) => e.preventDefault()}>
+              <>
+                <div className="sticky top-0 z-10 bg-background p-2 border-b">
+                  <div className="relative">
+                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
+                    <Input
+                      placeholder="Search subcategories..."
+                      value={componentSearchTerm}
+                      onChange={(e) => setComponentSearchTerm(e.target.value)}
+                      className="pl-8 pr-8 h-9"
+                    />
+                    {componentSearchTerm && (
+                      <X
+                        className="absolute right-2 top-2.5 h-4 w-4 text-gray-500 cursor-pointer"
+                        onClick={() => setComponentSearchTerm("")}
                       />
-                      {componentSearchTerm && (
-                        <X
-                          className="absolute right-2 top-2.5 h-4 w-4 text-gray-500 cursor-pointer"
-                          onClick={() => setComponentSearchTerm("")}
-                        />
-                      )}
-                    </div>
+                    )}
                   </div>
-                  {filteredAvailableOptions.length > 0 ? (
-                    filteredAvailableOptions.map((comp) => (
-                      <SelectItem
-                        key={comp.id}
-                        value={comp.id}
-                        disabled={usedSubcategoryIds?.includes(comp.id) && component.subcategoryId !== comp.id}
-                        className="flex items-center justify-between cursor-pointer"
-                      >
-                        <span>{comp.componentName}</span>
-                        {usedSubcategoryIds?.includes(comp.id) && component.subcategoryId !== comp.id && (
-                          <span className="text-xs text-red-500 ml-2">(already used)</span>
-                        )}
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <div className="p-2 text-center text-gray-500 text-sm">
-                      {selectedCategoryId ? "No subcategories available for this category" : "Please select a category first"}
-                    </div>
-                  )}
-
-                  <div className="border-t mt-1 pt-1">
+                </div>
+                {filteredAvailableOptions.length > 0 ? (
+                  filteredAvailableOptions.map((comp) => (
                     <SelectItem
-                      value="__add_new_component__"
-                      className="text-blue-600 font-medium flex items-center gap-2 cursor-pointer"
+                      key={comp.id}
+                      value={comp.id}
+                      disabled={usedSubcategoryIds?.includes(comp.id) && component.subcategoryId !== comp.id}
+                      className="flex items-center justify-between cursor-pointer"
                     >
-                      <PlusCircle className="h-4 w-4 cursor-pointer" />
-                      Add New Subcategory...
+                      <span>{comp.componentName}</span>
+                      {usedSubcategoryIds?.includes(comp.id) && component.subcategoryId !== comp.id && (
+                        <span className="text-xs text-red-500 ml-2">(already used)</span>
+                      )}
                     </SelectItem>
+                  ))
+                ) : (
+                  <div className="p-2 text-center text-gray-500 text-sm">
+                    {selectedCategoryId ? "No subcategories available for this category" : "Please select a category first"}
                   </div>
-                </>
-              )}
+                )}
+
+                <div className="border-t mt-1 pt-1">
+                  <SelectItem
+                    value="__add_new_component__"
+                    className="text-blue-600 font-medium flex items-center gap-2 cursor-pointer"
+                  >
+                    <PlusCircle className="h-4 w-4 cursor-pointer" />
+                    Add New Subcategory...
+                  </SelectItem>
+                </div>
+              </>
             </SelectContent>
           </Select>
         )}
       </div>
-
       {/* Subcomponents Section */}
 
       <div className="space-y-4 pl-6 border-l-2 border-blue-200">
@@ -684,8 +687,8 @@ export default function ComponentItem({
                       {subComponent.key || "Select a subcomponent..."}
                     </SelectValue>
                   </SelectTrigger>
-                  <SelectContent className="max-h-60">
-                    <div className="p-2 border-b">
+                  <SelectContent className="max-h-60" onCloseAutoFocus={(e) => e.preventDefault()} key="category-select">
+                    <div className="sticky top-0 z-10 bg-background p-2 border-b">
                       <div className="relative">
                         <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
                         <Input
