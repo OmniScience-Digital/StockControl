@@ -76,6 +76,7 @@ const schema = a.schema({
 
 
   Inspection: a.model({
+    fleetid:a.string().required(),
     inspectionNo: a.integer(), 
     vehicleVin: a.string(), 
     inspectionDate: a.date(),
