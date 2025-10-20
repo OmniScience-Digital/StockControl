@@ -76,13 +76,16 @@ export default function Vehicle_Inspection_Form() {
 
 
         try {
-            const res = await fetch(`${securebaseUrltest}/vifclickup`, {
+
+            // API call
+            const plainData = Object.fromEntries(formData.entries());
+
+            const res = await fetch("/api/vifclick-up", {
                 method: "POST",
-                body: formData,
+                body: formData, // keep raw FormData
             });
 
             const resResponse = await res.json();
-
 
             setMessage(resResponse.message || "Successfully published to ClickUp");
             setShow(true);
@@ -93,7 +96,7 @@ export default function Vehicle_Inspection_Form() {
             setLoadingbtn(false);
         } finally {
             setLoadingbtn(false);
-                setFormState({
+            setFormState({
                 selectedVehicleId: "",
                 selectedVehicleReg: "",
                 odometerValue: "",
@@ -131,6 +134,13 @@ export default function Vehicle_Inspection_Form() {
                 <Loading />
             ) : (
                 <main className="flex-1 p-6 mt-20 min-h-screen">
+                    {show && (
+                        <ResponseModal
+                            successful={successful}
+                            message={message}
+                            setShow={setShow}
+                        />
+                    )}
                     <div className="max-w-4xl mx-auto">
                         <Card>
                             <CardHeader>
@@ -160,13 +170,7 @@ export default function Vehicle_Inspection_Form() {
                             </CardContent>
                         </Card>
                     </div>
-                    {show && (
-                        <ResponseModal
-                            successful={successful}
-                            message={message}
-                            setShow={setShow}
-                        />
-                    )}
+
                 </main>
             )}
             <Footer />
