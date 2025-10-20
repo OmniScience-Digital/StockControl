@@ -138,7 +138,7 @@ export default function ComponentForm() {
         return acc;
       }, {} as Record<string, any>);
 
-      // Your existing API call
+      // API call
       const res = await fetch("/api/click-up", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

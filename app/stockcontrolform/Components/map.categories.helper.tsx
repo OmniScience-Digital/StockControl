@@ -1,4 +1,5 @@
 import { Category, Component, SubCategory } from "@/types/form.types";
+import { vifForm } from "@/types/vifForm.types";
 
 // Helper function to map API data to our types
 export const mapApiCategoryToCategory = (apiCategory: any): Category => ({
@@ -6,6 +7,14 @@ export const mapApiCategoryToCategory = (apiCategory: any): Category => ({
   categoryName: apiCategory.categoryName,
   subcategories: []
 });
+
+// Helper function to map API data to our types
+export const mapApiCategoryToVehicle = (apiVehicle: any): vifForm => ({
+  id: apiVehicle.id,
+  vehicleReg: apiVehicle.vehicleReg,
+
+});
+
 
 export const mapApiComponentToComponent = (apiComponent: any): Component => ({
   id: apiComponent.id,

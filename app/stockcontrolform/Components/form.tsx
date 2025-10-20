@@ -57,11 +57,6 @@ export default function ComponentItem({
   const [temporarySubcategories, setTemporarySubcategories] = useState<SubCategory[]>([]);
   const [temporaryComponents, setTemporaryComponents] = useState<any[]>([]);
 
-  //category select
-  const [isCategoryOpen, setIsCategoryOpen] = useState(false);
-
-
-
   // Then update the filteredSubcategories memo to include temporary subcategories
   const filteredSubcategories = useMemo(() => {
     const allSubs = [...(allSubcategories || []), ...temporarySubcategories];
@@ -291,7 +286,7 @@ export default function ComponentItem({
     setCategorySearchTerm("");
   };
 
-  // Debug the confirmNewCategory function
+  // confirmNewCategory function
   const confirmNewCategory = () => {
     if (newCategoryInput.trim()) {
       const newCategoryId = `new-cat-${Date.now()}`;
@@ -416,6 +411,7 @@ export default function ComponentItem({
     <div className="p-4 border rounded-lg space-y-4 bg-background shadow-sm">
       {/* Category Selection with Add New and Remove Button */}
       <div className="flex items-center gap-4">
+
         <div className="flex-1 space-y-2">
           <label className="text-sm font-medium">Category</label>
           {isAddingNewCategory ? (
@@ -504,6 +500,7 @@ export default function ComponentItem({
             </Select>
           )}
         </div>
+
         <Button
           type="button"
           variant="outline"
@@ -667,12 +664,7 @@ export default function ComponentItem({
                       <Plus className="h-4 w-4 cursor-pointer" />
                     </Button>
                   </div>
-                  {unusedKeys.length > 0 && (
-                    <div className="text-xs text-gray-500">
-                      Suggestions: {unusedKeys.slice(0, 3).join(", ")}
-                      {unusedKeys.length > 3 && `... and ${unusedKeys.length - 3} more`}
-                    </div>
-                  )}
+  
                 </div>
               ) : (
                 <Select
