@@ -68,18 +68,13 @@ export default function Vehicle_Inspection_Form() {
             formData.append(`inspectionResults[${index}][answer]`, String(q.value ?? ""));
         });
 
-
         formState.photos.forEach((photo, index) => {
             // if using File objects from <input type="file" />
             formData.append("photos", photo);
         });
 
-
         try {
-
             // API call
-            const plainData = Object.fromEntries(formData.entries());
-
             const res = await fetch("/api/vifclick-up", {
                 method: "POST",
                 body: formData, // keep raw FormData
@@ -119,7 +114,7 @@ export default function Vehicle_Inspection_Form() {
                 }
             },
             error: (error) => {
-                console.log(`Error subscribing to fleet: ${error}`);
+                console.log(`Error subscribing to fleets: ${error}`);
                 setLoading(false);
             }
         });
