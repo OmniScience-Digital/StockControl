@@ -12,16 +12,23 @@ import { mapApiCategoryToVehicle } from "../stockcontrolform/Components/map.cate
 import { booleanQuestions as initialQuestions } from "./components/questions";
 import ResponseModal from "@/components/widgets/response";
 import { Loader2 } from "lucide-react";
+import ImageUploadLoader from "./components/imageLoader";
+
 
 export default function Vehicle_Inspection_Form() {
     const [loading, setLoading] = useState(false);
     const [loadingbtn, setLoadingbtn] = useState(false);
     const [vehicles, setvehicles] = useState<vifForm[]>([]);
-
-
     const [show, setShow] = useState(false);
     const [successful, setSuccessful] = useState(false);
     const [message, setMessage] = useState("");
+
+    // Add upload progress state
+    const [uploadProgress, setUploadProgress] = useState({
+        isUploading: false,
+        currentImage: 0,
+        totalImages: 0
+    });
 
     // Lift all form state to parent
     const [formState, setFormState] = useState({
@@ -50,33 +57,14 @@ export default function Vehicle_Inspection_Form() {
         setFormState(prev => ({ ...prev, photos }));
     }, []);
 
-    // Handle form submission
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoadingbtn(true);
 
-
-
-        const formData = new FormData();
         const savedUser = localStorage.getItem("user");
-        formData.append("vehicleId", formState.selectedVehicleId);
-        formData.append("vehicleReg", formState.selectedVehicleReg);
-        formData.append("odometer", formState.odometerValue || "");
-        formData.append("username", savedUser || "");
-
-        formState.booleanQuestions.forEach((q, index) => {
-            formData.append(`inspectionResults[${index}][question]`, q.question);
-            formData.append(`inspectionResults[${index}][answer]`, String(q.value ?? ""));
-        });
-
-
-        formState.photos.forEach((photo, index) => {
-            // if using File objects from <input type="file" />
-            formData.append("photos", photo);
-        });
-
+        
+        // Validation
         let missingItems = [];
-
         if (!formState.odometerValue) missingItems.push("Odometer value missing");
         if (!formState.photos || formState.photos.length === 0) missingItems.push("Photos missing");
         if (formState.booleanQuestions.some(q => q.value === null || q.value === undefined))
@@ -90,23 +78,77 @@ export default function Vehicle_Inspection_Form() {
             return;
         }
 
-
         try {
-            // API call
-            const res = await fetch("/api/vifclick-up", {
-                method: "POST",
-                body: formData, // keep raw FormData
+            // Start upload progress
+            setUploadProgress({
+                isUploading: true,
+                currentImage: 0,
+                totalImages: formState.photos.length
             });
 
-            const resResponse = await res.json();
+            // Upload photos one by one
+            for (let i = 0; i < formState.photos.length; i++) {
+                // Update progress
+                setUploadProgress(prev => ({
+                    ...prev,
+                    currentImage: i + 1
+                }));
 
-            setMessage(resResponse.message || "Successfully published to ClickUp");
+                const photoFormData = new FormData();
+                
+                // Send ONE photo per request
+                photoFormData.append("photos", formState.photos[i]);
+                
+                // Add all form data to each request
+                photoFormData.append("vehicleId", formState.selectedVehicleId);
+                photoFormData.append("vehicleReg", formState.selectedVehicleReg);
+                photoFormData.append("odometer", formState.odometerValue || "");
+                photoFormData.append("username", savedUser || "");
+
+                // Add inspection results
+                formState.booleanQuestions.forEach((q, index) => {
+                    photoFormData.append(`inspectionResults[${index}][question]`, q.question);
+                    photoFormData.append(`inspectionResults[${index}][answer]`, String(q.value ?? ""));
+                });
+
+                // Add progress info
+                photoFormData.append("photoIndex", i.toString());
+                photoFormData.append("totalPhotos", formState.photos.length.toString());
+                
+                const uploadResponse = await fetch("/api/vifclick-up", {
+                    method: "POST",
+                    body: photoFormData,
+                });
+
+                if (!uploadResponse.ok) {
+                    throw new Error(`Failed to upload photo ${i + 1}`);
+                }
+            }
+
+            // Upload complete
+            setUploadProgress({
+                isUploading: false,
+                currentImage: 0,
+                totalImages: 0
+            });
+
+            setMessage("All photos uploaded successfully! Task created in ClickUp.");
             setShow(true);
-            setSuccessful(resResponse.success);
+            setSuccessful(true);
 
         } catch (err) {
             console.error("Error uploading:", err);
-            setLoadingbtn(false);
+            
+            // Stop upload progress on error
+            setUploadProgress({
+                isUploading: false,
+                currentImage: 0,
+                totalImages: 0
+            });
+
+            setMessage("Failed to publish to ClickUp");
+            setShow(true);
+            setSuccessful(false);
         } finally {
             setLoadingbtn(false);
             setFormState({
@@ -143,6 +185,16 @@ export default function Vehicle_Inspection_Form() {
     return (
         <div className="flex flex-col min-h-screen bg-background text-foreground">
             <Navbar />
+            
+            {/* Image Upload Loader */}
+            {uploadProgress.isUploading && (
+                <ImageUploadLoader
+                    currentImage={uploadProgress.currentImage}
+                    totalImages={uploadProgress.totalImages}
+                    message={`Uploading image ${uploadProgress.currentImage} of ${uploadProgress.totalImages}`}
+                />
+             )} 
+
             {loading ? (
                 <Loading />
             ) : (
@@ -171,8 +223,11 @@ export default function Vehicle_Inspection_Form() {
                                             vehicles={vehicles}
                                         />
                                         <div className="flex justify-end mt-2">
-
-                                            <Button type="submit" className="cursor-pointer" disabled={loadingbtn}>
+                                            <Button 
+                                                type="submit" 
+                                                className="cursor-pointer" 
+                                                disabled={loadingbtn || uploadProgress.isUploading}
+                                            >
                                                 Submit
                                                 {loadingbtn && (
                                                     <Loader2 className="ml-2 h-4 w-4 animate-spin" />
@@ -184,7 +239,6 @@ export default function Vehicle_Inspection_Form() {
                             </CardContent>
                         </Card>
                     </div>
-
                 </main>
             )}
             <Footer />
