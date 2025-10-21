@@ -11,7 +11,6 @@ import { vifForm } from "@/types/vifForm.types";
 import { mapApiCategoryToVehicle } from "../stockcontrolform/Components/map.categories.helper";
 import { booleanQuestions as initialQuestions } from "./components/questions";
 import ResponseModal from "@/components/widgets/response";
-import { baseUrl, securebaseUrltest } from "../constants";
 import { Loader2 } from "lucide-react";
 
 export default function Vehicle_Inspection_Form() {
@@ -56,6 +55,8 @@ export default function Vehicle_Inspection_Form() {
         e.preventDefault();
         setLoadingbtn(true);
 
+
+
         const formData = new FormData();
         const savedUser = localStorage.getItem("user");
         formData.append("vehicleId", formState.selectedVehicleId);
@@ -68,10 +69,27 @@ export default function Vehicle_Inspection_Form() {
             formData.append(`inspectionResults[${index}][answer]`, String(q.value ?? ""));
         });
 
+
         formState.photos.forEach((photo, index) => {
             // if using File objects from <input type="file" />
             formData.append("photos", photo);
         });
+
+        let missingItems = [];
+
+        if (!formState.odometerValue) missingItems.push("Odometer value missing");
+        if (!formState.photos || formState.photos.length === 0) missingItems.push("Photos missing");
+        if (formState.booleanQuestions.some(q => q.value === null || q.value === undefined))
+            missingItems.push("Some questions not answered");
+
+        if (missingItems.length > 0) {
+            setMessage(`Missing required information: ${missingItems.join(", ")}`);
+            setShow(true);
+            setSuccessful(false);
+            setLoadingbtn(false);
+            return;
+        }
+
 
         try {
             // API call
@@ -150,6 +168,7 @@ export default function Vehicle_Inspection_Form() {
                                             onBooleanQuestionsChange={handleBooleanQuestionsChange}
                                             onPhotosChange={handlePhotosChange}
                                             formState={formState}
+                                            vehicles={vehicles}
                                         />
                                         <div className="flex justify-end mt-2">
 

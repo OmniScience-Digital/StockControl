@@ -13,56 +13,113 @@ export default function Breadcrumbs() {
 
   pathSegments = pathSegments
     .filter((segment) => segment !== "dashboard") //remove dashboard
-    .filter((segment) => segment !== "stockpile") //remove stockpile
     .filter((segment) => segment !== "landing") //remove stockpile
-
-
     .map((segment) => {
       if (segment === "subcategories") return "inventorymanagementsystem";
-      if (segment === "auditinDashboard") return "auditing";
-      if (segment === "progressiveDashboard") return "progressivereporting";
-      if (segment === "stockpileDashboard") return "stockpilereporting";
       return segment;
     });
 
-  if (
-    pathSegments.length === 3 &&
-    (pathSegments[0] === "auditing" ||
-      pathSegments[0] === "progressivereporting")
-  ) {
-    pathSegments = [pathSegments[0], pathSegments[2]];
+  if (pathSegments[0] === "inspections") {
+    pathSegments[0] = "vehicleinspectionsystem";
   }
+  if (
+    pathSegments.length === 1 &&
+    pathSegments[0].endsWith("form") &&
+    pathSegments[0] !== "forms"
+  ) {
+    pathSegments = ["forms", pathSegments[0].replace(/form$/i, "")];
+  }
+
+  // Function to truncate long text for mobile
+  const truncateSegment = (segment: string, isLast: boolean = false) => {
+    if (isLast) {
+      // For the last segment, show more characters since it's the current page
+      return segment.length > 20 ? `${segment.substring(0, 20)}...` : segment;
+    }
+    // For intermediate segments, be more aggressive with truncation
+    return segment.length > 12 ? `${segment.substring(0, 12)}...` : segment;
+  };
 
   return (
     <nav className="text-sm text-muted-foreground px-4">
-      <ul className="flex items-center">
-        {/* Home Link */}
-        <li>
-          <Link href="/landing" className="hover:underline">
-            Landing
+      {/* Mobile View - Compact */}
+      <div className="block md:hidden">
+        <div className="flex items-center overflow-hidden">
+          {/* Home Link for mobile */}
+          <Link href="/landing" className="hover:underline shrink-0">
+            Home
           </Link>
-        </li>
 
-        {pathSegments.map((segment, index) => {
-          const fullPath = `/${pathSegments.slice(0, index + 1).join("/")}`;
-          const isLast = index === pathSegments.length - 1;
-
-          return (
-            <li key={fullPath} className="flex items-center">
-              <span className="mx-2">/</span>
-              {isLast ? (
-                <span className="text-primary font-medium">
-                  {decodeURIComponent(segment)}
-                </span>
+          {pathSegments.length > 0 && (
+            <>
+              <span className="mx-2 shrink-0">/</span>
+              {/* Show only last segment on mobile if path is long */}
+              {pathSegments.length > 2 ? (
+                <>
+                  <span className="text-gray-400 shrink-0">...</span>
+                  <span className="mx-2 shrink-0">/</span>
+                  <span className="text-primary font-medium">
+                    {truncateSegment(decodeURIComponent(pathSegments[pathSegments.length - 1]), true)}
+                  </span>
+                </>
               ) : (
-                <Link href={fullPath} className="hover:underline cursor-pointer">
-                  {decodeURIComponent(segment)}
-                </Link>
+                // Show all segments if path is short
+                pathSegments.map((segment, index) => {
+                  const fullPath = `/${pathSegments.slice(0, index + 1).join("/")}`;
+                  const isLast = index === pathSegments.length - 1;
+
+                  return (
+                    <div key={fullPath} className="flex items-center shrink-0">
+                      {index > 0 && <span className="mx-2">/</span>}
+                      {isLast ? (
+                        <span className="text-primary font-medium">
+                          {truncateSegment(decodeURIComponent(segment), true)}
+                        </span>
+                      ) : (
+                        <Link href={fullPath} className="hover:underline">
+                          {truncateSegment(decodeURIComponent(segment))}
+                        </Link>
+                      )}
+                    </div>
+                  );
+                })
               )}
-            </li>
-          );
-        })}
-      </ul>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Desktop View - Full */}
+      <div className="hidden md:block">
+        <ul className="flex items-center">
+          {/* Home Link */}
+          <li>
+            <Link href="/landing" className="hover:underline">
+              Landing
+            </Link>
+          </li>
+
+          {pathSegments.map((segment, index) => {
+            const fullPath = `/${pathSegments.slice(0, index + 1).join("/")}`;
+            const isLast = index === pathSegments.length - 1;
+
+            return (
+              <li key={fullPath} className="flex items-center">
+                <span className="mx-2">/</span>
+                {isLast ? (
+                  <span className="text-primary font-medium">
+                    {decodeURIComponent(segment)}
+                  </span>
+                ) : (
+                  <Link href={fullPath} className="hover:underline cursor-pointer">
+                    {decodeURIComponent(segment)}
+                  </Link>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      </div>
     </nav>
   );
 }

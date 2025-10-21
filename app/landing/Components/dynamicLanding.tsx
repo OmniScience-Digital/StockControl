@@ -25,7 +25,6 @@ export default function Home() {
     const [loading, setLoading] = useState(true);
     const [dataArray, setData] = useState<Dashboard[]>([]);
     const [searchQuery, setSearchQuery] = useState("");
-    const [dropdownOpen, setDropdownOpen] = useState(false);
     const [dashboardToDelete, setDashboardToDelete] = useState<number | null>(null);
 
 
@@ -38,7 +37,9 @@ export default function Home() {
                     .filter(item => item.items) // Only include items with names
                     .sort((a, b) => (a.items || "").localeCompare(b.items || ""));
 
-                const cleanDashboardData: Dashboard[] = dashboardData.map(d => ({
+                const cleanDashboardData: Dashboard[] = dashboardData
+                .filter(d => !/form$/i.test((d.items??"").trim())) // exclude items ending with 'Form'
+                .map(d => ({
                     ...d,
                     key: d.key ?? "",
                     items: d.items ?? ""
@@ -76,9 +77,9 @@ export default function Home() {
         const colors: { [key: string]: string } = {
             IMS: "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
             SCF: "bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300",
-            MRKT: "bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
-            Finance: "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
-            Project: "bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300",
+            F: "bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
+            Project: "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
+            VIS: "bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300",
             HR: "bg-pink-50 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300",
             General: "bg-gray-50 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300"
         };
