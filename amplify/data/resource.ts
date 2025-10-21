@@ -68,15 +68,16 @@ const schema = a.schema({
     currentkm: a.float(),
     codeRequirement: a.string(),
     pdpRequirement: a.boolean(),
-    breakandLuxTest: a.string(),
+    breakandLuxTest: a.string(),//has to be a pdf
+    serviceplankm:a.float(),
     breakandLuxExpirey: a.date(),
     history: a.string(),
     inspection:a.hasMany('Inspection','fleetid'),
   }).authorization((allow) => [allow.publicApiKey()]),
 
 
-  Inspection: a.model({
-    fleetid:a.string().required(),
+Inspection: a.model({
+    fleetid: a.string().required(),
     inspectionNo: a.integer(), 
     vehicleVin: a.string(), 
     inspectionDate: a.date(),
@@ -103,9 +104,12 @@ const schema = a.schema({
     siteKit: a.boolean(),
     photo: a.string(), 
     history: a.string(),
-    fleet:a.belongsTo('Fleet','fleetid'),
-}).authorization((allow) => [allow.publicApiKey()]),
-
+    fleet: a.belongsTo('Fleet','fleetid'),
+}).secondaryIndexes((index) => [
+    index('fleetid')
+        .sortKeys(['inspectionDate', 'inspectionTime'])
+        .queryField('inspectionsByFleetAndDate')
+]).authorization((allow) => [allow.publicApiKey()]),
 
 });
 
