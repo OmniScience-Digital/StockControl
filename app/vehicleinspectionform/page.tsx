@@ -57,6 +57,81 @@ export default function Vehicle_Inspection_Form() {
         setFormState(prev => ({ ...prev, photos }));
     }, []);
 
+    //     const handleSubmit = async (e: React.FormEvent) => {
+    //     e.preventDefault();
+    //     setLoadingbtn(true);
+
+
+
+    //     const formData = new FormData();
+    //     const savedUser = localStorage.getItem("user");
+    //     formData.append("vehicleId", formState.selectedVehicleId);
+    //     formData.append("vehicleReg", formState.selectedVehicleReg);
+    //     formData.append("odometer", formState.odometerValue || "");
+    //     formData.append("username", savedUser || "");
+
+    //     formState.booleanQuestions.forEach((q, index) => {
+    //         formData.append(`inspectionResults[${index}][question]`, q.question);
+    //         formData.append(`inspectionResults[${index}][answer]`, String(q.value ?? ""));
+    //     });
+
+
+    //     formState.photos.forEach((photo, index) => {
+    //         // if using File objects from <input type="file" />
+    //         formData.append("photos", photo);
+            
+    //     });
+
+    //     let missingItems = [];
+
+    //     if (!formState.odometerValue) missingItems.push("Odometer value missing");
+    //     if (!formState.photos || formState.photos.length === 0) missingItems.push("Photos missing");
+    //     if (formState.booleanQuestions.some(q => q.value === null || q.value === undefined))
+    //         missingItems.push("Some questions not answered");
+
+    //     if (missingItems.length > 0) {
+    //         setMessage(`Missing required information: ${missingItems.join(", ")}`);
+    //         setShow(true);
+    //         setSuccessful(false);
+    //         setLoadingbtn(false);
+    //         return;
+    //     }
+
+
+    //     try {
+    //         // API call
+    //         const res = await fetch("/api/vifclick-up", {
+    //             method: "POST",
+    //             body: formData, // keep raw FormData
+    //         });
+
+    //         const resResponse = await res.json();
+
+    //         setMessage(resResponse.message || "Successfully published to ClickUp");
+    //         setShow(true);
+    //         setSuccessful(resResponse.success);
+
+    //     } catch (err) {
+    //         console.error("Error uploading:", err);
+
+
+    //         setMessage("Failed to publish to ClickUp");
+    //         setShow(true);
+    //         setSuccessful(false);
+
+    //         setLoadingbtn(false);
+    //     } finally {
+    //         setLoadingbtn(false);
+    //         setFormState({
+    //             selectedVehicleId: "",
+    //             selectedVehicleReg: "",
+    //             odometerValue: "",
+    //             booleanQuestions: initialQuestions,
+    //             photos: [] as File[]
+    //         });
+    //     }
+    // };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoadingbtn(true);
