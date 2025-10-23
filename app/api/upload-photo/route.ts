@@ -6,7 +6,9 @@ export async function POST(req: NextRequest) {
     const formData = await req.formData();
     const file = formData.get("photo") as File;
     const taskId = formData.get("taskId") as string;
+    const timestamp = formData.get("timestamp") as string;
 
+    
     if (!file || !taskId) {
       return NextResponse.json({ 
         success: false, 
@@ -23,7 +25,7 @@ export async function POST(req: NextRequest) {
       file.name
     );
 
-    // FIX: Use taskId in the URL, not LIST_ID
+    // taskId in the URL
     const uploadResponse = await fetch(`https://api.clickup.com/api/v2/task/${taskId}/attachment`, {
       method: 'POST',
       headers: {

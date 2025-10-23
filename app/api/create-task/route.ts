@@ -1,10 +1,11 @@
 import * as constants from "@/app/constants";
+import { normalize } from "@/utils/helper/time";
 import { NextRequest, NextResponse } from "next/server";
-import { DateTime } from 'luxon';
+
 
 export async function POST(req: NextRequest) {
   try {
-    const { vehicleId, vehicleReg, odometer, username, inspectionResults } = await req.json();
+    const { vehicleId, vehicleReg, odometer, username, inspectionResults,timestamp } = await req.json();
 
     // Format inspection questions
     const questionLines = inspectionResults.length > 0
@@ -16,8 +17,6 @@ export async function POST(req: NextRequest) {
           .join('\n\n')
       : 'No inspection results provided.';
 
-    // Create ClickUp task with your original datetime format
-    const timestamp = getJhbTimestamp();
 
     const taskBody = {
       name: `Vehicle Inspection - ${vehicleReg} ${timestamp}`,
@@ -66,12 +65,3 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// Your original helper functions
-function getJhbTimestamp(): string {
-  return DateTime.now().setZone('Africa/Johannesburg').toFormat('yyyy-MM-dd HH:mm:ss');
-}
-
-function normalize(str: any): string {
-  if (typeof str !== 'string') return String(str);
-  return str.trim().replace(/^"+|"+$/g, '');
-}

@@ -13,6 +13,7 @@ import { booleanQuestions as initialQuestions } from "./components/questions";
 import ResponseModal from "@/components/widgets/response";
 import { Loader2 } from "lucide-react";
 import ImageUploadLoader from "./components/imageLoader";
+import { getJhbTimestamp } from "@/utils/helper/time";
 
 
 export default function Vehicle_Inspection_Form() {
@@ -62,6 +63,9 @@ export default function Vehicle_Inspection_Form() {
     setLoadingbtn(true);
 
     const savedUser = localStorage.getItem("user");
+
+    // Create ClickUp task with your original datetime format
+    const timestamp = getJhbTimestamp();
     
     // Validation
     let missingItems = [];
@@ -102,7 +106,8 @@ export default function Vehicle_Inspection_Form() {
                 vehicleReg: formState.selectedVehicleReg,
                 odometer: formState.odometerValue,
                 username: savedUser,
-                inspectionResults
+                inspectionResults,
+                timestamp
             }),
         });
 
@@ -126,6 +131,7 @@ export default function Vehicle_Inspection_Form() {
             const photoFormData = new FormData();
             photoFormData.append("photo", file);
             photoFormData.append("taskId", taskId);
+            photoFormData.append("timestamp", timestamp);
 
             const uploadResponse = await fetch("/api/upload-photo", {
                 method: "POST",

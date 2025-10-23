@@ -68,7 +68,7 @@ const schema = a.schema({
     currentkm: a.float(),
     codeRequirement: a.string(),
     pdpRequirement: a.boolean(),
-    breakandLuxTest: a.string(),//has to be a pdf
+    breakandLuxTest: a.string().array(),
     serviceplankm:a.float(),
     breakandLuxExpirey: a.date(),
     history: a.string(),
@@ -102,7 +102,7 @@ Inspection: a.model({
     windscreenWipers: a.boolean(),
     serviceBook: a.boolean(),
     siteKit: a.boolean(),
-    photo: a.string(), 
+    photo: a.string().array(), 
     history: a.string(),
     fleet: a.belongsTo('Fleet','fleetid'),
 }).secondaryIndexes((index) => [
