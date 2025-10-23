@@ -14,6 +14,7 @@ import ResponseModal from "@/components/widgets/response";
 import { Loader2 } from "lucide-react";
 import ImageUploadLoader from "./components/imageLoader";
 import { getJhbTimestamp } from "@/utils/helper/time";
+import { uploadData } from 'aws-amplify/storage';
 
 
 export default function Vehicle_Inspection_Form() {
@@ -58,7 +59,137 @@ export default function Vehicle_Inspection_Form() {
         setFormState(prev => ({ ...prev, photos }));
     }, []);
 
-    const handleSubmit = async (e: React.FormEvent) => {
+//     const handleSubmit = async (e: React.FormEvent) => {
+//     e.preventDefault();
+//     setLoadingbtn(true);
+
+//     const savedUser = localStorage.getItem("user");
+
+//     // Create ClickUp task with your original datetime format
+//     const timestamp = getJhbTimestamp();
+    
+//     // Validation
+//     let missingItems = [];
+//     if (!formState.odometerValue) missingItems.push("Odometer value missing");
+//     if (!formState.photos || formState.photos.length === 0) missingItems.push("Photos missing");
+//     if (formState.booleanQuestions.some(q => q.value === null || q.value === undefined))
+//         missingItems.push("Some questions not answered");
+
+//     if (missingItems.length > 0) {
+//         setMessage(`Missing required information: ${missingItems.join(", ")}`);
+//         setShow(true);
+//         setSuccessful(false);
+//         setLoadingbtn(false);
+//         return;
+//     }
+
+//     try {
+//         // Start upload progress
+//         setUploadProgress({
+//             isUploading: true,
+//             currentImage: 0,
+//             totalImages: formState.photos.length
+//         });
+
+//         // Step 1: Create ClickUp task first (small payload)
+//         const inspectionResults = formState.booleanQuestions.map(q => ({
+//             question: q.question,
+//             answer: String(q.value)
+//         }));
+
+//         const createTaskResponse = await fetch("/api/create-task", {
+//             method: "POST",
+//             headers: {
+//                 'Content-Type': 'application/json',
+//             },
+//             body: JSON.stringify({
+//                 vehicleId: formState.selectedVehicleId,
+//                 vehicleReg: formState.selectedVehicleReg,
+//                 odometer: formState.odometerValue,
+//                 username: savedUser,
+//                 inspectionResults,
+//                 timestamp
+//             }),
+//         });
+
+//         const taskResult = await createTaskResponse.json();
+
+//         if (!taskResult.success || !taskResult.taskId) {
+//             throw new Error(taskResult.error || 'Failed to create task');
+//         }
+        
+//         const taskId = taskResult.taskId;
+        
+//         // Step 2: Upload photos one by one (small individual payloads)
+//         for (let i = 0; i < formState.photos.length; i++) {
+//             // Update progress
+//             setUploadProgress(prev => ({
+//                 ...prev,
+//                 currentImage: i + 1
+//             }));
+
+//             const file = formState.photos[i];
+//             const photoFormData = new FormData();
+//             photoFormData.append("photo", file);
+//             photoFormData.append("taskId", taskId);
+//             photoFormData.append("timestamp", timestamp);
+//             photoFormData.append('vehicleReg', formState.selectedVehicleReg);
+//            photoFormData.append('inspectionId', '1'); 
+
+//             const uploadResponse = await fetch("/api/upload-photo", {
+//                 method: "POST",
+//                 body: photoFormData,
+//             });
+
+//             const uploadResult = await uploadResponse.json();
+
+//             if (!uploadResult.success) {
+//                 throw new Error(`Failed to upload photo ${i + 1}: ${file.name}`);
+//             }
+
+            
+//         }
+
+//         // Upload complete
+//         setUploadProgress({
+//             isUploading: false,
+//             currentImage: 0,
+//             totalImages: 0
+//         });
+
+//         setMessage("All photos uploaded successfully! Task created in ClickUp.");
+//         setShow(true);
+//         setSuccessful(true);
+
+//     } catch (err) {
+//         console.error("Error uploading:", err);
+        
+//         // Stop upload progress on error
+//         setUploadProgress({
+//             isUploading: false,
+//             currentImage: 0,
+//             totalImages: 0
+//         });
+
+//         setMessage("Failed to publish to ClickUp: " + (err instanceof Error ? err.message : 'Unknown error'));
+//         setShow(true);
+//         setSuccessful(false);
+//     } finally {
+//         setLoadingbtn(false);
+//         setFormState({
+//             selectedVehicleId: "",
+//             selectedVehicleReg: "",
+//             odometerValue: "",
+//             booleanQuestions: initialQuestions,
+//             photos: [] as File[]
+//         });
+//     }
+// };
+
+
+    // Subscribe to fleets
+    
+const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoadingbtn(true);
 
@@ -119,33 +250,50 @@ export default function Vehicle_Inspection_Form() {
         
         const taskId = taskResult.taskId;
         
-        // Step 2: Upload photos one by one (small individual payloads)
-        for (let i = 0; i < formState.photos.length; i++) {
-            // Update progress
-            setUploadProgress(prev => ({
-                ...prev,
-                currentImage: i + 1
-            }));
+       // Step 2: Upload photos one by one
+for (let i = 0; i < formState.photos.length; i++) {
+    // Update progress
+    setUploadProgress(prev => ({
+        ...prev,
+        currentImage: i + 1
+    }));
 
-            const file = formState.photos[i];
-            const photoFormData = new FormData();
-            photoFormData.append("photo", file);
-            photoFormData.append("taskId", taskId);
-            photoFormData.append("timestamp", timestamp);
+    const file = formState.photos[i];
+    
+    // ADD S3 UPLOAD HERE - before ClickUp upload
+    const s3FileKey = `inspections/${formState.selectedVehicleReg}/1/${timestamp}-${i+1}-${file.name}`;
+    
+    try {
+        // Upload to AWS S3
+        await uploadData({
+            path: s3FileKey,
+            data: file,
+        }).result;
+        console.log('Uploaded to S3:', s3FileKey);
+    } catch (s3Error) {
+        console.error('S3 upload failed:', s3Error);
+        // Continue with ClickUp upload even if S3 fails
+    }
 
-            const uploadResponse = await fetch("/api/upload-photo", {
-                method: "POST",
-                body: photoFormData,
-            });
+    // Your existing ClickUp upload
+    const photoFormData = new FormData();
+    photoFormData.append("photo", file);
+    photoFormData.append("taskId", taskId);
+    photoFormData.append("timestamp", timestamp);
+    photoFormData.append('vehicleReg', formState.selectedVehicleReg);
+    photoFormData.append('inspectionId', '1');
 
-            const uploadResult = await uploadResponse.json();
+    const uploadResponse = await fetch("/api/upload-photo", {
+        method: "POST",
+        body: photoFormData,
+    });
 
-            if (!uploadResult.success) {
-                throw new Error(`Failed to upload photo ${i + 1}: ${file.name}`);
-            }
+    const uploadResult = await uploadResponse.json();
 
-            
-        }
+    if (!uploadResult.success) {
+        throw new Error(`Failed to upload photo ${i + 1}: ${file.name}`);
+    }
+}
 
         // Upload complete
         setUploadProgress({
@@ -183,8 +331,7 @@ export default function Vehicle_Inspection_Form() {
     }
 };
 
-
-    // Subscribe to fleets
+    
     useEffect(() => {
         const subscription = client.models.Fleet.observeQuery().subscribe({
             next: ({ items: allVehicles, isSynced }) => {

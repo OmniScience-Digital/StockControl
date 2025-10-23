@@ -6,26 +6,25 @@ export async function POST(req: NextRequest) {
     const formData = await req.formData();
     const file = formData.get("photo") as File;
     const taskId = formData.get("taskId") as string;
-    const timestamp = formData.get("timestamp") as string;
 
-    
-    if (!file || !taskId) {
+
+    if (!file || !taskId ) {
       return NextResponse.json({ 
         success: false, 
-        error: 'Missing file or taskId' 
+        error: 'Missing required fields' 
       }, { status: 400 });
     }
 
     const fileBuffer = await file.arrayBuffer();
-    const attachmentFormData = new FormData();
     
+
+    const attachmentFormData = new FormData();
     attachmentFormData.append(
       'attachment',
       new Blob([fileBuffer], { type: file.type }),
       file.name
     );
 
-    // taskId in the URL
     const uploadResponse = await fetch(`https://api.clickup.com/api/v2/task/${taskId}/attachment`, {
       method: 'POST',
       headers: {
@@ -34,16 +33,15 @@ export async function POST(req: NextRequest) {
       body: attachmentFormData,
     });
 
-    if (!uploadResponse.ok) {
-      throw new Error(`Failed to upload attachment: ${file.name}`);
-    }
-
-    const result = await uploadResponse.json();
+    const clickUpResult = await uploadResponse.json();
 
     return NextResponse.json({
       success: true,
       message: `Uploaded ${file.name} successfully`,
-      data: result
+      data: {
+      
+        clickUp: clickUpResult
+      }
     });
 
   } catch (error: any) {
