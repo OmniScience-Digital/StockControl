@@ -6,6 +6,7 @@ export async function POST(req: NextRequest) {
     const formData = await req.formData();
     const file = formData.get("photo") as File;
     const taskId = formData.get("taskId") as string;
+    
 
 
     if (!file || !taskId ) {

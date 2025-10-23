@@ -70,6 +70,7 @@ export default function VifForm({
                     )[0]
                     : null;
 
+        
                 setRecentInspection(mostRecent);
 
                 // Pre-populate form with recent inspection data
@@ -265,3 +266,7 @@ export default function VifForm({
         </div>
     );
 }
+
+ 
+
+
