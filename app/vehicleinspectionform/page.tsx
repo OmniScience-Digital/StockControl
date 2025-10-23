@@ -111,10 +111,9 @@ export default function Vehicle_Inspection_Form() {
         if (!taskResult.success || !taskResult.taskId) {
             throw new Error(taskResult.error || 'Failed to create task');
         }
-
+        
         const taskId = taskResult.taskId;
-        console.log(`Created ClickUp task: ${taskId}`);
-
+        
         // Step 2: Upload photos one by one (small individual payloads)
         for (let i = 0; i < formState.photos.length; i++) {
             // Update progress
@@ -139,7 +138,7 @@ export default function Vehicle_Inspection_Form() {
                 throw new Error(`Failed to upload photo ${i + 1}: ${file.name}`);
             }
 
-            console.log(`Uploaded ${file.name} to ClickUp task ${taskId}`);
+            
         }
 
         // Upload complete
@@ -178,111 +177,6 @@ export default function Vehicle_Inspection_Form() {
     }
 };
 
-
-
-    // const handleSubmit = async (e: React.FormEvent) => {
-    //     e.preventDefault();
-    //     setLoadingbtn(true);
-
-    //     const savedUser = localStorage.getItem("user");
-        
-    //     // Validation
-    //     let missingItems = [];
-    //     if (!formState.odometerValue) missingItems.push("Odometer value missing");
-    //     if (!formState.photos || formState.photos.length === 0) missingItems.push("Photos missing");
-    //     if (formState.booleanQuestions.some(q => q.value === null || q.value === undefined))
-    //         missingItems.push("Some questions not answered");
-
-    //     if (missingItems.length > 0) {
-    //         setMessage(`Missing required information: ${missingItems.join(", ")}`);
-    //         setShow(true);
-    //         setSuccessful(false);
-    //         setLoadingbtn(false);
-    //         return;
-    //     }
-
-    //     try {
-    //         // Start upload progress
-    //         setUploadProgress({
-    //             isUploading: true,
-    //             currentImage: 0,
-    //             totalImages: formState.photos.length
-    //         });
-
-    //         // Upload photos one by one
-    //         for (let i = 0; i < formState.photos.length; i++) {
-    //             // Update progress
-    //             setUploadProgress(prev => ({
-    //                 ...prev,
-    //                 currentImage: i + 1
-    //             }));
-
-    //             const photoFormData = new FormData();
-                
-    //             // Send ONE photo per request
-    //             photoFormData.append("photos", formState.photos[i]);
-                
-    //             // Add all form data to each request
-    //             photoFormData.append("vehicleId", formState.selectedVehicleId);
-    //             photoFormData.append("vehicleReg", formState.selectedVehicleReg);
-    //             photoFormData.append("odometer", formState.odometerValue || "");
-    //             photoFormData.append("username", savedUser || "");
-
-    //             // Add inspection results
-    //             formState.booleanQuestions.forEach((q, index) => {
-    //                 photoFormData.append(`inspectionResults[${index}][question]`, q.question);
-    //                 photoFormData.append(`inspectionResults[${index}][answer]`, String(q.value ?? ""));
-    //             });
-
-    //             // Add progress info
-    //             photoFormData.append("photoIndex", i.toString());
-    //             photoFormData.append("totalPhotos", formState.photos.length.toString());
-                
-    //             const uploadResponse = await fetch("/api/vifclick-up", {
-    //                 method: "POST",
-    //                 body: photoFormData,
-    //             });
-
-    //             if (!uploadResponse.ok) {
-    //                 throw new Error(`Failed to upload photo ${i + 1}`);
-    //             }
-    //         }
-
-    //         // Upload complete
-    //         setUploadProgress({
-    //             isUploading: false,
-    //             currentImage: 0,
-    //             totalImages: 0
-    //         });
-
-    //         setMessage("All photos uploaded successfully! Task created in ClickUp.");
-    //         setShow(true);
-    //         setSuccessful(true);
-
-    //     } catch (err) {
-    //         console.error("Error uploading:", err);
-            
-    //         // Stop upload progress on error
-    //         setUploadProgress({
-    //             isUploading: false,
-    //             currentImage: 0,
-    //             totalImages: 0
-    //         });
-
-    //         setMessage("Failed to publish to ClickUp");
-    //         setShow(true);
-    //         setSuccessful(false);
-    //     } finally {
-    //         setLoadingbtn(false);
-    //         setFormState({
-    //             selectedVehicleId: "",
-    //             selectedVehicleReg: "",
-    //             odometerValue: "",
-    //             booleanQuestions: initialQuestions,
-    //             photos: [] as File[]
-    //         });
-    //     }
-    // };
 
     // Subscribe to fleets
     useEffect(() => {

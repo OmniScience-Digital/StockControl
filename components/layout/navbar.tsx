@@ -65,14 +65,11 @@ export default function Navbar() {
     try {
       localStorage.removeItem("user");
       await signOut();
-      // Redirect immediately without waiting
-      
       router.push('/');
 
       // Clear any local state
       setUser('');
       
-
     } catch (error) {
       console.error("Sign out error:", error);
     }
