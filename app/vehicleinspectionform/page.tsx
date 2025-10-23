@@ -57,88 +57,13 @@ export default function Vehicle_Inspection_Form() {
         setFormState(prev => ({ ...prev, photos }));
     }, []);
 
-    //     const handleSubmit = async (e: React.FormEvent) => {
-    //     e.preventDefault();
-    //     setLoadingbtn(true);
-
-
-
-    //     const formData = new FormData();
-    //     const savedUser = localStorage.getItem("user");
-    //     formData.append("vehicleId", formState.selectedVehicleId);
-    //     formData.append("vehicleReg", formState.selectedVehicleReg);
-    //     formData.append("odometer", formState.odometerValue || "");
-    //     formData.append("username", savedUser || "");
-
-    //     formState.booleanQuestions.forEach((q, index) => {
-    //         formData.append(`inspectionResults[${index}][question]`, q.question);
-    //         formData.append(`inspectionResults[${index}][answer]`, String(q.value ?? ""));
-    //     });
-
-
-    //     formState.photos.forEach((photo, index) => {
-    //         // if using File objects from <input type="file" />
-    //         formData.append("photos", photo);
-            
-    //     });
-
-    //     let missingItems = [];
-
-    //     if (!formState.odometerValue) missingItems.push("Odometer value missing");
-    //     if (!formState.photos || formState.photos.length === 0) missingItems.push("Photos missing");
-    //     if (formState.booleanQuestions.some(q => q.value === null || q.value === undefined))
-    //         missingItems.push("Some questions not answered");
-
-    //     if (missingItems.length > 0) {
-    //         setMessage(`Missing required information: ${missingItems.join(", ")}`);
-    //         setShow(true);
-    //         setSuccessful(false);
-    //         setLoadingbtn(false);
-    //         return;
-    //     }
-
-
-    //     try {
-    //         // API call
-    //         const res = await fetch("/api/vifclick-up", {
-    //             method: "POST",
-    //             body: formData, // keep raw FormData
-    //         });
-
-    //         const resResponse = await res.json();
-
-    //         setMessage(resResponse.message || "Successfully published to ClickUp");
-    //         setShow(true);
-    //         setSuccessful(resResponse.success);
-
-    //     } catch (err) {
-    //         console.error("Error uploading:", err);
-
-
-    //         setMessage("Failed to publish to ClickUp");
-    //         setShow(true);
-    //         setSuccessful(false);
-
-    //         setLoadingbtn(false);
-    //     } finally {
-    //         setLoadingbtn(false);
-    //         setFormState({
-    //             selectedVehicleId: "",
-    //             selectedVehicleReg: "",
-    //             odometerValue: "",
-    //             booleanQuestions: initialQuestions,
-    //             photos: [] as File[]
-    //         });
-    //     }
-    // };
-
- const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoadingbtn(true);
 
     const savedUser = localStorage.getItem("user");
     
-    // Validation - KEEP AS IS
+    // Validation
     let missingItems = [];
     if (!formState.odometerValue) missingItems.push("Odometer value missing");
     if (!formState.photos || formState.photos.length === 0) missingItems.push("Photos missing");
@@ -157,44 +82,65 @@ export default function Vehicle_Inspection_Form() {
         // Start upload progress
         setUploadProgress({
             isUploading: true,
-            currentImage: formState.photos.length, // Show we're processing all
+            currentImage: 0,
             totalImages: formState.photos.length
         });
 
-        // SINGLE FormData with ALL photos
-        const formData = new FormData();
-        
-        // Add ALL photos
-        formState.photos.forEach(photo => {
-            formData.append("photos", photo);
-        });
-        
-        // Add form data
-        formData.append("vehicleId", formState.selectedVehicleId);
-        formData.append("vehicleReg", formState.selectedVehicleReg);
-        formData.append("odometer", formState.odometerValue || "");
-        formData.append("username", savedUser || "");
+        // Step 1: Create ClickUp task first (small payload)
+        const inspectionResults = formState.booleanQuestions.map(q => ({
+            question: q.question,
+            answer: String(q.value)
+        }));
 
-        // Add inspection results
-        formState.booleanQuestions.forEach((q, index) => {
-            formData.append(`inspectionResults[${index}][question]`, q.question);
-            formData.append(`inspectionResults[${index}][answer]`, String(q.value ?? ""));
-        });
-
-        // Add total photos count
-        formData.append("totalPhotos", formState.photos.length.toString());
-        
-        // SINGLE API CALL
-        const uploadResponse = await fetch("/api/vifclick-up", {
+        const createTaskResponse = await fetch("/api/create-task", {
             method: "POST",
-            body: formData,
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                vehicleId: formState.selectedVehicleId,
+                vehicleReg: formState.selectedVehicleReg,
+                odometer: formState.odometerValue,
+                username: savedUser,
+                inspectionResults
+            }),
         });
 
-        if (!uploadResponse.ok) {
-            throw new Error(`Failed to upload inspection`);
+        const taskResult = await createTaskResponse.json();
+
+        if (!taskResult.success || !taskResult.taskId) {
+            throw new Error(taskResult.error || 'Failed to create task');
         }
 
-        const result = await uploadResponse.json();
+        const taskId = taskResult.taskId;
+        console.log(`Created ClickUp task: ${taskId}`);
+
+        // Step 2: Upload photos one by one (small individual payloads)
+        for (let i = 0; i < formState.photos.length; i++) {
+            // Update progress
+            setUploadProgress(prev => ({
+                ...prev,
+                currentImage: i + 1
+            }));
+
+            const file = formState.photos[i];
+            const photoFormData = new FormData();
+            photoFormData.append("photo", file);
+            photoFormData.append("taskId", taskId);
+
+            const uploadResponse = await fetch("/api/upload-photo", {
+                method: "POST",
+                body: photoFormData,
+            });
+
+            const uploadResult = await uploadResponse.json();
+
+            if (!uploadResult.success) {
+                throw new Error(`Failed to upload photo ${i + 1}: ${file.name}`);
+            }
+
+            console.log(`Uploaded ${file.name} to ClickUp task ${taskId}`);
+        }
 
         // Upload complete
         setUploadProgress({
@@ -217,7 +163,7 @@ export default function Vehicle_Inspection_Form() {
             totalImages: 0
         });
 
-        setMessage("Failed to publish to ClickUp");
+        setMessage("Failed to publish to ClickUp: " + (err instanceof Error ? err.message : 'Unknown error'));
         setShow(true);
         setSuccessful(false);
     } finally {
@@ -231,6 +177,7 @@ export default function Vehicle_Inspection_Form() {
         });
     }
 };
+
 
 
     // const handleSubmit = async (e: React.FormEvent) => {
