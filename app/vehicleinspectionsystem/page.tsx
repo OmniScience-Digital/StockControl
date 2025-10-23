@@ -206,7 +206,9 @@ export default function FleetPage() {
                     currentkm: item.currentkm,
                     codeRequirement: item.codeRequirement,
                     pdpRequirement: item.pdpRequirement,
-                    breakandLuxTest: item.breakandLuxTest,
+                    breakandLuxTest: (item.breakandLuxTest ?? []).filter(
+                        (x): x is string => x !== null
+                    ),
                     breakandLuxExpirey: item.breakandLuxExpirey,
                     history: item.history
                 }));
@@ -393,7 +395,7 @@ export default function FleetPage() {
             currentkm: 0,
             codeRequirement: '',
             pdpRequirement: false,
-            breakandLuxTest: '',
+            breakandLuxTest: [],
             breakandLuxExpirey: '',
             history: ''
         });
@@ -971,7 +973,7 @@ interface Fleet {
     currentkm: number | null;
     codeRequirement: string | null;
     pdpRequirement: boolean | null;
-    breakandLuxTest: string | null;
+    breakandLuxTest: string[] | [];
     breakandLuxExpirey: string | null;
     history: string | null;
 }

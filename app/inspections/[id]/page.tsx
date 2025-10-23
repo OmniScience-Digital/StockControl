@@ -77,7 +77,9 @@ export default function InspectionsPage() {
                     windscreenWipers: item.windscreenWipers,
                     serviceBook: item.serviceBook,
                     siteKit: item.siteKit,
-                    photo: item.photo,
+                    photo: (item.photo ?? []).filter(
+                        (x): x is string => x !== null
+                    ),
                     history: item.history
                 }));
                 setInspections(mappedInspections);
@@ -238,7 +240,7 @@ export default function InspectionsPage() {
             windscreenWipers: false,
             serviceBook: false,
             siteKit: false,
-            photo: '',
+            photo: [],
             history: ''
         });
         setEditedInspection({});
@@ -675,6 +677,6 @@ interface Inspection {
     windscreenWipers: boolean | null;
     serviceBook: boolean | null;
     siteKit: boolean | null;
-    photo: string | null;
+    photo: string [] | [];
     history: string | null;
 }
