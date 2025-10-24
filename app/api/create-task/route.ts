@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
   try {
-    const { vehicleId, vehicleReg, odometer, username, inspectionResults,timestamp,inspectionNo } = await req.json();
+    const { vehicleId, vehicleReg, odometer, username, inspectionResults,timestamp,inspectionNo,vehicleVin } = await req.json();
 
     // Format inspection questions
     const questionLines = inspectionResults.length > 0
@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
 
     const taskBody = {
       name: `Vehicle Inspection - ${vehicleReg} ${timestamp}`,
-      description: `Inspection No: ${inspectionNo}\nVehicle Reg: ${vehicleReg}\nVehicle ID: ${vehicleId}\nOdometer: ${odometer}\nUsername: ${username}\n\nInspection Results:\n\n${questionLines}`,
+      description: `Inspection No: ${inspectionNo}\nVehicle Vin: ${vehicleVin}\nVehicle Reg: ${vehicleReg}\nVehicle ID: ${vehicleId}\nOdometer: ${odometer}\nUsername: ${username}\n\nInspection Results:\n\n${questionLines}`,
       custom_fields: [
         {
           id: constants.USERNAME_FIELD_ID,

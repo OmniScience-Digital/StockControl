@@ -36,15 +36,17 @@ export default function Vehicle_Inspection_Form() {
     const [formState, setFormState] = useState({
         selectedVehicleId: "",
         selectedVehicleReg: "",
+        selectedVehicleVin: "",
         odometerValue: "",
         booleanQuestions: initialQuestions,
         photos: [] as File[]
     });
 
     // Use useCallback to prevent infinite re-renders
-    const handleVehicleChange = useCallback((vehicleId: string, vehicleReg: string) => {
+    const handleVehicleChange = useCallback((vehicleId: string, vehicleReg: string,vehicleVin:string) => {
         setFormState(prev => ({ ...prev, selectedVehicleId: vehicleId }));
         setFormState(prev => ({ ...prev, selectedVehicleReg: vehicleReg }));
+        setFormState(prev => ({ ...prev, selectedVehicleVin: vehicleVin }));
     }, []);
 
     const handleOdometerChange = useCallback((value: string) => {
@@ -87,6 +89,7 @@ export default function Vehicle_Inspection_Form() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
+          
             const inspectionNumber = await getNextInspectionNumber(formState.selectedVehicleId);
 
             setLoadingbtn(true);
@@ -136,6 +139,7 @@ export default function Vehicle_Inspection_Form() {
                     vehicleId: formState.selectedVehicleId,
                     inspectionNo: inspectionNumber,
                     vehicleReg: formState.selectedVehicleReg,
+                    vehicleVin: formState.selectedVehicleVin,
                     odometer: formState.odometerValue,
                     username: savedUser,
                     inspectionResults,
@@ -182,6 +186,7 @@ export default function Vehicle_Inspection_Form() {
                 photoFormData.append("taskId", taskId);
                 photoFormData.append("timestamp", timestamp);
                 photoFormData.append('vehicleReg', formState.selectedVehicleReg);
+                photoFormData.append('vehicleVin', formState.selectedVehicleVin);
                 photoFormData.append('inspectionNo', inspectionNumber.toString());
                 photoFormData.append('dbimages', JSON.stringify(s3PhotoUrls));
 
@@ -226,6 +231,7 @@ export default function Vehicle_Inspection_Form() {
             setFormState({
                 selectedVehicleId: "",
                 selectedVehicleReg: "",
+                selectedVehicleVin:"",
                 odometerValue: "",
                 booleanQuestions: initialQuestions,
                 photos: [] as File[]

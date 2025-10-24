@@ -15,7 +15,7 @@ import { client } from "@/services/schema";
 import Loading from "@/components/widgets/loading";
 
 interface VifFormProps {
-    onVehicleChange: (vehicleId: string, vehicleReg: string) => void;
+    onVehicleChange: (vehicleId: string, vehicleReg: string,vehicleVin: string) => void;
     onOdometerChange: (value: string) => void;
     onBooleanQuestionsChange: (questions: typeof initialQuestions) => void;
     onPhotosChange: (photos: File[]) => void;
@@ -116,7 +116,7 @@ export default function VifForm({
     const handleVehicleChange = (vehicleId: string) => {
         const selectedVehicle = vehicles.find(vehicle => vehicle.id === vehicleId);
         if (selectedVehicle) {
-            onVehicleChange(vehicleId, selectedVehicle.vehicleReg || "");
+            onVehicleChange(vehicleId, selectedVehicle.vehicleReg || "", selectedVehicle.vehicleVin || "");
         }
     };
 
