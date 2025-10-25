@@ -107,7 +107,7 @@ Inspection: a.model({
     fleet: a.belongsTo('Fleet','fleetid'),
 }).secondaryIndexes((index) => [
     index('fleetid')
-        .sortKeys(['inspectionDate', 'inspectionTime'])
+        .sortKeys(['inspectionDate'])
         .queryField('inspectionsByFleetAndDate')
 ]).authorization((allow) => [allow.publicApiKey()]),
 
