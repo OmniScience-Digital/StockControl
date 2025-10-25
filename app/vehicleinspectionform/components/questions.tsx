@@ -1,7 +1,323 @@
+// // components/questions.tsx
+// import { Button } from "@/components/ui/button";
+// import { Upload, X, Loader2, CheckCircle, AlertCircle } from "lucide-react";
+// import { useRef, useState } from "react";
+// import { uploadData } from 'aws-amplify/storage';
+
+
+// export const booleanQuestions = [
+//   {
+//     question: "Are the engine oil and Coolant Level Acceptable?",
+//     value: null as boolean | null
+//   },
+//   {
+//     question: "Is there a full tank of Fuel?",
+//     value: null
+//   },
+//   {
+//     question: "Are the Seatbelts, Doors and Mirror's Functioning Correctly?",
+//     value: null
+//   },
+//   {
+//     question: "Is the handbrake Tested and Functional?",
+//     value: null
+//   },
+//   {
+//     question: "Are all the Tyres wear, Tread, and Pressure Acceptable?",
+//     value: null
+//   },
+//   {
+//     question: "Is there a Spare tyre, jack, Spanner on the vehicle and in good condition?",
+//     value: null
+//   },
+//   {
+//     question: "Is there a valid number plate on the Front and Back of the vehicle?",
+//     value: null
+//   },
+//   {
+//     question: "Is the License Disc Clearly Visible in the windscreen?",
+//     value: null
+//   },
+//   {
+//     question: "Is there any signs of leaks under the vehicle prior to start?",
+//     value: null
+//   },
+//   {
+//     question: "Are the headlights, Taillights, Fog Lights, indicators and hazards functioning correctly?",
+//     value: null
+//   },
+//   {
+//     question: "Are the defrosters, heaters and air conditioners functional?",
+//     value: null
+//   },
+//   {
+//     question: "Is the Emergency Kit within the Vehicle?",
+//     value: null
+//   },
+//   {
+//     question: "Is the car interior and Exterior Clean?",
+//     value: null
+//   },
+//   {
+//     question: "Are there any warning Lights present on the Dash at start up?",
+//     value: null
+//   },
+//   {
+//     question: "Are the Windscreen Wipers in working condition?",
+//     value: null
+//   },
+//   {
+//     question: "Is the Service book within the vehicle?",
+//     value: null
+//   },
+//   {
+//     question: "Is there Reflectors, Buggy Whip, Strobe Light within the Vehicle?",
+//     value: null
+//   }
+// ];
+
+// // Boolean Question Component
+// export const BooleanQuestion = ({ question, value, onChange }: {
+//   question: string;
+//   value: boolean | null;
+//   onChange: (value: boolean) => void;
+// }) => (
+//   <div className="flex items-center justify-between p-3 border rounded-lg">
+//     <span className="text-sm flex-1">{question}</span>
+//     <div className="flex gap-2">
+//       <Button 
+//         type="button" 
+//         variant={value === true ? "default" : "outline"} 
+//         size="sm"
+//         onClick={() => onChange(true)}
+//       >
+//         Yes
+//       </Button>
+//       <Button 
+//         type="button" 
+//         variant={value === false ? "destructive" : "outline"} 
+//         size="sm"
+//         onClick={() => onChange(false)}
+//       >
+//         No
+//       </Button>
+//     </div>
+//   </div>
+// );
+
+// export interface PhotoState {
+//   id: string;
+//   file: File;
+//   s3Key: string;
+//   status: 'uploading' | 'success' | 'error';
+//   url?: string;
+//   error?: string;
+// }
+
+// interface PhotoUploadProps {
+//   onPhotosChange: (photos: PhotoState[]) => void;
+//   vehicleReg: string;
+//   inspectionNumber:number|null;
+// }
+
+// export const PhotoUpload = ({ onPhotosChange, vehicleReg,inspectionNumber }: PhotoUploadProps) => {
+//   const [photos, setPhotos] = useState<PhotoState[]>([]);
+//   const [isUploading, setIsUploading] = useState(false);
+//   const fileInputRef = useRef<HTMLInputElement>(null);
+
+//   const generateS3Key = (file: File, index: number): string => {
+//     const timestamp = Date.now();
+//     const cleanVehicleReg = vehicleReg.replace(/[^a-zA-Z0-9]/g, '-');
+//     const fileExtension = file.name.split('.').pop();
+//     return `inspections/${cleanVehicleReg}/${inspectionNumber}/${timestamp}-${index}-${Math.random().toString(36).substring(2, 9)}.${fileExtension}`;
+//   };
+
+//   const uploadToS3 = async (photo: PhotoState): Promise<void> => {
+//     try {
+//       const result = await uploadData({
+//         path: photo.s3Key,
+//         data: photo.file,
+//         options: {
+//           contentType: photo.file.type,
+//         }
+//       }).result;
+      
+//       setPhotos(prev => prev.map(p => 
+//         p.id === photo.id ? { ...p, status: 'success' } : p
+//       ));
+//     } catch (error) {
+//       console.error('S3 upload failed:', error);
+//       setPhotos(prev => prev.map(p => 
+//         p.id === photo.id ? { 
+//           ...p, 
+//           status: 'error', 
+//           error: 'Upload failed' 
+//         } : p
+//       ));
+//     }
+//   };
+
+
+
+//   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+//     const files = e.target.files;
+//     if (!files || !vehicleReg) return;
+
+//     setIsUploading(true);
+    
+//     const newFiles = Array.from(files).slice(0, 20 - photos.length);
+    
+//     const newPhotos: PhotoState[] = newFiles.map((file, index) => ({
+//       id: Math.random().toString(36).substring(2, 9),
+//       file,
+//       s3Key: generateS3Key(file, photos.length + index),
+//       status: 'uploading'
+//     }));
+
+//     const updatedPhotos = [...photos, ...newPhotos];
+//     setPhotos(updatedPhotos);
+//     onPhotosChange(updatedPhotos);
+
+//     newPhotos.forEach(photo => uploadToS3(photo));
+    
+//     setIsUploading(false);
+    
+//     if (fileInputRef.current) {
+//       fileInputRef.current.value = '';
+//     }
+//   };
+
+//   const removePhoto = async (index: number) => {
+//     const updatedPhotos = photos.filter((_, i) => i !== index);
+//     setPhotos(updatedPhotos);
+//     onPhotosChange(updatedPhotos);
+//   };
+
+//   const retryUpload = (photoId: string) => {
+//     const photo = photos.find(p => p.id === photoId);
+//     if (photo) {
+//       setPhotos(prev => prev.map(p => 
+//         p.id === photoId ? { ...p, status: 'uploading', error: undefined } : p
+//       ));
+//       uploadToS3({ ...photo, status: 'uploading' });
+//     }
+//   };
+
+//   const getUploadStatusIcon = (photo: PhotoState) => {
+//     switch (photo.status) {
+//       case 'uploading':
+//         return <Loader2 className="h-4 w-4 animate-spin text-blue-500" />;
+//       case 'success':
+//         return <CheckCircle className="h-4 w-4 text-green-500" />;
+//       case 'error':
+//         return <AlertCircle className="h-4 w-4 text-red-500" />;
+//       default:
+//         return null;
+//     }
+//   };
+
+//   const allPhotosUploaded = photos.length > 0 && photos.every(photo => photo.status === 'success');
+//   const hasUploadErrors = photos.some(photo => photo.status === 'error');
+
+//   return (
+//     <div className="space-y-4">
+//       <input
+//         type="file"
+//         ref={fileInputRef}
+//         multiple
+//         accept="image/*"
+//         onChange={handlePhotoUpload}
+//         className="hidden"
+//         disabled={!vehicleReg || photos.length >= 20}
+//       />
+      
+//       <div className="flex items-center justify-between">
+//         <Button
+//           type="button"
+//           variant="outline"
+//           onClick={() => fileInputRef.current?.click()}
+//           disabled={!vehicleReg || photos.length >= 20 || isUploading}
+//         >
+//           <Upload className="h-4 w-4 mr-2" />
+//           {isUploading ? 'Uploading...' : `Upload Photos (${photos.length}/20)`}
+//         </Button>
+
+//         {allPhotosUploaded && (
+//           <div className="flex items-center text-green-600 text-sm">
+//             <CheckCircle className="h-4 w-4 mr-1" />
+//             All photos uploaded to cloud
+//           </div>
+//         )}
+//       </div>
+
+//       {!vehicleReg && (
+//         <p className="text-sm text-amber-600">
+//           Please select a vehicle first to upload photos
+//         </p>
+//       )}
+
+//       {photos.length > 0 && (
+//         <div className="space-y-2">
+//           <div className="flex gap-4 overflow-x-auto p-4 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+//             {photos.map((photo, index: number) => ( // FIXED: Added type annotation
+//               <div 
+//                 key={photo.id} 
+//                 className="flex-shrink-0 w-32 h-32 relative border rounded-lg p-2"
+//               >
+//                 <img
+//                   src={URL.createObjectURL(photo.file)}
+//                   alt={`Upload ${index + 1}`}
+//                   className="w-full h-full object-cover rounded"
+//                 />
+                
+//                 <div className="absolute top-1 left-1">
+//                   {getUploadStatusIcon(photo)}
+//                 </div>
+
+//                 <Button
+//                   type="button"
+//                   variant="destructive"
+//                   size="icon"
+//                   className="absolute -top-2 -right-2 h-6 w-6"
+//                   onClick={() => removePhoto(index)}
+//                 >
+//                   <X className="h-3 w-3" />
+//                 </Button>
+
+//                 {photo.status === 'error' && (
+//                   <div className="absolute bottom-1 left-1 right-1">
+//                     <Button
+//                       type="button"
+//                       variant="outline"
+//                       size="sm"
+//                       className="w-full h-6 text-xs bg-white"
+//                       onClick={() => retryUpload(photo.id)}
+//                     >
+//                       Retry
+//                     </Button>
+//                   </div>
+//                 )}
+//               </div>
+//             ))}
+//           </div>
+          
+//           <div className="text-xs text-gray-500 text-center">
+//             {photos.length} photo(s) • {photos.filter(p => p.status === 'success').length} uploaded • 
+//             {photos.filter(p => p.status === 'uploading').length} uploading • 
+//             {photos.filter(p => p.status === 'error').length} failed
+//             {hasUploadErrors && " • Please fix errors before submitting"}
+//           </div>
+//         </div>
+//       )}
+//     </div>
+//   );
+// };
+
+
 // components/questions.tsx
 import { Button } from "@/components/ui/button";
 import { Upload, X, Loader2, CheckCircle, AlertCircle } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { uploadData } from 'aws-amplify/storage';
 
 // Boolean questions array - FIXED: Make sure it's exported
@@ -117,13 +433,21 @@ export interface PhotoState {
 interface PhotoUploadProps {
   onPhotosChange: (photos: PhotoState[]) => void;
   vehicleReg: string;
-  inspectionNumber:number|null;
+  inspectionNumber: number | null;
 }
 
-export const PhotoUpload = ({ onPhotosChange, vehicleReg,inspectionNumber }: PhotoUploadProps) => {
+
+
+
+export const PhotoUpload = ({ onPhotosChange, vehicleReg, inspectionNumber }: PhotoUploadProps) => {
   const [photos, setPhotos] = useState<PhotoState[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Single source of truth for parent sync
+  useEffect(() => {
+    onPhotosChange(photos);
+  }, [photos, onPhotosChange]);
 
   const generateS3Key = (file: File, index: number): string => {
     const timestamp = Date.now();
@@ -134,13 +458,14 @@ export const PhotoUpload = ({ onPhotosChange, vehicleReg,inspectionNumber }: Pho
 
   const uploadToS3 = async (photo: PhotoState): Promise<void> => {
     try {
-      const result = await uploadData({
+      const { result } = await uploadData({
         path: photo.s3Key,
         data: photo.file,
         options: {
           contentType: photo.file.type,
         }
       });
+      await result;
       
       setPhotos(prev => prev.map(p => 
         p.id === photo.id ? { ...p, status: 'success' } : p
@@ -174,10 +499,9 @@ export const PhotoUpload = ({ onPhotosChange, vehicleReg,inspectionNumber }: Pho
 
     const updatedPhotos = [...photos, ...newPhotos];
     setPhotos(updatedPhotos);
-    onPhotosChange(updatedPhotos);
-
-    newPhotos.forEach(photo => uploadToS3(photo));
     
+
+    await Promise.all(newPhotos.map(photo => uploadToS3(photo)));
     setIsUploading(false);
     
     if (fileInputRef.current) {
@@ -185,10 +509,10 @@ export const PhotoUpload = ({ onPhotosChange, vehicleReg,inspectionNumber }: Pho
     }
   };
 
-  const removePhoto = async (index: number) => {
+  const removePhoto = (index: number) => {
     const updatedPhotos = photos.filter((_, i) => i !== index);
     setPhotos(updatedPhotos);
-    onPhotosChange(updatedPhotos);
+    
   };
 
   const retryUpload = (photoId: string) => {
@@ -197,7 +521,7 @@ export const PhotoUpload = ({ onPhotosChange, vehicleReg,inspectionNumber }: Pho
       setPhotos(prev => prev.map(p => 
         p.id === photoId ? { ...p, status: 'uploading', error: undefined } : p
       ));
-      uploadToS3({ ...photo, status: 'uploading' });
+      uploadToS3(photo);
     }
   };
 
@@ -257,7 +581,7 @@ export const PhotoUpload = ({ onPhotosChange, vehicleReg,inspectionNumber }: Pho
       {photos.length > 0 && (
         <div className="space-y-2">
           <div className="flex gap-4 overflow-x-auto p-4 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-            {photos.map((photo, index: number) => ( // FIXED: Added type annotation
+            {photos.map((photo, index) => (
               <div 
                 key={photo.id} 
                 className="flex-shrink-0 w-32 h-32 relative border rounded-lg p-2"
@@ -310,3 +634,4 @@ export const PhotoUpload = ({ onPhotosChange, vehicleReg,inspectionNumber }: Pho
     </div>
   );
 };
+
