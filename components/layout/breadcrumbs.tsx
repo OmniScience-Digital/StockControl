@@ -8,6 +8,7 @@ export default function Breadcrumbs() {
   const segments = pathname.split("/");
 
   pathname = segments.join("/"); // Reconstruct path without last segment
+  
 
   let pathSegments = pathname.split("/").filter(Boolean); // Remove empty segments
 
@@ -19,9 +20,7 @@ export default function Breadcrumbs() {
       return segment;
     });
 
-  if (pathSegments[0] === "inspections") {
-    pathSegments[0] = "vehicleinspectionsystem";
-  }
+
   if (
     pathSegments.length === 1 &&
     pathSegments[0].endsWith("form") &&
@@ -29,6 +28,14 @@ export default function Breadcrumbs() {
   ) {
     pathSegments = ["forms", pathSegments[0].replace(/form$/i, "")];
   }
+
+
+    // Handle vehicleinspectionsystem/edit routes (keep the ID)
+  if (pathSegments.includes("vehicleinspectionsystem") && pathSegments.includes("edit")) {
+      pathSegments = pathSegments.filter(segment => segment !== "edit");
+
+  }
+
 
   // Function to truncate long text for mobile
   const truncateSegment = (segment: string, isLast: boolean = false) => {

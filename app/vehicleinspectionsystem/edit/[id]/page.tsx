@@ -1,0 +1,501 @@
+"use client";
+
+import { client } from "@/services/schema";
+import { useEffect, useState, useRef } from "react";
+import { useRouter, useParams } from "next/navigation";
+import { Save, Trash2, ArrowLeft, Car, Loader2, X } from "lucide-react";
+import Footer from "@/components/layout/footer";
+import Navbar from "@/components/layout/navbar";
+import Loading from "@/components/widgets/loading";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
+import { ConfirmDialog } from "@/components/widgets/deletedialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+export default function FleetEditPage() {
+    const router = useRouter();
+    const params = useParams();
+    const fleetId = decodeURIComponent(params.id as string);
+    const editFormRef = useRef<HTMLDivElement>(null);
+
+    const [loading, setLoading] = useState(true);
+    const [fleet, setFleet] = useState<Fleet | null>(null);
+    const [editedFleet, setEditedFleet] = useState<Partial<Fleet>>({});
+    const [saving, setSaving] = useState(false);
+    const [opendelete, setOpendelete] = useState(false);
+
+    useEffect(() => {
+        const fetchFleet = async () => {
+            try {
+                const { data: fleetData } = await client.models.Fleet.get({ id: fleetId });
+                
+                if (fleetData) {
+                    const mappedFleet: Fleet = {
+                        id: fleetData.id,
+                        vehicleVin: fleetData.vehicleVin,
+                        vehicleReg: fleetData.vehicleReg,
+                        vehicleMake: fleetData.vehicleMake,
+                        vehicleModel: fleetData.vehicleModel,
+                        transmitionType: fleetData.transmitionType,
+                        ownershipStatus: fleetData.ownershipStatus,
+                        fleetIndex: fleetData.fleetIndex,
+                        fleetNumber: fleetData.fleetNumber,
+                        lastServicedate: fleetData.lastServicedate,
+                        lastServicekm: fleetData.lastServicekm,
+                        lastRotationdate: fleetData.lastRotationdate,
+                        lastRotationkm: fleetData.lastRotationkm,
+                        servicePlanStatus: fleetData.servicePlanStatus,
+                        servicePlan: fleetData.servicePlan,
+                        currentDriver: fleetData.currentDriver,
+                        currentkm: fleetData.currentkm,
+                        codeRequirement: fleetData.codeRequirement,
+                        pdpRequirement: fleetData.pdpRequirement,
+                        breakandLuxTest: (fleetData.breakandLuxTest ?? []).filter(
+                            (x): x is string => x !== null
+                        ),
+                        breakandLuxExpirey: fleetData.breakandLuxExpirey,
+                        history: fleetData.history
+                    };
+
+                    setFleet(mappedFleet);
+                    setEditedFleet({ ...mappedFleet });
+                }
+            } catch (error) {
+                console.error("Error fetching fleet:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchFleet();
+    }, [fleetId]);
+
+    useEffect(() => {
+        if (editFormRef.current) {
+            editFormRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+    }, []);
+
+    // Handle save
+    const handleSave = async () => {
+        if (!fleet) return;
+
+        try {
+            setSaving(true);
+            // Get user from localStorage
+            let storedName = "Unknown User";
+            try {
+                const userData = localStorage.getItem("user");
+                if (userData) {
+                    storedName = userData.replace(/^"|"$/g, '').trim();
+                }
+            } catch (error) {
+                console.error("Error getting user from localStorage:", error);
+            }
+
+            const johannesburgTime = new Date().toLocaleString("en-ZA", {
+                timeZone: "Africa/Johannesburg"
+            });
+
+            let historyEntries = "";
+
+            // Create history for changes
+            Object.keys(editedFleet).forEach(key => {
+                const typedKey = key as keyof Fleet;
+                if (editedFleet[typedKey] !== fleet[typedKey]) {
+                    historyEntries += `${storedName} updated ${typedKey} from ${fleet[typedKey]} to ${editedFleet[typedKey]} at ${johannesburgTime}\n`;
+                }
+            });
+
+            // Helper function to handle date fields for AWS Amplify
+            const formatDateForAmplify = (dateValue: string | null): string | null => {
+                if (!dateValue || dateValue.trim() === "") return null;
+                if (/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) return dateValue;
+                if (dateValue.includes('T')) return dateValue.split('T')[0];
+                try {
+                    const date = new Date(dateValue);
+                    if (isNaN(date.getTime())) return null;
+                    const year = date.getFullYear();
+                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                    const day = String(date.getDate()).padStart(2, '0');
+                    return `${year}-${month}-${day}`;
+                } catch {
+                    return null;
+                }
+            };
+
+            const fleetData = {
+                ...fleet,
+                ...editedFleet,
+                lastServicedate: formatDateForAmplify(editedFleet.lastServicedate || fleet.lastServicedate),
+                lastRotationdate: formatDateForAmplify(editedFleet.lastRotationdate || fleet.lastRotationdate),
+                breakandLuxExpirey: formatDateForAmplify(editedFleet.breakandLuxExpirey || fleet.breakandLuxExpirey),
+                history: historyEntries ? (fleet.history || "") + historyEntries : fleet.history
+            };
+
+            console.log("Saving fleet data:", fleetData);
+
+            // Update existing fleet
+            const result = await client.models.Fleet.update({
+                id: fleetData.id,
+                vehicleVin: fleetData.vehicleVin || null,
+                vehicleReg: fleetData.vehicleReg || null,
+                vehicleMake: fleetData.vehicleMake || null,
+                vehicleModel: fleetData.vehicleModel || null,
+                transmitionType: fleetData.transmitionType || null,
+                ownershipStatus: fleetData.ownershipStatus || null,
+                fleetIndex: fleetData.fleetIndex || null,
+                fleetNumber: fleetData.fleetNumber || null,
+                lastServicedate: fleetData.lastServicedate,
+                lastServicekm: fleetData.lastServicekm || null,
+                lastRotationdate: fleetData.lastRotationdate,
+                lastRotationkm: fleetData.lastRotationkm || null,
+                servicePlanStatus: fleetData.servicePlanStatus || false,
+                servicePlan: fleetData.servicePlan || null,
+                currentDriver: fleetData.currentDriver || null,
+                currentkm: fleetData.currentkm || null,
+                codeRequirement: fleetData.codeRequirement || null,
+                pdpRequirement: fleetData.pdpRequirement || false,
+                breakandLuxTest: fleetData.breakandLuxTest || null,
+                breakandLuxExpirey: fleetData.breakandLuxExpirey,
+                history: fleetData.history || null
+            });
+
+            console.log("Update result:", result);
+
+            // Navigate back to list page
+            router.push('/vehicleinspectionsystem');
+
+            // Show success message
+            alert("Vehicle updated successfully!");
+
+        } catch (error) {
+            console.error("Error saving fleet:", error);
+            alert("Error saving vehicle. Check console for details.");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    // Handle delete
+    const handleDelete = async () => {
+        try {
+            await client.models.Fleet.delete({
+                id: fleetId
+            });
+            setOpendelete(false);
+            // Navigate back to list page after delete
+            router.push('/vehicleinspectionsystem');
+        } catch (error) {
+            console.error("Error deleting fleet:", error);
+        }
+    };
+
+    const handleDeleteClick = () => {
+        setOpendelete(true);
+    };
+
+    const handleConfirmWrapper = () => {
+        handleDelete();
+    };
+
+    // Handle change
+    const handleChange = (field: keyof Fleet, value: string | number | boolean) => {
+        setEditedFleet(prev => ({ ...prev, [field]: value }));
+    };
+
+    if (loading) {
+        return (
+            <div className="flex flex-col min-h-screen bg-background text-foreground">
+                <Navbar />
+                <Loading />
+                <Footer />
+            </div>
+        );
+    }
+
+    if (!fleet) {
+        return (
+            <div className="flex flex-col min-h-screen bg-background text-foreground">
+                <Navbar />
+                <div className="flex-1 flex items-center justify-center">
+                    <p>Vehicle not found</p>
+                </div>
+                <Footer />
+            </div>
+        );
+    }
+
+    return (
+        <div className="flex flex-col min-h-screen bg-background text-foreground">
+            <Navbar />
+
+            <main className="flex-1 px-2 sm:px-4 mt-20 pb-8">
+                <div className="container mx-auto max-w-7xl mt-5">
+                    {/* Header */}
+                    <div className="mb-4 sm:mb-6">
+                        <div className="flex items-center gap-3 mb-2">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => router.push('/vehicleinspectionsystem')}
+                                className="h-8 w-8 p-0"
+                            >
+                                <ArrowLeft className="h-4 w-4" />
+                            </Button>
+                            <Car className="h-5 w-5 text-primary" />
+                            <div>
+                                <h1 className="text-xl sm:text-2xl font-bold">
+                                    Edit {fleet.vehicleReg || fleet.fleetNumber}
+                                </h1>
+                                <p className="text-sm text-muted-foreground">
+                                    Fleet Management System
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Edit Form */}
+                    <Card ref={editFormRef} className="mb-4 sm:mb-6">
+                        <CardHeader className="pb-3">
+                            <CardTitle className="text-lg flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                                <span className="text-base sm:text-lg">
+                                    Edit Vehicle
+                                </span>
+                                <div className="flex gap-2 w-full sm:w-auto">
+                                    <Button
+                                        size="sm"
+                                        onClick={handleSave}
+                                        disabled={saving}
+                                        className="h-8 text-xs cursor-pointer bg-[#165b8c] text-white hover:bg-[#1e6fae] flex-1 sm:flex-none"
+                                    >
+                                        <Save className="h-3 w-3 mr-1" />
+                                        {saving ? (
+                                            <>
+                                                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                                                Saving...
+                                            </>
+                                        ) : (
+                                            "Save"
+                                        )}
+                                    </Button>
+
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => router.push('/vehicleinspectionsystem')}
+                                        className="h-8 text-xs cursor-pointer flex-1 sm:flex-none"
+                                    >
+                                        <X className="h-3 w-3 mr-1" />
+                                        Cancel
+                                    </Button>
+                                    
+                                    <Button
+                                        size="sm"
+                                        variant="destructive"
+                                        onClick={handleDeleteClick}
+                                        className="h-8 text-xs cursor-pointer flex-1 sm:flex-none"
+                                    >
+                                        <Trash2 className="h-3 w-3 mr-1" />
+                                        Delete
+                                    </Button>
+                                </div>
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="pt-0">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                                {/* Basic Information */}
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium">Fleet Number *</label>
+                                    <Input
+                                        value={editedFleet.fleetNumber ?? fleet.fleetNumber ?? ''}
+                                        onChange={(e) => handleChange("fleetNumber", e.target.value)}
+                                        className="h-9 text-sm"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium">Vehicle Registration *</label>
+                                    <Input
+                                        value={editedFleet.vehicleReg ?? fleet.vehicleReg ?? ''}
+                                        onChange={(e) => handleChange("vehicleReg", e.target.value)}
+                                        className="h-9 text-sm"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium">Vehicle VIN</label>
+                                    <Input
+                                        value={editedFleet.vehicleVin ?? fleet.vehicleVin ?? ''}
+                                        onChange={(e) => handleChange("vehicleVin", e.target.value)}
+                                        className="h-9 text-sm"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium">Vehicle Make</label>
+                                    <Input
+                                        value={editedFleet.vehicleMake ?? fleet.vehicleMake ?? ''}
+                                        onChange={(e) => handleChange("vehicleMake", e.target.value)}
+                                        className="h-9 text-sm"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium">Vehicle Model</label>
+                                    <Input
+                                        value={editedFleet.vehicleModel ?? fleet.vehicleModel ?? ''}
+                                        onChange={(e) => handleChange("vehicleModel", e.target.value)}
+                                        className="h-9 text-sm"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium">Transmission Type</label>
+                                    <Select
+                                        value={editedFleet.transmitionType ?? fleet.transmitionType ?? ''}
+                                        onValueChange={(value) => handleChange("transmitionType", value)}
+                                    >
+                                        <SelectTrigger className="h-9 text-sm cursor-pointer">
+                                            <SelectValue placeholder="Select transmission" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="Automatic" className="cursor-pointer">Automatic</SelectItem>
+                                            <SelectItem value="Manual" className="cursor-pointer">Manual</SelectItem>
+                                            <SelectItem value="Hybrid" className="cursor-pointer">Hybrid</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium">Ownership Status</label>
+                                    <Select
+                                        value={editedFleet.ownershipStatus ?? fleet.ownershipStatus ?? ''}
+                                        onValueChange={(value) => handleChange("ownershipStatus", value)}
+                                    >
+                                        <SelectTrigger className="h-9 text-sm cursor-pointer">
+                                            <SelectValue placeholder="Select ownership" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="Owned" className="cursor-pointer">Owned</SelectItem>
+                                            <SelectItem value="Leased" className="cursor-pointer">Leased</SelectItem>
+                                            <SelectItem value="Rented" className="cursor-pointer">Rented</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium">Current Driver</label>
+                                    <Input
+                                        value={editedFleet.currentDriver ?? fleet.currentDriver ?? ''}
+                                        onChange={(e) => handleChange("currentDriver", e.target.value)}
+                                        className="h-9 text-sm"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium">Current KM</label>
+                                    <Input
+                                        type="number"
+                                        value={editedFleet.currentkm ?? fleet.currentkm ?? ''}
+                                        onChange={(e) => handleChange("currentkm", parseFloat(e.target.value) || 0)}
+                                        className="h-9 text-sm"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium">Service Plan Status</label>
+                                    <Select
+                                        value={editedFleet.servicePlanStatus?.toString() ?? fleet.servicePlanStatus?.toString() ?? 'false'}
+                                        onValueChange={(value) => handleChange("servicePlanStatus", value === 'true')}
+                                    >
+                                        <SelectTrigger className="h-9 text-sm cursor-pointer">
+                                            <SelectValue placeholder="Select status" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="true" className="cursor-pointer">Active</SelectItem>
+                                            <SelectItem value="false" className="cursor-pointer">Inactive</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium">Last Service Date</label>
+                                    <Input
+                                        type="date"
+                                        value={editedFleet.lastServicedate ?? fleet.lastServicedate ?? ''}
+                                        onChange={(e) => handleChange("lastServicedate", e.target.value)}
+                                        className="h-9 text-sm"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium">Last Rotation Date</label>
+                                    <Input
+                                        type="date"
+                                        value={editedFleet.lastRotationdate ?? fleet.lastRotationdate ?? ''}
+                                        onChange={(e) => handleChange("lastRotationdate", e.target.value)}
+                                        className="h-9 text-sm"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium">Brake & Lux Expiry</label>
+                                    <Input
+                                        type="date"
+                                        value={editedFleet.breakandLuxExpirey ?? fleet.breakandLuxExpirey ?? ''}
+                                        onChange={(e) => handleChange("breakandLuxExpirey", e.target.value)}
+                                        className="h-9 text-sm"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium">Last Service KM</label>
+                                    <Input
+                                        type="number"
+                                        value={editedFleet.lastServicekm ?? fleet.lastServicekm ?? ''}
+                                        onChange={(e) => handleChange("lastServicekm", parseFloat(e.target.value) || 0)}
+                                        className="h-9 text-sm"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* History */}
+                            <div className="mt-4 space-y-2">
+                                <label className="text-sm font-medium">History</label>
+                                <Textarea
+                                    value={editedFleet.history || fleet.history || ''}
+                                    onChange={(e) => handleChange("history", e.target.value)}
+                                    className="min-h-[80px] text-sm resize-vertical"
+                                    placeholder="Vehicle history and maintenance records..."
+                                    readOnly
+                                />
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                <ConfirmDialog
+                    open={opendelete}
+                    setOpen={setOpendelete}
+                    handleConfirm={handleConfirmWrapper}
+                />
+            </main>
+            <Footer />
+        </div>
+    );
+}
+
+interface Fleet {
+    id: string;
+    vehicleVin: string | null;
+    vehicleReg: string | null;
+    vehicleMake: string | null;
+    vehicleModel: string | null;
+    transmitionType: string | null;
+    ownershipStatus: string | null;
+    fleetIndex: string | null;
+    fleetNumber: string | null;
+    lastServicedate: string | null;
+    lastServicekm: number | null;
+    lastRotationdate: string | null;
+    lastRotationkm: number | null;
+    servicePlanStatus: boolean | null;
+    servicePlan: string | null;
+    currentDriver: string | null;
+    currentkm: number | null;
+    codeRequirement: string | null;
+    pdpRequirement: boolean | null;
+    breakandLuxTest: string[] | [];
+    breakandLuxExpirey: string | null;
+    history: string | null;
+}

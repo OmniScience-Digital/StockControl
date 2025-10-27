@@ -1,12 +1,10 @@
 "use client";
 
 import { client } from "@/services/schema";
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState} from "react";
 import { useRouter } from "next/navigation";
 import { DataTable } from "@/components/table/datatable";
-import { EditIcon, ArrowUpDown, FileArchive, Download, X, Car, Search, Plus, Save, Trash2, MoreVertical, Loader2 } from "lucide-react";
+import { EditIcon, ArrowUpDown, X, Car, Search, Plus, Save, Trash2, MoreVertical, Loader2 } from "lucide-react";
 import { ColumnDef } from "@tanstack/react-table";
 import Footer from "@/components/layout/footer";
 import Navbar from "@/components/layout/navbar";
@@ -20,137 +18,9 @@ import { Badge } from "@/components/ui/badge";
 import { ConfirmDialog } from "@/components/widgets/deletedialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Fleet } from "@/types/vifForm.types";
 
-// Add type declaration for autoTable
-declare module 'jspdf' {
-    interface jsPDF {
-        autoTable: (options: any) => jsPDF;
-        lastAutoTable?: {
-            finalY: number;
-        };
-    }
-}
 
-// Helper function to convert data to CSV
-const convertToCSV = (fleetData: Fleet[]): string => {
-    const rows: string[] = [];
-
-    // Headers
-    const headers = [
-        'Fleet Number',
-        'Vehicle Reg',
-        'Vehicle VIN',
-        'Vehicle Make',
-        'Vehicle Model',
-        'Transmission Type',
-        'Ownership Status',
-        'Current Driver',
-        'Current KM',
-        'Service Plan Status',
-        'Last Service Date',
-        'Last Service KM'
-    ];
-    rows.push(headers.join(','));
-
-    // Fleet data
-    fleetData.forEach(fleet => {
-        const row = [
-            fleet.fleetNumber || '',
-            fleet.vehicleReg || '',
-            fleet.vehicleVin || '',
-            fleet.vehicleMake || '',
-            fleet.vehicleModel || '',
-            fleet.transmitionType || '',
-            fleet.ownershipStatus || '',
-            fleet.currentDriver || '',
-            fleet.currentkm?.toString() || '0',
-            fleet.servicePlanStatus ? 'Active' : 'Inactive',
-            fleet.lastServicedate || '',
-            fleet.lastServicekm?.toString() || '0'
-        ];
-
-        const escapedRow = row.map(value => {
-            if (value.includes(',') || value.includes('"') || value.includes('\n')) {
-                return `"${value.replace(/"/g, '""')}"`;
-            }
-            return value;
-        });
-
-        rows.push(escapedRow.join(','));
-    });
-
-    return rows.join('\n');
-};
-
-// Helper function to download CSV
-const downloadCSV = (csvContent: string, filename: string) => {
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-
-    link.setAttribute('href', url);
-    link.setAttribute('download', filename);
-    link.style.visibility = 'hidden';
-
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-};
-
-// Helper function to generate PDF
-const generatePDF = (fleetData: Fleet[]) => {
-    const doc = new jsPDF();
-
-    // Title
-    doc.setFontSize(10);
-    doc.setTextColor(100);
-    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 15);
-
-    doc.setFontSize(12);
-    doc.setTextColor(40);
-    doc.text(`Fleet Management Report`, 14, 22);
-
-    let startY = 30;
-
-    if (fleetData.length === 0) {
-        doc.setFontSize(10);
-        doc.setTextColor(120);
-        doc.text('No fleet vehicles found', 20, startY);
-        return doc;
-    }
-
-    // Prepare table data
-    const tableData = fleetData.map(fleet => [
-        fleet.fleetNumber || '-',
-        fleet.vehicleReg || '-',
-        fleet.vehicleMake || '-',
-        fleet.vehicleModel || '-',
-        fleet.currentDriver || '-',
-        fleet.currentkm?.toString() || '0',
-        fleet.servicePlanStatus ? 'Active' : 'Inactive',
-        fleet.lastServicedate || '-'
-    ]);
-
-    // Add table
-    autoTable(doc, {
-        startY: startY,
-        head: [['Fleet No', 'Reg', 'Make', 'Model', 'Driver', 'Current KM', 'Service Plan', 'Last Service']],
-        body: tableData,
-        theme: 'grid',
-        headStyles: {
-            fillColor: [66, 66, 66],
-            textColor: 255,
-            fontStyle: 'bold'
-        },
-        styles: {
-            fontSize: 8,
-            cellPadding: 2
-        },
-        margin: { left: 14, right: 14 }
-    });
-
-    return doc;
-};
 
 export default function FleetPage() {
     const router = useRouter();
@@ -336,13 +206,7 @@ export default function FleetPage() {
                                 <Car className="h-4 w-4 mr-2" />
                                 Inspections
                             </DropdownMenuItem>
-                            <DropdownMenuItem
-                                onClick={(e) => handlePrintClick(e, row.original.id)}
-                                className="cursor-pointer"
-                            >
-                                <FileArchive className="h-4 w-4 mr-2" />
-                                Export
-                            </DropdownMenuItem>
+                      
                         </DropdownMenuContent>
                     </DropdownMenu>
                 </div>
@@ -365,13 +229,10 @@ export default function FleetPage() {
         })
         : [];
 
-    // Handle edit
-    const handleEdit = (fleet: any) => {
-        const fullFleet = fleets.find(f => f.id === fleet.id) || fleet;
-        setEditingFleet(fullFleet);
-        setEditedFleet({ ...fullFleet });
-        setIsCreating(false);
-    };
+
+const handleEdit = (fleet: any) => {
+    router.push(`/vehicleinspectionsystem/edit/${fleet.id}`);
+};
 
     // Handle create new
     const handleCreateNew = () => {
@@ -567,56 +428,10 @@ export default function FleetPage() {
     // Redirect to inspections
     const redirectToInspections = (id: string) => {
         localStorage.setItem('fleetId', id);
-        router.push(`/inspections/${id}`);
+        router.push(`/vehicleinspectionsystem/${id}`);
     };
 
-    // Handle print button click to show menu
-    const handlePrintClick = (event: React.MouseEvent, id: string) => {
-        const button = event.currentTarget as HTMLElement;
-        const rect = button.getBoundingClientRect();
 
-        setPrintMenu({
-            isOpen: true,
-            fleetId: id,
-            position: {
-                top: rect.bottom,
-                left: rect.left
-            }
-        });
-    };
-
-    // Close print menu
-    const closePrintMenu = () => {
-        setPrintMenu(prev => ({ ...prev, isOpen: false }));
-    };
-
-    // Download CSV function
-    const handleDownloadCSV = async () => {
-        try {
-            propsetLoading(true);
-            const csvContent = convertToCSV(fleets);
-            const filename = `fleet_management_${new Date().toISOString().split('T')[0]}.csv`;
-            downloadCSV(csvContent, filename);
-        } catch (error) {
-            console.error("Error downloading CSV:", error);
-        } finally {
-            propsetLoading(false);
-        }
-    };
-
-    // Download PDF function
-    const handleDownloadPDF = async () => {
-        try {
-            propsetLoading(true);
-            const pdf = generatePDF(fleets);
-            const filename = `fleet_management_${new Date().toISOString().split('T')[0]}.pdf`;
-            pdf.save(filename);
-        } catch (error) {
-            console.error("Error generating PDF:", error);
-        } finally {
-            propsetLoading(false);
-        }
-    };
 
     const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
         setSearchTerm(e.target.value);
@@ -752,7 +567,7 @@ export default function FleetPage() {
                                         <div className="space-y-2">
                                             <label className="text-sm font-medium">Fleet Number *</label>
                                             <Input
-                                                value={editedFleet.fleetNumber || editingFleet.fleetNumber || ''}
+                                                value={editedFleet.fleetNumber ?? editingFleet.fleetNumber ?? ''}
                                                 onChange={(e) => handleChange("fleetNumber", e.target.value)}
                                                 className="h-9 text-sm"
                                             />
@@ -760,7 +575,7 @@ export default function FleetPage() {
                                         <div className="space-y-2">
                                             <label className="text-sm font-medium">Vehicle Registration *</label>
                                             <Input
-                                                value={editedFleet.vehicleReg || editingFleet.vehicleReg || ''}
+                                                value={editedFleet.vehicleReg ?? editingFleet.vehicleReg ?? ''}
                                                 onChange={(e) => handleChange("vehicleReg", e.target.value)}
                                                 className="h-9 text-sm"
                                             />
@@ -768,7 +583,7 @@ export default function FleetPage() {
                                         <div className="space-y-2">
                                             <label className="text-sm font-medium">Vehicle VIN</label>
                                             <Input
-                                                value={editedFleet.vehicleVin || editingFleet.vehicleVin || ''}
+                                                value={editedFleet.vehicleVin ?? editingFleet.vehicleVin ?? ''}
                                                 onChange={(e) => handleChange("vehicleVin", e.target.value)}
                                                 className="h-9 text-sm"
                                             />
@@ -776,7 +591,7 @@ export default function FleetPage() {
                                         <div className="space-y-2">
                                             <label className="text-sm font-medium">Vehicle Make</label>
                                             <Input
-                                                value={editedFleet.vehicleMake || editingFleet.vehicleMake || ''}
+                                                value={editedFleet.vehicleMake ?? editingFleet.vehicleMake ?? ''}
                                                 onChange={(e) => handleChange("vehicleMake", e.target.value)}
                                                 className="h-9 text-sm"
                                             />
@@ -784,7 +599,7 @@ export default function FleetPage() {
                                         <div className="space-y-2">
                                             <label className="text-sm font-medium">Vehicle Model</label>
                                             <Input
-                                                value={editedFleet.vehicleModel || editingFleet.vehicleModel || ''}
+                                                value={editedFleet.vehicleModel ?? editingFleet.vehicleModel ?? ''}
                                                 onChange={(e) => handleChange("vehicleModel", e.target.value)}
                                                 className="h-9 text-sm"
                                             />
@@ -792,7 +607,7 @@ export default function FleetPage() {
                                         <div className="space-y-2">
                                             <label className="text-sm font-medium">Transmission Type</label>
                                             <Select
-                                                value={editedFleet.transmitionType || editingFleet.transmitionType || ''}
+                                                value={editedFleet.transmitionType ?? editingFleet.transmitionType ?? ''}
                                                 onValueChange={(value) => handleChange("transmitionType", value)}
                                             >
                                                 <SelectTrigger className="h-9 text-sm cursor-pointer">
@@ -808,7 +623,7 @@ export default function FleetPage() {
                                         <div className="space-y-2">
                                             <label className="text-sm font-medium">Ownership Status</label>
                                             <Select
-                                                value={editedFleet.ownershipStatus || editingFleet.ownershipStatus || ''}
+                                                value={editedFleet.ownershipStatus ?? editingFleet.ownershipStatus ?? ''}
                                                 onValueChange={(value) => handleChange("ownershipStatus", value)}
                                             >
                                                 <SelectTrigger className="h-9 text-sm cursor-pointer">
@@ -824,7 +639,7 @@ export default function FleetPage() {
                                         <div className="space-y-2">
                                             <label className="text-sm font-medium">Current Driver</label>
                                             <Input
-                                                value={editedFleet.currentDriver || editingFleet.currentDriver || ''}
+                                                value={editedFleet.currentDriver ?? editingFleet.currentDriver ?? ''}
                                                 onChange={(e) => handleChange("currentDriver", e.target.value)}
                                                 className="h-9 text-sm"
                                             />
@@ -833,7 +648,7 @@ export default function FleetPage() {
                                             <label className="text-sm font-medium">Current KM</label>
                                             <Input
                                                 type="number"
-                                                value={editedFleet.currentkm || editingFleet.currentkm || 0}
+                                                value={editedFleet.currentkm ?? editingFleet.currentkm ?? ''}
                                                 onChange={(e) => handleChange("currentkm", parseFloat(e.target.value) || 0)}
                                                 className="h-9 text-sm"
                                             />
@@ -841,7 +656,7 @@ export default function FleetPage() {
                                         <div className="space-y-2">
                                             <label className="text-sm font-medium">Service Plan Status</label>
                                             <Select
-                                                value={editedFleet.servicePlanStatus?.toString() || editingFleet.servicePlanStatus?.toString() || 'false'}
+                                                value={editedFleet.servicePlanStatus?.toString() ?? editingFleet.servicePlanStatus?.toString() ?? 'false'}
                                                 onValueChange={(value) => handleChange("servicePlanStatus", value === 'true')}
                                             >
                                                 <SelectTrigger className="h-9 text-sm cursor-pointer">
@@ -857,7 +672,7 @@ export default function FleetPage() {
                                             <label className="text-sm font-medium">Last Service Date</label>
                                             <Input
                                                 type="date"
-                                                value={editedFleet.lastServicedate || editingFleet.lastServicedate || ''}
+                                                value={editedFleet.lastServicedate ?? editingFleet.lastServicedate ?? ''}
                                                 onChange={(e) => handleChange("lastServicedate", e.target.value)}
                                                 className="h-9 text-sm"
                                             />
@@ -866,7 +681,7 @@ export default function FleetPage() {
                                             <label className="text-sm font-medium">Last Rotation Date</label>
                                             <Input
                                                 type="date"
-                                                value={editedFleet.lastRotationdate || editingFleet.lastRotationdate || ''}
+                                                value={editedFleet.lastRotationdate ?? editingFleet.lastRotationdate ?? ''}
                                                 onChange={(e) => handleChange("lastRotationdate", e.target.value)}
                                                 className="h-9 text-sm"
                                             />
@@ -875,7 +690,7 @@ export default function FleetPage() {
                                             <label className="text-sm font-medium">Brake & Lux Expiry</label>
                                             <Input
                                                 type="date"
-                                                value={editedFleet.breakandLuxExpirey || editingFleet.breakandLuxExpirey || ''}
+                                                value={editedFleet.breakandLuxExpirey ?? editingFleet.breakandLuxExpirey ?? ''}
                                                 onChange={(e) => handleChange("breakandLuxExpirey", e.target.value)}
                                                 className="h-9 text-sm"
                                             />
@@ -884,7 +699,7 @@ export default function FleetPage() {
                                             <label className="text-sm font-medium">Last Service KM</label>
                                             <Input
                                                 type="number"
-                                                value={editedFleet.lastServicekm || editingFleet.lastServicekm || 0}
+                                                value={editedFleet.lastServicekm ?? editingFleet.lastServicekm ?? ''}
                                                 onChange={(e) => handleChange("lastServicekm", parseFloat(e.target.value) || 0)}
                                                 className="h-9 text-sm"
                                             />
@@ -921,14 +736,7 @@ export default function FleetPage() {
 
                         {prop_loading && <PropLoading name="Downloading file" />}
 
-                        {/* Print Menu */}
-                        <PrintMenu
-                            isOpen={printMenu.isOpen}
-                            onClose={closePrintMenu}
-                            onDownloadCSV={handleDownloadCSV}
-                            onDownloadPDF={handleDownloadPDF}
-                            position={printMenu.position}
-                        />
+                  
                     </div>
 
                     <ConfirmDialog
@@ -945,108 +753,4 @@ export default function FleetPage() {
 
 
 
-interface PrintMenuProps {
-    isOpen: boolean;
-    onClose: () => void;
-    onDownloadCSV: () => void;
-    onDownloadPDF: () => void;
-    position: { top: number; left: number };
-}
 
-interface Fleet {
-    id: string;
-    vehicleVin: string | null;
-    vehicleReg: string | null;
-    vehicleMake: string | null;
-    vehicleModel: string | null;
-    transmitionType: string | null;
-    ownershipStatus: string | null;
-    fleetIndex: string | null;
-    fleetNumber: string | null;
-    lastServicedate: string | null;
-    lastServicekm: number | null;
-    lastRotationdate: string | null;
-    lastRotationkm: number | null;
-    servicePlanStatus: boolean | null;
-    servicePlan: string | null;
-    currentDriver: string | null;
-    currentkm: number | null;
-    codeRequirement: string | null;
-    pdpRequirement: boolean | null;
-    breakandLuxTest: string[] | [];
-    breakandLuxExpirey: string | null;
-    history: string | null;
-}
-
-const PrintMenu: React.FC<PrintMenuProps> = ({
-    isOpen,
-    onClose,
-    onDownloadCSV,
-    onDownloadPDF,
-    position
-}) => {
-    const menuRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-                onClose();
-            }
-        };
-
-        if (isOpen) {
-            document.addEventListener("mousedown", handleClickOutside);
-        }
-
-        return () => {
-            document.removeEventListener("mousedown", handleClickOutside);
-        };
-    }, [isOpen, onClose]);
-
-    if (!isOpen) return null;
-
-    return (
-        <div
-            ref={menuRef}
-            className="fixed z-50 bg-white border border-gray-200 rounded-lg shadow-lg py-2 w-48"
-            style={{
-                top: position.top,
-                left: position.left,
-            }}
-        >
-            <div className="flex justify-between items-center px-4 py-2 border-b border-gray-100">
-                <span className="text-sm font-medium text-gray-700">Download As</span>
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={onClose}
-                    className="h-6 w-6 p-0 hover:bg-gray-100 cursor-pointer"
-                >
-                    <X className="h-4 w-4" />
-                </Button>
-            </div>
-
-            <button
-                onClick={() => {
-                    onDownloadCSV();
-                    onClose();
-                }}
-                className="w-full flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
-            >
-                <Download className="h-4 w-4 mr-3 text-green-600" />
-                <span>Download CSV</span>
-            </button>
-
-            <button
-                onClick={() => {
-                    onDownloadPDF();
-                    onClose();
-                }}
-                className="w-full flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
-            >
-                <FileArchive className="h-4 w-4 mr-3 text-red-600" />
-                <span>Download PDF</span>
-            </button>
-        </div>
-    );
-};
