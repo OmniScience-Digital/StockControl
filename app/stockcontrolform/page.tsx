@@ -138,6 +138,21 @@ export default function ComponentForm() {
         return acc;
       }, {} as Record<string, any>);
 
+
+      const isAllValuesEmpty = (obj: any): boolean => {
+        const values = JSON.stringify(obj).match(/"value":"(.*?)"/g);
+        return !values || values.every(v => v === '"value":""');
+      };
+
+      if (isAllValuesEmpty(result)) {
+        setMessage("Nothing to submit!");
+        setShow(true);
+        setSuccessful(false);
+        return;
+      }
+
+
+
       // API call
       const res = await fetch("/api/click-up", {
         method: "POST",

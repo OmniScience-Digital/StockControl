@@ -1,7 +1,7 @@
 "use client";
 
 import { client } from "@/services/schema";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { DataTable } from "@/components/table/datatable";
 import { EditIcon, ArrowUpDown, Plus, Save, Trash2, MoreVertical, Car, Calendar, ArrowLeft } from "lucide-react";
@@ -16,11 +16,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { ConfirmDialog } from "@/components/widgets/deletedialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { getUrl } from 'aws-amplify/storage';
+
+import { InspectionImageViewer } from "./components/inspection-image-viewer";
+import { InspectionImageGallery } from "./components/inspection-image-gallery";
 
 export default function InspectionsPage() {
     const router = useRouter();
     const params = useParams();
     const fleetId = decodeURIComponent(params.id as string);
+    const editFormRef = useRef<HTMLDivElement>(null);
 
     const [loading, setLoading] = useState(true);
     const [inspections, setInspections] = useState<Inspection[]>([]);
@@ -31,6 +36,31 @@ export default function InspectionsPage() {
     const [saving, setSaving] = useState(false);
     const [opendelete, setOpendelete] = useState(false);
     const [inspectionToDelete, setInspectionToDelete] = useState<{ id: string, name: string } | null>(null);
+
+    // Image viewer states
+    const [imageViewerOpen, setImageViewerOpen] = useState(false);
+    const [currentImages, setCurrentImages] = useState<string[]>([]);
+    const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+    // Function to convert S3 keys to actual URLs
+    const getS3ImageUrls = async (s3Keys: string[]): Promise<string[]> => {
+        if (!s3Keys || s3Keys.length === 0) return [];
+
+        const urls = await Promise.all(
+            s3Keys.map(async (key) => {
+                try {
+                    const { url } = await getUrl({
+                        path: key
+                    });
+                    return url.toString();
+                } catch (error) {
+                    console.error('Error getting URL for', key, error);
+                    return '';
+                }
+            })
+        );
+        return urls.filter(url => url !== '');
+    };
 
     useEffect(() => {
         // Fetch fleet information
@@ -47,42 +77,56 @@ export default function InspectionsPage() {
 
         // Subscribe to real-time updates for inspections
         const subscription = client.models.Inspection.observeQuery({
-            filter: { fleetid: { eq: fleetId } }
+            filter: { fleetid: { eq: fleetId } },
         }).subscribe({
-            next: ({ items, isSynced }) => {
-                const mappedInspections: Inspection[] = (items || []).map(item => ({
-                    id: item.id,
-                    fleetid: item.fleetid,
-                    inspectionNo: item.inspectionNo,
-                    vehicleVin: item.vehicleVin,
-                    inspectionDate: item.inspectionDate,
-                    inspectionTime: item.inspectionTime,
-                    odometerStart: item.odometerStart,
-                    vehicleReg: item.vehicleReg,
-                    inspectorOrDriver: item.inspectorOrDriver,
-                    oilAndCoolant: item.oilAndCoolant,
-                    fuelLevel: item.fuelLevel,
-                    seatbeltDoorsMirrors: item.seatbeltDoorsMirrors,
-                    handbrake: item.handbrake,
-                    tyreCondition: item.tyreCondition,
-                    spareTyre: item.spareTyre,
-                    numberPlate: item.numberPlate,
-                    licenseDisc: item.licenseDisc,
-                    leaks: item.leaks,
-                    lights: item.lights,
-                    defrosterAircon: item.defrosterAircon,
-                    emergencyKit: item.emergencyKit,
-                    clean: item.clean,
-                    warnings: item.warnings,
-                    windscreenWipers: item.windscreenWipers,
-                    serviceBook: item.serviceBook,
-                    siteKit: item.siteKit,
-                    photo: (item.photo ?? []).filter(
-                        (x): x is string => x !== null
-                    ),
-                    history: item.history
-                }));
-                setInspections(mappedInspections);
+            next: async ({ items, isSynced }) => {
+                const mappedInspections: Inspection[] = await Promise.all(
+                    (items || []).map(async (item) => {
+                        // Convert S3 keys to actual URLs
+                        const s3Keys = (item.photo ?? []).filter((x): x is string => x !== null);
+                        const photoUrls = await getS3ImageUrls(s3Keys);
+
+                        return {
+                            id: item.id,
+                            fleetid: item.fleetid,
+                            inspectionNo: item.inspectionNo,
+                            vehicleVin: item.vehicleVin,
+                            inspectionDate: item.inspectionDate,
+                            inspectionTime: item.inspectionTime,
+                            odometerStart: item.odometerStart,
+                            vehicleReg: item.vehicleReg,
+                            inspectorOrDriver: item.inspectorOrDriver,
+                            oilAndCoolant: item.oilAndCoolant,
+                            fuelLevel: item.fuelLevel,
+                            seatbeltDoorsMirrors: item.seatbeltDoorsMirrors,
+                            handbrake: item.handbrake,
+                            tyreCondition: item.tyreCondition,
+                            spareTyre: item.spareTyre,
+                            numberPlate: item.numberPlate,
+                            licenseDisc: item.licenseDisc,
+                            leaks: item.leaks,
+                            lights: item.lights,
+                            defrosterAircon: item.defrosterAircon,
+                            emergencyKit: item.emergencyKit,
+                            clean: item.clean,
+                            warnings: item.warnings,
+                            windscreenWipers: item.windscreenWipers,
+                            serviceBook: item.serviceBook,
+                            siteKit: item.siteKit,
+                            photo: photoUrls, // Now contains actual S3 URLs
+                            history: item.history
+                        };
+                    })
+                );
+                // Sort inspections by inspectionNo descending (highest first)
+                const sortedInspections = mappedInspections.sort((a, b) => {
+                    const aNo = a.inspectionNo || 0;
+                    const bNo = b.inspectionNo || 0;
+                    return bNo - aNo;
+                });
+
+                setInspections(sortedInspections);
+
 
                 if (isSynced) {
                     setLoading(false);
@@ -98,6 +142,20 @@ export default function InspectionsPage() {
             subscription.unsubscribe();
         };
     }, [fleetId]);
+
+    useEffect(() => {
+        if (editingInspection && editFormRef.current) {
+            editFormRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+    }, [editingInspection]);
+
+    // Handle image viewing from gallery
+    const handleViewImage = (imageUrl: string, allImages: string[]) => {
+        const index = allImages.indexOf(imageUrl);
+        setCurrentImages(allImages);
+        setCurrentImageIndex(index);
+        setImageViewerOpen(true);
+    };
 
     // Mobile-friendly columns
     const columns: ColumnDef<object, any>[] = [
@@ -165,7 +223,7 @@ export default function InspectionsPage() {
             id: "actions",
             header: "Actions",
             cell: ({ row }: { row: any }) => (
-                <div className="flex justify-end">
+                <div className="flex justify-start">
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="ghost" className="h-8 w-8 p-0">
@@ -209,42 +267,6 @@ export default function InspectionsPage() {
         setEditingInspection(fullInspection);
         setEditedInspection({ ...fullInspection });
         setIsCreating(false);
-    };
-
-    // Handle create new
-    const handleCreateNew = () => {
-        setEditingInspection({
-            id: '',
-            fleetid: fleetId,
-            inspectionNo: inspections.length + 1,
-            vehicleVin: fleetInfo?.vehicleVin || '',
-            inspectionDate: new Date().toISOString().split('T')[0],
-            inspectionTime: new Date().toTimeString().split(' ')[0].substring(0, 5),
-            odometerStart: fleetInfo?.currentkm || 0,
-            vehicleReg: fleetInfo?.vehicleReg || '',
-            inspectorOrDriver: '',
-            oilAndCoolant: false,
-            fuelLevel: false,
-            seatbeltDoorsMirrors: false,
-            handbrake: false,
-            tyreCondition: false,
-            spareTyre: false,
-            numberPlate: false,
-            licenseDisc: false,
-            leaks: false,
-            lights: false,
-            defrosterAircon: false,
-            emergencyKit: false,
-            clean: false,
-            warnings: false,
-            windscreenWipers: false,
-            serviceBook: false,
-            siteKit: false,
-            photo: [],
-            history: ''
-        });
-        setEditedInspection({});
-        setIsCreating(true);
     };
 
     // Handle save
@@ -342,7 +364,7 @@ export default function InspectionsPage() {
                     windscreenWipers: inspectionData.windscreenWipers || false,
                     serviceBook: inspectionData.serviceBook || false,
                     siteKit: inspectionData.siteKit || false,
-                    photo: inspectionData.photo || null,
+                    // photo: inspectionData.photo || null,
                     history: inspectionData.history || null
                 });
                 console.log("Update result:", result);
@@ -352,12 +374,8 @@ export default function InspectionsPage() {
             setEditedInspection({});
             setIsCreating(false);
 
-            // Show success message
-            alert(isCreating ? "Inspection created successfully!" : "Inspection updated successfully!");
-
         } catch (error) {
             console.error("Error saving inspection:", error);
-            alert("Error saving inspection. Check console for details.");
         } finally {
             setSaving(false);
         }
@@ -431,31 +449,9 @@ export default function InspectionsPage() {
                             </div>
                         </div>
 
-                        {/* Header Card */}
-                        <Card className="mb-4 sm:mb-6">
-                            <CardHeader className="pb-3">
-                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                                    <CardTitle className="text-lg sm:text-xl flex items-center gap-2">
-                                        <Calendar className="h-4 w-4 sm:h-5 sm:w-5" />
-                                        Inspection Management
-                                        <Badge variant="secondary" className="text-xs">
-                                            {inspections.length}
-                                        </Badge>
-                                    </CardTitle>
-                                    <Button
-                                        onClick={handleCreateNew}
-                                        className="h-9 cursor-pointer bg-green-600 hover:bg-green-700 w-full sm:w-auto"
-                                    >
-                                        <Plus className="h-4 w-4 mr-2" />
-                                        New Inspection
-                                    </Button>
-                                </div>
-                            </CardHeader>
-                        </Card>
-
                         {/* Edit/Create Form */}
                         {editingInspection && (
-                            <Card className="mb-4 sm:mb-6">
+                            <Card ref={editFormRef} className="mb-4 sm:mb-6">
                                 <CardHeader className="pb-3">
                                     <CardTitle className="text-lg flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                                         <span className="text-base sm:text-lg">
@@ -497,27 +493,19 @@ export default function InspectionsPage() {
                                 <CardContent className="pt-0">
                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                                         {/* Basic Information */}
+
                                         <div className="space-y-2">
-                                            <label className="text-sm font-medium">Inspection Number</label>
-                                            <Input
-                                                type="number"
-                                                value={editedInspection.inspectionNo || editingInspection.inspectionNo || 0}
-                                                onChange={(e) => handleChange("inspectionNo", parseInt(e.target.value) || 0)}
-                                                className="h-9 text-sm"
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium">Vehicle Registration</label>
-                                            <Input
-                                                value={editedInspection.vehicleReg || editingInspection.vehicleReg || ''}
-                                                onChange={(e) => handleChange("vehicleReg", e.target.value)}
-                                                className="h-9 text-sm"
-                                            />
-                                        </div>
+                        <label className="text-sm font-medium">Vehicle Registration</label>
+                        <Input
+                            value={editedInspection.vehicleReg ?? editingInspection.vehicleReg ?? ''}
+                            onChange={(e) => handleChange("vehicleReg", e.target.value)}
+                            className="h-9 text-sm"
+                        />
+                    </div>
                                         <div className="space-y-2">
                                             <label className="text-sm font-medium">Vehicle VIN</label>
                                             <Input
-                                                value={editedInspection.vehicleVin || editingInspection.vehicleVin || ''}
+                                                value={editedInspection.vehicleVin ?? editingInspection.vehicleVin ?? ''}
                                                 onChange={(e) => handleChange("vehicleVin", e.target.value)}
                                                 className="h-9 text-sm"
                                             />
@@ -526,7 +514,7 @@ export default function InspectionsPage() {
                                             <label className="text-sm font-medium">Inspection Date</label>
                                             <Input
                                                 type="date"
-                                                value={editedInspection.inspectionDate || editingInspection.inspectionDate || ''}
+                                                value={editedInspection.inspectionDate ?? editingInspection.inspectionDate ?? ''}
                                                 onChange={(e) => handleChange("inspectionDate", e.target.value)}
                                                 className="h-9 text-sm"
                                             />
@@ -535,7 +523,7 @@ export default function InspectionsPage() {
                                             <label className="text-sm font-medium">Inspection Time</label>
                                             <Input
                                                 type="time"
-                                                value={editedInspection.inspectionTime || editingInspection.inspectionTime || ''}
+                                                value={editedInspection.inspectionTime ?? editingInspection.inspectionTime ?? ''}
                                                 onChange={(e) => handleChange("inspectionTime", e.target.value)}
                                                 className="h-9 text-sm"
                                             />
@@ -544,7 +532,7 @@ export default function InspectionsPage() {
                                             <label className="text-sm font-medium">Odometer Start</label>
                                             <Input
                                                 type="number"
-                                                value={editedInspection.odometerStart || editingInspection.odometerStart || 0}
+                                                value={editedInspection.odometerStart ?? editingInspection.odometerStart ?? 0}
                                                 onChange={(e) => handleChange("odometerStart", parseFloat(e.target.value) || 0)}
                                                 className="h-9 text-sm"
                                             />
@@ -552,7 +540,7 @@ export default function InspectionsPage() {
                                         <div className="space-y-2">
                                             <label className="text-sm font-medium">Inspector/Driver</label>
                                             <Input
-                                                value={editedInspection.inspectorOrDriver || editingInspection.inspectorOrDriver || ''}
+                                                value={editedInspection.inspectorOrDriver ?? editingInspection.inspectorOrDriver ?? ''}
                                                 onChange={(e) => handleChange("inspectorOrDriver", e.target.value)}
                                                 className="h-9 text-sm"
                                             />
@@ -595,17 +583,13 @@ export default function InspectionsPage() {
                                         </div>
                                     </div>
 
-                                    {/* Additional Fields */}
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium">Photo URL</label>
-                                            <Input
-                                                value={editedInspection.photo || editingInspection.photo || ''}
-                                                onChange={(e) => handleChange("photo", e.target.value)}
-                                                className="h-9 text-sm"
-                                                placeholder="https://example.com/photo.jpg"
-                                            />
-                                        </div>
+                                    {/* Image Gallery - ONLY IN EDIT FORM */}
+                                    <div className="mt-6">
+                                        <InspectionImageGallery
+                                            images={editingInspection.photo || []}
+                                            onImageClick={handleViewImage}
+                                            title="Inspection Photos"
+                                        />
                                     </div>
 
                                     {/* History */}
@@ -632,7 +616,7 @@ export default function InspectionsPage() {
                                 columns={columns}
                                 pageSize={10}
                                 storageKey="inspectionsTablePagination"
-                                searchColumn="vehicleReg"
+                                searchColumn="inspectionDate"
                             />
                         </div>
                     </div>
@@ -645,10 +629,17 @@ export default function InspectionsPage() {
                 </main>
             )}
             <Footer />
+
+            {/* Image Viewer Modal */}
+            <InspectionImageViewer
+                images={currentImages}
+                isOpen={imageViewerOpen}
+                onClose={() => setImageViewerOpen(false)}
+                initialIndex={currentImageIndex}
+            />
         </div>
     )
 }
-
 
 interface Inspection {
     id: string;
@@ -677,6 +668,6 @@ interface Inspection {
     windscreenWipers: boolean | null;
     serviceBook: boolean | null;
     siteKit: boolean | null;
-    photo: string [] | [];
+    photo: string[] | [];
     history: string | null;
 }

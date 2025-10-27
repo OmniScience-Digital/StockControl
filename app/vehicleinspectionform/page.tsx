@@ -26,6 +26,11 @@ export default function Vehicle_Inspection_Form() {
     //State for inspection number
     const [currentInspectionNumber, setCurrentInspectionNumber] = useState<number>(0);
 
+    useEffect(() => {
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}, []);
+
+
     // Add upload progress state
     const [uploadProgress, setUploadProgress] = useState({
         isUploading: false,
