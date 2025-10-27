@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { ConfirmDialog } from "@/components/widgets/deletedialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Fleet } from "@/types/vifForm.types";
 
 export default function FleetEditPage() {
     const router = useRouter();
@@ -32,6 +33,7 @@ export default function FleetEditPage() {
                 const { data: fleetData } = await client.models.Fleet.get({ id: fleetId });
                 
                 if (fleetData) {
+                    // Convert null boolean values to false
                     const mappedFleet: Fleet = {
                         id: fleetData.id,
                         vehicleVin: fleetData.vehicleVin,
@@ -46,15 +48,16 @@ export default function FleetEditPage() {
                         lastServicekm: fleetData.lastServicekm,
                         lastRotationdate: fleetData.lastRotationdate,
                         lastRotationkm: fleetData.lastRotationkm,
-                        servicePlanStatus: fleetData.servicePlanStatus,
+                        servicePlanStatus: fleetData.servicePlanStatus ?? false, // Convert null to false
                         servicePlan: fleetData.servicePlan,
                         currentDriver: fleetData.currentDriver,
                         currentkm: fleetData.currentkm,
                         codeRequirement: fleetData.codeRequirement,
-                        pdpRequirement: fleetData.pdpRequirement,
+                        pdpRequirement: fleetData.pdpRequirement ?? false, // Convert null to false
                         breakandLuxTest: (fleetData.breakandLuxTest ?? []).filter(
                             (x): x is string => x !== null
                         ),
+                        serviceplankm: fleetData.serviceplankm,
                         breakandLuxExpirey: fleetData.breakandLuxExpirey,
                         history: fleetData.history
                     };
@@ -152,13 +155,14 @@ export default function FleetEditPage() {
                 lastServicekm: fleetData.lastServicekm || null,
                 lastRotationdate: fleetData.lastRotationdate,
                 lastRotationkm: fleetData.lastRotationkm || null,
-                servicePlanStatus: fleetData.servicePlanStatus || false,
+                servicePlanStatus: fleetData.servicePlanStatus,
                 servicePlan: fleetData.servicePlan || null,
                 currentDriver: fleetData.currentDriver || null,
                 currentkm: fleetData.currentkm || null,
                 codeRequirement: fleetData.codeRequirement || null,
-                pdpRequirement: fleetData.pdpRequirement || false,
+                pdpRequirement: fleetData.pdpRequirement,
                 breakandLuxTest: fleetData.breakandLuxTest || null,
+                serviceplankm: fleetData.serviceplankm || null,
                 breakandLuxExpirey: fleetData.breakandLuxExpirey,
                 history: fleetData.history || null
             });
@@ -168,12 +172,11 @@ export default function FleetEditPage() {
             // Navigate back to list page
             router.push('/vehicleinspectionsystem');
 
-            // Show success message
-            alert("Vehicle updated successfully!");
+
 
         } catch (error) {
             console.error("Error saving fleet:", error);
-            alert("Error saving vehicle. Check console for details.");
+            
         } finally {
             setSaving(false);
         }
@@ -204,6 +207,12 @@ export default function FleetEditPage() {
     // Handle change
     const handleChange = (field: keyof Fleet, value: string | number | boolean) => {
         setEditedFleet(prev => ({ ...prev, [field]: value }));
+    };
+
+    // Handle array field change (for breakandLuxTest)
+    const handleArrayChange = (field: keyof Fleet, value: string) => {
+        const arrayValue = value.split('\n').filter(line => line.trim() !== '');
+        setEditedFleet(prev => ({ ...prev, [field]: arrayValue }));
     };
 
     if (loading) {
@@ -248,7 +257,7 @@ export default function FleetEditPage() {
                             <Car className="h-5 w-5 text-primary" />
                             <div>
                                 <h1 className="text-xl sm:text-2xl font-bold">
-                                    Edit {fleet.vehicleReg || fleet.fleetNumber}
+                                     {fleet.vehicleReg || fleet.fleetNumber}
                                 </h1>
                                 <p className="text-sm text-muted-foreground">
                                     Fleet Management System
@@ -379,6 +388,67 @@ export default function FleetEditPage() {
                                         </SelectContent>
                                     </Select>
                                 </div>
+
+                                {/* New Missing Fields */}
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium">Fleet Index</label>
+                                    <Input
+                                        value={editedFleet.fleetIndex ?? fleet.fleetIndex ?? ''}
+                                        onChange={(e) => handleChange("fleetIndex", e.target.value)}
+                                        className="h-9 text-sm"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium">Last Rotation KM</label>
+                                    <Input
+                                        type="number"
+                                        value={editedFleet.lastRotationkm ?? fleet.lastRotationkm ?? ''}
+                                        onChange={(e) => handleChange("lastRotationkm", parseFloat(e.target.value) || 0)}
+                                        className="h-9 text-sm"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium">Service Plan</label>
+                                    <Input
+                                        value={editedFleet.servicePlan ?? fleet.servicePlan ?? ''}
+                                        onChange={(e) => handleChange("servicePlan", e.target.value)}
+                                        className="h-9 text-sm"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium">Code Requirement</label>
+                                    <Input
+                                        value={editedFleet.codeRequirement ?? fleet.codeRequirement ?? ''}
+                                        onChange={(e) => handleChange("codeRequirement", e.target.value)}
+                                        className="h-9 text-sm"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium">PDP Requirement</label>
+                                    <Select
+                                        value={editedFleet.pdpRequirement?.toString() ?? fleet.pdpRequirement?.toString() ?? 'false'}
+                                        onValueChange={(value) => handleChange("pdpRequirement", value === 'true')}
+                                    >
+                                        <SelectTrigger className="h-9 text-sm cursor-pointer">
+                                            <SelectValue placeholder="Select PDP requirement" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="true" className="cursor-pointer">True</SelectItem>
+                                            <SelectItem value="false" className="cursor-pointer">False</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium">Service Plan KM</label>
+                                    <Input
+                                        type="number"
+                                        value={editedFleet.serviceplankm ?? fleet.serviceplankm ?? ''}
+                                        onChange={(e) => handleChange("serviceplankm", parseFloat(e.target.value) || 0)}
+                                        className="h-9 text-sm"
+                                    />
+                                </div>
+
+                                {/* Existing Fields */}
                                 <div className="space-y-2">
                                     <label className="text-sm font-medium">Current Driver</label>
                                     <Input
@@ -406,8 +476,8 @@ export default function FleetEditPage() {
                                             <SelectValue placeholder="Select status" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="true" className="cursor-pointer">Active</SelectItem>
-                                            <SelectItem value="false" className="cursor-pointer">Inactive</SelectItem>
+                                            <SelectItem value="true" className="cursor-pointer">True</SelectItem>
+                                            <SelectItem value="false" className="cursor-pointer">False</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>
@@ -449,6 +519,9 @@ export default function FleetEditPage() {
                                 </div>
                             </div>
 
+                            {/* Brake and Lux Test (Array field) */}
+                   
+
                             {/* History */}
                             <div className="mt-4 space-y-2">
                                 <label className="text-sm font-medium">History</label>
@@ -473,29 +546,4 @@ export default function FleetEditPage() {
             <Footer />
         </div>
     );
-}
-
-interface Fleet {
-    id: string;
-    vehicleVin: string | null;
-    vehicleReg: string | null;
-    vehicleMake: string | null;
-    vehicleModel: string | null;
-    transmitionType: string | null;
-    ownershipStatus: string | null;
-    fleetIndex: string | null;
-    fleetNumber: string | null;
-    lastServicedate: string | null;
-    lastServicekm: number | null;
-    lastRotationdate: string | null;
-    lastRotationkm: number | null;
-    servicePlanStatus: boolean | null;
-    servicePlan: string | null;
-    currentDriver: string | null;
-    currentkm: number | null;
-    codeRequirement: string | null;
-    pdpRequirement: boolean | null;
-    breakandLuxTest: string[] | [];
-    breakandLuxExpirey: string | null;
-    history: string | null;
 }

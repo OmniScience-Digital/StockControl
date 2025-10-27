@@ -1,7 +1,7 @@
 "use client";
 
 import { client } from "@/services/schema";
-import { useEffect, useState} from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { DataTable } from "@/components/table/datatable";
 import { EditIcon, ArrowUpDown, X, Car, Search, Plus, Save, Trash2, MoreVertical, Loader2 } from "lucide-react";
@@ -20,8 +20,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Fleet } from "@/types/vifForm.types";
 
-
-
 export default function FleetPage() {
     const router = useRouter();
 
@@ -38,16 +36,6 @@ export default function FleetPage() {
     const [opendelete, setOpendelete] = useState(false);
     const [fleetToDelete, setFleetToDelete] = useState<{ id: string, name: string } | null>(null);
 
-    const [printMenu, setPrintMenu] = useState<{
-        isOpen: boolean;
-        fleetId: string | null;
-        position: { top: number; left: number };
-    }>({
-        isOpen: false,
-        fleetId: null,
-        position: { top: 0, left: 0 }
-    });
-
     useEffect(() => {
         console.log("Setting up real-time subscription..."); // Debug log
 
@@ -58,30 +46,32 @@ export default function FleetPage() {
 
                 const mappedFleets: Fleet[] = (items || []).map(item => ({
                     id: item.id,
-                    vehicleVin: item.vehicleVin,
-                    vehicleReg: item.vehicleReg,
-                    vehicleMake: item.vehicleMake,
-                    vehicleModel: item.vehicleModel,
-                    transmitionType: item.transmitionType,
-                    ownershipStatus: item.ownershipStatus,
-                    fleetIndex: item.fleetIndex,
-                    fleetNumber: item.fleetNumber,
-                    lastServicedate: item.lastServicedate,
-                    lastServicekm: item.lastServicekm,
-                    lastRotationdate: item.lastRotationdate,
-                    lastRotationkm: item.lastRotationkm,
-                    servicePlanStatus: item.servicePlanStatus,
-                    servicePlan: item.servicePlan,
-                    currentDriver: item.currentDriver,
-                    currentkm: item.currentkm,
-                    codeRequirement: item.codeRequirement,
-                    pdpRequirement: item.pdpRequirement,
+                    vehicleVin: item.vehicleVin ?? null,
+                    vehicleReg: item.vehicleReg ?? null,
+                    vehicleMake: item.vehicleMake ?? null,
+                    vehicleModel: item.vehicleModel ?? null,
+                    transmitionType: item.transmitionType ?? null,
+                    ownershipStatus: item.ownershipStatus ?? null,
+                    fleetIndex: item.fleetIndex ?? null,
+                    fleetNumber: item.fleetNumber ?? null,
+                    lastServicedate: item.lastServicedate ?? null,
+                    lastServicekm: item.lastServicekm ?? null,
+                    lastRotationdate: item.lastRotationdate ?? null,
+                    lastRotationkm: item.lastRotationkm ?? null,
+                    servicePlanStatus: item.servicePlanStatus ?? false,
+                    servicePlan: item.servicePlan ?? null,
+                    currentDriver: item.currentDriver ?? null,
+                    currentkm: item.currentkm ?? null,
+                    codeRequirement: item.codeRequirement ?? null,
+                    pdpRequirement: item.pdpRequirement ?? false,
                     breakandLuxTest: (item.breakandLuxTest ?? []).filter(
                         (x): x is string => x !== null
                     ),
-                    breakandLuxExpirey: item.breakandLuxExpirey,
-                    history: item.history
+                    serviceplankm: item.serviceplankm ?? null,
+                    breakandLuxExpirey: item.breakandLuxExpirey ?? null,
+                    history: item.history ?? null
                 }));
+
                 setFleets(mappedFleets);
                 setFilteredFleets(mappedFleets);
 
@@ -206,7 +196,6 @@ export default function FleetPage() {
                                 <Car className="h-4 w-4 mr-2" />
                                 Inspections
                             </DropdownMenuItem>
-                      
                         </DropdownMenuContent>
                     </DropdownMenu>
                 </div>
@@ -229,36 +218,36 @@ export default function FleetPage() {
         })
         : [];
 
-
-const handleEdit = (fleet: any) => {
-    router.push(`/vehicleinspectionsystem/edit/${fleet.id}`);
-};
+    const handleEdit = (fleet: any) => {
+        router.push(`/vehicleinspectionsystem/edit/${fleet.id}`);
+    };
 
     // Handle create new
     const handleCreateNew = () => {
         setEditingFleet({
             id: '',
-            vehicleVin: '',
-            vehicleReg: '',
-            vehicleMake: '',
-            vehicleModel: '',
-            transmitionType: '',
-            ownershipStatus: '',
-            fleetIndex: '',
-            fleetNumber: '',
-            lastServicedate: '',
-            lastServicekm: 0,
-            lastRotationdate: '',
-            lastRotationkm: 0,
+            vehicleVin: null,
+            vehicleReg: null,
+            vehicleMake: null,
+            vehicleModel: null,
+            transmitionType: null,
+            ownershipStatus: null,
+            fleetIndex: null,
+            fleetNumber: null,
+            lastServicedate: null,
+            lastServicekm: null,
+            lastRotationdate: null,
+            lastRotationkm: null,
             servicePlanStatus: false,
-            servicePlan: '',
-            currentDriver: '',
-            currentkm: 0,
-            codeRequirement: '',
+            servicePlan: null,
+            currentDriver: null,
+            currentkm: null,
+            codeRequirement: null,
             pdpRequirement: false,
             breakandLuxTest: [],
-            breakandLuxExpirey: '',
-            history: ''
+            serviceplankm: null,
+            breakandLuxExpirey: null,
+            history: null
         });
         setEditedFleet({});
         setIsCreating(true);
@@ -360,17 +349,17 @@ const handleEdit = (fleet: any) => {
                     lastServicekm: fleetData.lastServicekm || null,
                     lastRotationdate: fleetData.lastRotationdate, // Already formatted
                     lastRotationkm: fleetData.lastRotationkm || null,
-                    servicePlanStatus: fleetData.servicePlanStatus || false,
+                    servicePlanStatus: fleetData.servicePlanStatus,
                     servicePlan: fleetData.servicePlan || null,
                     currentDriver: fleetData.currentDriver || null,
                     currentkm: fleetData.currentkm || null,
                     codeRequirement: fleetData.codeRequirement || null,
-                    pdpRequirement: fleetData.pdpRequirement || false,
+                    pdpRequirement: fleetData.pdpRequirement,
                     breakandLuxTest: fleetData.breakandLuxTest || null,
+                    serviceplankm: fleetData.serviceplankm || null,
                     breakandLuxExpirey: fleetData.breakandLuxExpirey,
                     history: fleetData.history || null
                 });
-
             }
 
             setEditingFleet(null);
@@ -388,7 +377,6 @@ const handleEdit = (fleet: any) => {
         }
     };
 
-
     // Handle cancel
     const handleCancel = () => {
         setEditingFleet(null);
@@ -397,9 +385,10 @@ const handleEdit = (fleet: any) => {
     };
 
     // Handle change
-    const handleChange = (field: keyof Fleet, value: string | number | boolean) => {
+    const handleChange = (field: keyof Fleet, value: string | number | boolean | null) => {
         setEditedFleet(prev => ({ ...prev, [field]: value }));
     };
+
 
     // Handle delete
     const handleDelete = async (fleetId: string) => {
@@ -430,8 +419,6 @@ const handleEdit = (fleet: any) => {
         localStorage.setItem('fleetId', id);
         router.push(`/vehicleinspectionsystem/${id}`);
     };
-
-
 
     const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
         setSearchTerm(e.target.value);
@@ -465,6 +452,7 @@ const handleEdit = (fleet: any) => {
                                         Add Vehicle
                                     </Button>
                                 </div>
+
                             </CardHeader>
                             <CardContent className="pt-0">
                                 <div className="flex flex-col gap-4">
@@ -565,6 +553,14 @@ const handleEdit = (fleet: any) => {
                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                                         {/* Basic Information */}
                                         <div className="space-y-2">
+                                            <label className="text-sm font-medium">Fleet Index</label>
+                                            <Input
+                                                value={editedFleet.fleetIndex ?? editingFleet.fleetIndex ?? ''}
+                                                onChange={(e) => handleChange("fleetIndex", e.target.value)}
+                                                className="h-9 text-sm"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
                                             <label className="text-sm font-medium">Fleet Number *</label>
                                             <Input
                                                 value={editedFleet.fleetNumber ?? editingFleet.fleetNumber ?? ''}
@@ -663,8 +659,8 @@ const handleEdit = (fleet: any) => {
                                                     <SelectValue placeholder="Select status" />
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    <SelectItem value="true" className="cursor-pointer">Active</SelectItem>
-                                                    <SelectItem value="false" className="cursor-pointer">Inactive</SelectItem>
+                                                    <SelectItem value="true" className="cursor-pointer">True</SelectItem>
+                                                    <SelectItem value="false" className="cursor-pointer">False</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                         </div>
@@ -704,7 +700,59 @@ const handleEdit = (fleet: any) => {
                                                 className="h-9 text-sm"
                                             />
                                         </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium">Last Rotation KM</label>
+                                            <Input
+                                                type="number"
+                                                value={editedFleet.lastRotationkm ?? editingFleet.lastRotationkm ?? ''}
+                                                onChange={(e) => handleChange("lastRotationkm", parseFloat(e.target.value) || 0)}
+                                                className="h-9 text-sm"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium">Service Plan</label>
+                                            <Input
+                                                value={editedFleet.servicePlan ?? editingFleet.servicePlan ?? ''}
+                                                onChange={(e) => handleChange("servicePlan", e.target.value)}
+                                                className="h-9 text-sm"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium">Code Requirement</label>
+                                            <Input
+                                                value={editedFleet.codeRequirement ?? editingFleet.codeRequirement ?? ''}
+                                                onChange={(e) => handleChange("codeRequirement", e.target.value)}
+                                                className="h-9 text-sm"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium">PDP Requirement</label>
+                                            <Select
+                                                value={editedFleet.pdpRequirement?.toString() ?? editingFleet.pdpRequirement?.toString() ?? 'false'}
+                                                onValueChange={(value) => handleChange("pdpRequirement", value === 'true')}
+                                            >
+                                                <SelectTrigger className="h-9 text-sm cursor-pointer">
+                                                    <SelectValue placeholder="Select PDP requirement" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="true" className="cursor-pointer">True</SelectItem>
+                                                    <SelectItem value="false" className="cursor-pointer">False</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium">Service Plan KM</label>
+                                            <Input
+                                                type="number"
+                                                value={editedFleet.serviceplankm ?? editingFleet.serviceplankm ?? ''}
+                                                onChange={(e) => handleChange("serviceplankm", parseFloat(e.target.value) || 0)}
+                                                className="h-9 text-sm"
+                                            />
+                                        </div>
                                     </div>
+
+                                    {/* Brake and Lux Test (Array field) */}
+
 
                                     {/* History */}
                                     {!isCreating && (
@@ -735,8 +783,6 @@ const handleEdit = (fleet: any) => {
                         </div>
 
                         {prop_loading && <PropLoading name="Downloading file" />}
-
-                  
                     </div>
 
                     <ConfirmDialog
@@ -750,7 +796,3 @@ const handleEdit = (fleet: any) => {
         </div>
     )
 }
-
-
-
-

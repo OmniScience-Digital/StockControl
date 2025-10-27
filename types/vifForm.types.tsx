@@ -19,13 +19,14 @@ export interface Fleet {
     lastServicekm: number | null;
     lastRotationdate: string | null;
     lastRotationkm: number | null;
-    servicePlanStatus: boolean | null;
+    servicePlanStatus: boolean;
     servicePlan: string | null;
     currentDriver: string | null;
     currentkm: number | null;
     codeRequirement: string | null;
-    pdpRequirement: boolean | null;
-    breakandLuxTest: string[] | [];
+    pdpRequirement: boolean;
+    breakandLuxTest: string[];
+    serviceplankm: number | null;
     breakandLuxExpirey: string | null;
     history: string | null;
 }
