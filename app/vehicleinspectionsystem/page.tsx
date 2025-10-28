@@ -4,7 +4,7 @@ import { client } from "@/services/schema";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { DataTable } from "@/components/table/datatable";
-import { EditIcon, ArrowUpDown, X, Car, Search, Plus, Save, Trash2, MoreVertical, Loader2 } from "lucide-react";
+import { EditIcon, ArrowUpDown, X, Car, Search, Plus, Save, Trash2, MoreVertical, Loader2, Upload, FileText } from "lucide-react";
 import { ColumnDef } from "@tanstack/react-table";
 import Footer from "@/components/layout/footer";
 import Navbar from "@/components/layout/navbar";
@@ -19,6 +19,7 @@ import { ConfirmDialog } from "@/components/widgets/deletedialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Fleet } from "@/types/vifForm.types";
+
 
 export default function FleetPage() {
     const router = useRouter();
@@ -424,6 +425,9 @@ export default function FleetPage() {
         setSearchTerm(e.target.value);
     };
 
+
+
+
     return (
         <div className="flex flex-col min-h-screen bg-background text-foreground">
             <Navbar />
@@ -750,8 +754,6 @@ export default function FleetPage() {
                                             />
                                         </div>
                                     </div>
-
-                                    {/* Brake and Lux Test (Array field) */}
 
 
                                     {/* History */}

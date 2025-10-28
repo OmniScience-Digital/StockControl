@@ -14,6 +14,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { ConfirmDialog } from "@/components/widgets/deletedialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Fleet } from "@/types/vifForm.types";
+import { PDFUpload } from "@/app/vehicleinspectionform/components/pdfupload";
+import { getUrl } from "aws-amplify/storage";
 
 export default function FleetEditPage() {
     const router = useRouter();
@@ -27,53 +29,78 @@ export default function FleetEditPage() {
     const [saving, setSaving] = useState(false);
     const [opendelete, setOpendelete] = useState(false);
 
-    useEffect(() => {
-        const fetchFleet = async () => {
+    // function to convert S3 keys to URLs for PDFs
+const getS3DocumentUrls = async (s3Keys: string[]): Promise<string[]> => {
+    if (!s3Keys || s3Keys.length === 0) return [];
+
+    const urls = await Promise.all(
+        s3Keys.map(async (key) => {
             try {
-                const { data: fleetData } = await client.models.Fleet.get({ id: fleetId });
-                
-                if (fleetData) {
-                    // Convert null boolean values to false
-                    const mappedFleet: Fleet = {
-                        id: fleetData.id,
-                        vehicleVin: fleetData.vehicleVin,
-                        vehicleReg: fleetData.vehicleReg,
-                        vehicleMake: fleetData.vehicleMake,
-                        vehicleModel: fleetData.vehicleModel,
-                        transmitionType: fleetData.transmitionType,
-                        ownershipStatus: fleetData.ownershipStatus,
-                        fleetIndex: fleetData.fleetIndex,
-                        fleetNumber: fleetData.fleetNumber,
-                        lastServicedate: fleetData.lastServicedate,
-                        lastServicekm: fleetData.lastServicekm,
-                        lastRotationdate: fleetData.lastRotationdate,
-                        lastRotationkm: fleetData.lastRotationkm,
-                        servicePlanStatus: fleetData.servicePlanStatus ?? false, // Convert null to false
-                        servicePlan: fleetData.servicePlan,
-                        currentDriver: fleetData.currentDriver,
-                        currentkm: fleetData.currentkm,
-                        codeRequirement: fleetData.codeRequirement,
-                        pdpRequirement: fleetData.pdpRequirement ?? false, // Convert null to false
-                        breakandLuxTest: (fleetData.breakandLuxTest ?? []).filter(
-                            (x): x is string => x !== null
-                        ),
-                        serviceplankm: fleetData.serviceplankm,
-                        breakandLuxExpirey: fleetData.breakandLuxExpirey,
-                        history: fleetData.history
-                    };
-
-                    setFleet(mappedFleet);
-                    setEditedFleet({ ...mappedFleet });
-                }
+                const { url } = await getUrl({
+                    path: key
+                });
+                return url.toString();
             } catch (error) {
-                console.error("Error fetching fleet:", error);
-            } finally {
-                setLoading(false);
+                console.error('Error getting URL for document', key, error);
+                return '';
             }
-        };
+        })
+    );
+    return urls.filter(url => url !== '');
+};
 
-        fetchFleet();
-    }, [fleetId]);
+
+    useEffect(() => {
+    const fetchFleet = async () => {
+        try {
+
+            const { data: fleetData } = await client.models.Fleet.get({ id: fleetId });
+
+            if (fleetData) {
+
+                // Convert S3 keys to actual URLs for documents
+                const s3Keys = (fleetData.breakandLuxTest ?? []).filter((x): x is string => x !== null);
+                const documentUrls = await getS3DocumentUrls(s3Keys);
+
+                const mappedFleet: Fleet = {
+                    id: fleetData.id,
+                    vehicleVin: fleetData.vehicleVin,
+                    vehicleReg: fleetData.vehicleReg,
+                    vehicleMake: fleetData.vehicleMake,
+                    vehicleModel: fleetData.vehicleModel,
+                    transmitionType: fleetData.transmitionType,
+                    ownershipStatus: fleetData.ownershipStatus,
+                    fleetIndex: fleetData.fleetIndex,
+                    fleetNumber: fleetData.fleetNumber,
+                    lastServicedate: fleetData.lastServicedate,
+                    lastServicekm: fleetData.lastServicekm,
+                    lastRotationdate: fleetData.lastRotationdate,
+                    lastRotationkm: fleetData.lastRotationkm,
+                    servicePlanStatus: fleetData.servicePlanStatus ?? false,
+                    servicePlan: fleetData.servicePlan,
+                    currentDriver: fleetData.currentDriver,
+                    currentkm: fleetData.currentkm,
+                    codeRequirement: fleetData.codeRequirement,
+                    pdpRequirement: fleetData.pdpRequirement ?? false,
+                    breakandLuxTest: documentUrls, 
+                    serviceplankm: fleetData.serviceplankm,
+                    breakandLuxExpirey: fleetData.breakandLuxExpirey,
+                    history: fleetData.history
+                };
+
+       
+                setFleet(mappedFleet);
+                setEditedFleet({ ...mappedFleet });
+            }
+        } catch (error) {
+            console.error("Error fetching fleet:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    fetchFleet();
+}, [fleetId]);
 
     useEffect(() => {
         if (editFormRef.current) {
@@ -82,106 +109,216 @@ export default function FleetEditPage() {
     }, []);
 
     // Handle save
-    const handleSave = async () => {
-        if (!fleet) return;
+    // const handleSave = async () => {
+    //     if (!fleet) return;
 
+    //     try {
+    //         setSaving(true);
+    //         // Get user from localStorage
+    //         let storedName = "Unknown User";
+    //         try {
+    //             const userData = localStorage.getItem("user");
+    //             if (userData) {
+    //                 storedName = userData.replace(/^"|"$/g, '').trim();
+    //             }
+    //         } catch (error) {
+    //             console.error("Error getting user from localStorage:", error);
+    //         }
+
+    //         const johannesburgTime = new Date().toLocaleString("en-ZA", {
+    //             timeZone: "Africa/Johannesburg"
+    //         });
+
+    //         let historyEntries = "";
+
+    //         // Create history for changes
+    //         Object.keys(editedFleet).forEach(key => {
+    //             const typedKey = key as keyof Fleet;
+    //             if (editedFleet[typedKey] !== fleet[typedKey]) {
+    //                 historyEntries += `${storedName} updated ${typedKey} from ${fleet[typedKey]} to ${editedFleet[typedKey]} at ${johannesburgTime}\n`;
+    //             }
+    //         });
+
+    //         // Helper function to handle date fields for AWS Amplify
+    //         const formatDateForAmplify = (dateValue: string | null): string | null => {
+    //             if (!dateValue || dateValue.trim() === "") return null;
+    //             if (/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) return dateValue;
+    //             if (dateValue.includes('T')) return dateValue.split('T')[0];
+    //             try {
+    //                 const date = new Date(dateValue);
+    //                 if (isNaN(date.getTime())) return null;
+    //                 const year = date.getFullYear();
+    //                 const month = String(date.getMonth() + 1).padStart(2, '0');
+    //                 const day = String(date.getDate()).padStart(2, '0');
+    //                 return `${year}-${month}-${day}`;
+    //             } catch {
+    //                 return null;
+    //             }
+    //         };
+
+    //         const fleetData = {
+    //             ...fleet,
+    //             ...editedFleet,
+    //             lastServicedate: formatDateForAmplify(editedFleet.lastServicedate || fleet.lastServicedate),
+    //             lastRotationdate: formatDateForAmplify(editedFleet.lastRotationdate || fleet.lastRotationdate),
+    //             breakandLuxExpirey: formatDateForAmplify(editedFleet.breakandLuxExpirey || fleet.breakandLuxExpirey),
+    //             history: historyEntries ? (fleet.history || "") + historyEntries : fleet.history
+    //         };
+
+    //         // Update existing fleet
+    //         const result = await client.models.Fleet.update({
+    //             id: fleetData.id,
+    //             vehicleVin: fleetData.vehicleVin || null,
+    //             vehicleReg: fleetData.vehicleReg || null,
+    //             vehicleMake: fleetData.vehicleMake || null,
+    //             vehicleModel: fleetData.vehicleModel || null,
+    //             transmitionType: fleetData.transmitionType || null,
+    //             ownershipStatus: fleetData.ownershipStatus || null,
+    //             fleetIndex: fleetData.fleetIndex || null,
+    //             fleetNumber: fleetData.fleetNumber || null,
+    //             lastServicedate: fleetData.lastServicedate,
+    //             lastServicekm: fleetData.lastServicekm || null,
+    //             lastRotationdate: fleetData.lastRotationdate,
+    //             lastRotationkm: fleetData.lastRotationkm || null,
+    //             servicePlanStatus: fleetData.servicePlanStatus,
+    //             servicePlan: fleetData.servicePlan || null,
+    //             currentDriver: fleetData.currentDriver || null,
+    //             currentkm: fleetData.currentkm || null,
+    //             codeRequirement: fleetData.codeRequirement || null,
+    //             pdpRequirement: fleetData.pdpRequirement,
+    //             breakandLuxTest: fleetData.breakandLuxTest || null,
+    //             serviceplankm: fleetData.serviceplankm || null,
+    //             breakandLuxExpirey: fleetData.breakandLuxExpirey,
+    //             history: fleetData.history || null
+    //         });
+
+    //         // Navigate back to list page
+    //         router.push('/vehicleinspectionsystem');
+
+    //     } catch (error) {
+    //         console.error("Error saving fleet:", error);
+
+    //     } finally {
+    //         setSaving(false);
+    //     }
+    // };
+
+const handleSave = async () => {
+    if (!fleet) return;
+
+    try {
+        setSaving(true);
+        // Get user from localStorage
+        let storedName = "Unknown User";
         try {
-            setSaving(true);
-            // Get user from localStorage
-            let storedName = "Unknown User";
-            try {
-                const userData = localStorage.getItem("user");
-                if (userData) {
-                    storedName = userData.replace(/^"|"$/g, '').trim();
-                }
-            } catch (error) {
-                console.error("Error getting user from localStorage:", error);
+            const userData = localStorage.getItem("user");
+            if (userData) {
+                storedName = userData.replace(/^"|"$/g, '').trim();
             }
-
-            const johannesburgTime = new Date().toLocaleString("en-ZA", {
-                timeZone: "Africa/Johannesburg"
-            });
-
-            let historyEntries = "";
-
-            // Create history for changes
-            Object.keys(editedFleet).forEach(key => {
-                const typedKey = key as keyof Fleet;
-                if (editedFleet[typedKey] !== fleet[typedKey]) {
-                    historyEntries += `${storedName} updated ${typedKey} from ${fleet[typedKey]} to ${editedFleet[typedKey]} at ${johannesburgTime}\n`;
-                }
-            });
-
-            // Helper function to handle date fields for AWS Amplify
-            const formatDateForAmplify = (dateValue: string | null): string | null => {
-                if (!dateValue || dateValue.trim() === "") return null;
-                if (/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) return dateValue;
-                if (dateValue.includes('T')) return dateValue.split('T')[0];
-                try {
-                    const date = new Date(dateValue);
-                    if (isNaN(date.getTime())) return null;
-                    const year = date.getFullYear();
-                    const month = String(date.getMonth() + 1).padStart(2, '0');
-                    const day = String(date.getDate()).padStart(2, '0');
-                    return `${year}-${month}-${day}`;
-                } catch {
-                    return null;
-                }
-            };
-
-            const fleetData = {
-                ...fleet,
-                ...editedFleet,
-                lastServicedate: formatDateForAmplify(editedFleet.lastServicedate || fleet.lastServicedate),
-                lastRotationdate: formatDateForAmplify(editedFleet.lastRotationdate || fleet.lastRotationdate),
-                breakandLuxExpirey: formatDateForAmplify(editedFleet.breakandLuxExpirey || fleet.breakandLuxExpirey),
-                history: historyEntries ? (fleet.history || "") + historyEntries : fleet.history
-            };
-
-            console.log("Saving fleet data:", fleetData);
-
-            // Update existing fleet
-            const result = await client.models.Fleet.update({
-                id: fleetData.id,
-                vehicleVin: fleetData.vehicleVin || null,
-                vehicleReg: fleetData.vehicleReg || null,
-                vehicleMake: fleetData.vehicleMake || null,
-                vehicleModel: fleetData.vehicleModel || null,
-                transmitionType: fleetData.transmitionType || null,
-                ownershipStatus: fleetData.ownershipStatus || null,
-                fleetIndex: fleetData.fleetIndex || null,
-                fleetNumber: fleetData.fleetNumber || null,
-                lastServicedate: fleetData.lastServicedate,
-                lastServicekm: fleetData.lastServicekm || null,
-                lastRotationdate: fleetData.lastRotationdate,
-                lastRotationkm: fleetData.lastRotationkm || null,
-                servicePlanStatus: fleetData.servicePlanStatus,
-                servicePlan: fleetData.servicePlan || null,
-                currentDriver: fleetData.currentDriver || null,
-                currentkm: fleetData.currentkm || null,
-                codeRequirement: fleetData.codeRequirement || null,
-                pdpRequirement: fleetData.pdpRequirement,
-                breakandLuxTest: fleetData.breakandLuxTest || null,
-                serviceplankm: fleetData.serviceplankm || null,
-                breakandLuxExpirey: fleetData.breakandLuxExpirey,
-                history: fleetData.history || null
-            });
-
-            console.log("Update result:", result);
-
-            // Navigate back to list page
-            router.push('/vehicleinspectionsystem');
-
-
-
         } catch (error) {
-            console.error("Error saving fleet:", error);
-            
-        } finally {
-            setSaving(false);
+            console.error("Error getting user from localStorage:", error);
         }
-    };
 
+        const johannesburgTime = new Date().toLocaleString("en-ZA", {
+            timeZone: "Africa/Johannesburg"
+        });
+
+        let historyEntries = "";
+
+        // SIMPLE FIX: Clean function that works for both create and delete
+        const cleanValueForHistory = (value: any): string => {
+            if (!value || value === "") return "empty";
+            
+            const str = String(value);
+            
+            // Handle comma-separated values (multiple files)
+            if (str.includes(',')) {
+                return str.split(',').map(item => {
+                    const part = item.trim();
+                    // Extract just the filename from any path or URL
+                    const filename = part.split('/').pop() || 'document';
+                    return filename.split('?')[0]; // Remove query params
+                }).join(', ');
+            }
+            
+            // Handle single value - just get the filename
+            const filename = str.split('/').pop() || 'document';
+            return filename.split('?')[0]; // Remove query params
+        };
+
+        // Create history for changes
+        Object.keys(editedFleet).forEach(key => {
+            const typedKey = key as keyof Fleet;
+            if (editedFleet[typedKey] !== fleet[typedKey]) {
+                const oldValue = cleanValueForHistory(fleet[typedKey]);
+                const newValue = cleanValueForHistory(editedFleet[typedKey]);
+                historyEntries += `${storedName} updated ${typedKey} from ${oldValue} to ${newValue} at ${johannesburgTime}\n`;
+            }
+        });
+
+        // Helper function to handle date fields for AWS Amplify
+        const formatDateForAmplify = (dateValue: string | null): string | null => {
+            if (!dateValue || dateValue.trim() === "") return null;
+            if (/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) return dateValue;
+            if (dateValue.includes('T')) return dateValue.split('T')[0];
+            try {
+                const date = new Date(dateValue);
+                if (isNaN(date.getTime())) return null;
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            } catch {
+                return null;
+            }
+        };
+
+        const fleetData = {
+            ...fleet,
+            ...editedFleet,
+            lastServicedate: formatDateForAmplify(editedFleet.lastServicedate || fleet.lastServicedate),
+            lastRotationdate: formatDateForAmplify(editedFleet.lastRotationdate || fleet.lastRotationdate),
+            breakandLuxExpirey: formatDateForAmplify(editedFleet.breakandLuxExpirey || fleet.breakandLuxExpirey),
+            history: historyEntries ? (fleet.history || "") + historyEntries : fleet.history
+        };
+
+        // Update existing fleet
+        const result = await client.models.Fleet.update({
+            id: fleetData.id,
+            vehicleVin: fleetData.vehicleVin || null,
+            vehicleReg: fleetData.vehicleReg || null,
+            vehicleMake: fleetData.vehicleMake || null,
+            vehicleModel: fleetData.vehicleModel || null,
+            transmitionType: fleetData.transmitionType || null,
+            ownershipStatus: fleetData.ownershipStatus || null,
+            fleetIndex: fleetData.fleetIndex || null,
+            fleetNumber: fleetData.fleetNumber || null,
+            lastServicedate: fleetData.lastServicedate,
+            lastServicekm: fleetData.lastServicekm || null,
+            lastRotationdate: fleetData.lastRotationdate,
+            lastRotationkm: fleetData.lastRotationkm || null,
+            servicePlanStatus: fleetData.servicePlanStatus,
+            servicePlan: fleetData.servicePlan || null,
+            currentDriver: fleetData.currentDriver || null,
+            currentkm: fleetData.currentkm || null,
+            codeRequirement: fleetData.codeRequirement || null,
+            pdpRequirement: fleetData.pdpRequirement,
+            breakandLuxTest: fleetData.breakandLuxTest || null,
+            serviceplankm: fleetData.serviceplankm || null,
+            breakandLuxExpirey: fleetData.breakandLuxExpirey,
+            history: fleetData.history || null
+        });
+
+        // Navigate back to list page
+        router.push('/vehicleinspectionsystem');
+
+    } catch (error) {
+        console.error("Error saving fleet:", error);
+
+    } finally {
+        setSaving(false);
+    }
+};
     // Handle delete
     const handleDelete = async () => {
         try {
@@ -205,15 +342,12 @@ export default function FleetEditPage() {
     };
 
     // Handle change
-    const handleChange = (field: keyof Fleet, value: string | number | boolean) => {
+    const handleChange = (field: keyof Fleet, value: string | number | boolean | string[]) => {
+
         setEditedFleet(prev => ({ ...prev, [field]: value }));
     };
 
-    // Handle array field change (for breakandLuxTest)
-    const handleArrayChange = (field: keyof Fleet, value: string) => {
-        const arrayValue = value.split('\n').filter(line => line.trim() !== '');
-        setEditedFleet(prev => ({ ...prev, [field]: arrayValue }));
-    };
+
 
     if (loading) {
         return (
@@ -257,7 +391,7 @@ export default function FleetEditPage() {
                             <Car className="h-5 w-5 text-primary" />
                             <div>
                                 <h1 className="text-xl sm:text-2xl font-bold">
-                                     {fleet.vehicleReg || fleet.fleetNumber}
+                                    {fleet.vehicleReg || fleet.fleetNumber}
                                 </h1>
                                 <p className="text-sm text-muted-foreground">
                                     Fleet Management System
@@ -300,7 +434,7 @@ export default function FleetEditPage() {
                                         <X className="h-3 w-3 mr-1" />
                                         Cancel
                                     </Button>
-                                    
+
                                     <Button
                                         size="sm"
                                         variant="destructive"
@@ -517,12 +651,23 @@ export default function FleetEditPage() {
                                         className="h-9 text-sm"
                                     />
                                 </div>
+
+                            </div>
+                      
+                            {/* Brake and Lux Test (Array field) */}
+                            <div className="col-span-full">
+                                <PDFUpload
+                                vehicleReg={editedFleet.vehicleReg || fleet.vehicleReg || ''}
+                                existingFiles={fleet.breakandLuxTest || []}
+                                onPDFsChange={(pdfs) => {
+                                    const pdfUrls = pdfs.map(pdf => pdf.s3Key);
+                                    handleChange("breakandLuxTest", pdfUrls);
+                                }}
+                                />
                             </div>
 
-                            {/* Brake and Lux Test (Array field) */}
-                   
-
-                            {/* History */}
+                        
+                                  {/* History */}
                             <div className="mt-4 space-y-2">
                                 <label className="text-sm font-medium">History</label>
                                 <Textarea
@@ -533,6 +678,8 @@ export default function FleetEditPage() {
                                     readOnly
                                 />
                             </div>
+
+                      
                         </CardContent>
                     </Card>
                 </div>
@@ -547,3 +694,6 @@ export default function FleetEditPage() {
         </div>
     );
 }
+
+
+

@@ -15,6 +15,7 @@ import { ConfirmDialog } from "@/components/widgets/deletedialog";
 import { InspectionImageGallery } from "@/components/inspection/inspection-image-gallery";
 import { InspectionImageViewer } from "@/components/inspection/inspection-image-viewer";
 import { getUrl } from 'aws-amplify/storage';
+import { Inspection } from "@/types/vifForm.types";
 
 
 export default function InspectionEditPage() {
@@ -326,7 +327,7 @@ export default function InspectionEditPage() {
                                     <Button
                                         size="sm"
                                         variant="outline"
-                                        onClick={() => router.push(`/inspections/${fleetId}`)}
+                                        onClick={() => router.push(`/vehicleinspectionsystem/${fleetId}`)}
                                         className="h-8 text-xs cursor-pointer flex-1 sm:flex-none"
                                     >
                                         <ArrowLeft className="h-3 w-3 mr-1" />
@@ -479,33 +480,3 @@ export default function InspectionEditPage() {
     );
 }
 
-interface Inspection {
-    id: string;
-    fleetid: string;
-    inspectionNo: number | null;
-    vehicleVin: string | null;
-    inspectionDate: string | null;
-    inspectionTime: string | null;
-    odometerStart: number | null;
-    vehicleReg: string | null;
-    inspectorOrDriver: string | null;
-    oilAndCoolant: boolean | null;
-    fuelLevel: boolean | null;
-    seatbeltDoorsMirrors: boolean | null;
-    handbrake: boolean | null;
-    tyreCondition: boolean | null;
-    spareTyre: boolean | null;
-    numberPlate: boolean | null;
-    licenseDisc: boolean | null;
-    leaks: boolean | null;
-    lights: boolean | null;
-    defrosterAircon: boolean | null;
-    emergencyKit: boolean | null;
-    clean: boolean | null;
-    warnings: boolean | null;
-    windscreenWipers: boolean | null;
-    serviceBook: boolean | null;
-    siteKit: boolean | null;
-    photo: string[] | [];
-    history: string | null;
-}
