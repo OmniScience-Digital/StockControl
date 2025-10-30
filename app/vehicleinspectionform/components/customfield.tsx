@@ -3,7 +3,6 @@ import { client } from "@/services/schema";
 export const calculateCustomFields = async (
     formState: any,
     vehicles: any[],
-    currentInspectionNumber: Number,
     timestamp: string
 ) => {
     const savedUser = localStorage.getItem("user");
@@ -12,7 +11,19 @@ export const calculateCustomFields = async (
 
     const odometer = parseInt(formState.odometerValue);
     const today = new Date();
+    const stringlastServiceDate = vehicle.lastServicedate;
     const lastServiceDate = new Date(vehicle.lastServicedate);
+
+
+
+    const fleetno = vehicle.fleetNumber;
+    const servicePlanStatus = vehicle.servicePlanStatus;
+    const servicePlan = vehicle.servicePlan;
+    const lastServicekm = vehicle.lastServicekm;
+
+    const lastRotationdate = vehicle.lastRotationdate;;
+    const lastRotationkm = vehicle.lastRotationkm;
+
 
     // --- Conditions ---
     const serviceRequired =
@@ -46,30 +57,37 @@ export const calculateCustomFields = async (
     });
 
     //  secondary index query
-    const checkExistingTask = async (vehicleReg: string, taskType: "service" | "rotation") => {
+    //  secondary index query - return the actual tasks data
+    const getExistingTasks = async (vehicleReg: string, taskType: "service" | "rotation") => {
         const { data: existingTasks } = await client.models.TaskTable.listTaskTableByVehicleRegAndTaskType({
-            vehicleReg: vehicleReg,  // Partition key
-            taskType: { eq: taskType }  // Sort key 
+            vehicleReg: vehicleReg,
+            taskType: { eq: taskType }
         });
-        return existingTasks && existingTasks.length > 0;
+        return existingTasks || [];
     };
 
     // --- Service Task ---
-    if (serviceRequired) {
-        const taskExists = await checkExistingTask(formState.selectedVehicleReg, "service");
+     if (serviceRequired) {
+    
+        const existingServiceTasks = await getExistingTasks(formState.selectedVehicleReg, "service");
+        const taskExists = existingServiceTasks.length > 0;
 
         if (!taskExists) {
             const createTaskResponse = await fetch("/api/customfield-tasks", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    title: "Service Required",
-                    vehicleId: formState.selectedVehicleId,
-                    inspectionNo: currentInspectionNumber,
+                    issuetype: "service",
+                    title: `${fleetno} Service Due , ${timestamp}`,
                     vehicleReg: formState.selectedVehicleReg,
                     vehicleVin: formState.selectedVehicleVin,
+                    servicePlanStatus: servicePlanStatus,
+                    servicePlan: servicePlan,
+                    lastServiceDate: stringlastServiceDate,
+                    lastServicekm: lastServicekm,
+                    lastRotationdate: lastRotationdate,
+                    lastRotationkm: lastRotationkm,
                     odometer: formState.odometerValue,
-                    timestamp,
                     username: savedUser,
                     serviceRequired,
                     reviewRequired,
@@ -79,11 +97,9 @@ export const calculateCustomFields = async (
 
             const taskResult = await createTaskResponse.json();
 
-
             if (!taskResult.success) {
                 throw new Error(taskResult.error || 'Failed to create task');
             }
-
 
             if (taskResult.success && taskResult.taskId) {
                 await client.models.TaskTable.create({
@@ -92,26 +108,42 @@ export const calculateCustomFields = async (
                     clickupTaskId: taskResult.taskId,
                 });
             }
+        } else {
+            
+            //update description with timestamp
+            await fetch("/api/update-description", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    taskId: existingServiceTasks[0].clickupTaskId,
+                    timestamp,
+                }),
+            });
         }
     }
 
     // --- Tyre Rotation Task ---
-    if (tyreRotationRequired) {
-        console.log('tyreRotationRequired ',tyreRotationRequired);
+     if (tyreRotationRequired) {
+    
+        const existingRotationTasks = await getExistingTasks(formState.selectedVehicleReg, "rotation");
+        const taskExists = existingRotationTasks.length > 0;
 
-        const taskExists = await checkExistingTask(formState.selectedVehicleReg, "rotation");
         if (!taskExists) {
             const createTaskResponse = await fetch("/api/customfield-tasks", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    title: "Tyre Rotation Required",
-                    vehicleId: formState.selectedVehicleId,
-                    inspectionNo: currentInspectionNumber,
+                    issuetype: "rotation",
+                    title: `${fleetno} Tyre Rotation Due ,${timestamp}`,
                     vehicleReg: formState.selectedVehicleReg,
                     vehicleVin: formState.selectedVehicleVin,
+                    servicePlanStatus: servicePlanStatus,
+                    servicePlan: servicePlan,
+                    lastRotationdate: lastRotationdate,
+                    lastRotationkm: lastRotationkm,
+                    lastServicekm: lastServicekm,
+                    lastServiceDate: stringlastServiceDate,
                     odometer: formState.odometerValue,
-                    timestamp,
                     username: savedUser,
                     serviceRequired,
                     reviewRequired,
@@ -120,7 +152,6 @@ export const calculateCustomFields = async (
             });
 
             const taskResult = await createTaskResponse.json();
-
 
             if (!taskResult.success) {
                 throw new Error(taskResult.error || 'Failed to create task');
@@ -133,8 +164,18 @@ export const calculateCustomFields = async (
                     clickupTaskId: taskResult.taskId,
                 });
             }
+        } else {
+            
+            //update description with timestamp
+            await fetch("/api/update-description", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    taskId: existingRotationTasks[0].clickupTaskId,
+                    timestamp,
+                }),
+            });
         }
     }
-
     return { serviceRequired, tyreRotationRequired, reviewRequired };
 };

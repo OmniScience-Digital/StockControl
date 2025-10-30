@@ -73,7 +73,7 @@ export default function FleetPage() {
                     liscenseDiscExpirey: item.liscenseDiscExpirey ?? null,
                     history: item.history ?? null
                 }));
-    
+
 
                 setFleets(mappedFleets);
                 setFilteredFleets(mappedFleets);
@@ -250,7 +250,7 @@ export default function FleetPage() {
             breakandLuxTest: [],
             serviceplankm: null,
             breakandLuxExpirey: null,
-            liscenseDiscExpirey:null,
+            liscenseDiscExpirey: null,
             history: null
         });
         setEditedFleet({});
@@ -363,7 +363,7 @@ export default function FleetPage() {
                     breakandLuxTest: fleetData.breakandLuxTest || null,
                     serviceplankm: fleetData.serviceplankm || null,
                     breakandLuxExpirey: fleetData.breakandLuxExpirey,
-                    liscenseDiscExpirey:fleetData.liscenseDiscExpirey,
+                    liscenseDiscExpirey: fleetData.liscenseDiscExpirey,
                     history: fleetData.history || null
                 });
             }
@@ -443,67 +443,51 @@ export default function FleetPage() {
                 <main className="flex-1 px-2 sm:px-4 mt-20 pb-20">
                     <div className="container mx-auto max-w-7xl mt-5">
                         {/* Search Card */}
-                        <Card className="mb-4 sm:mb-6">
+                        <Card className="mb-4">
                             <CardHeader className="pb-3">
-                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                                    <CardTitle className="text-lg sm:text-xl flex items-center gap-2">
-                                        <Car className="h-4 w-4 sm:h-5 sm:w-5" />
-                                        Fleet Management
-                                        <Badge variant="secondary" className="text-xs">
-                                            {filteredFleets.length}
-                                        </Badge>
+                                <div className="flex items-center justify-between">
+                                    <CardTitle className="text-lg flex items-center gap-2">
+                                        <Car className="h-4 w-4" />
+                                        Fleet
+                                        <Badge variant="secondary" className="text-xs">{filteredFleets.length}</Badge>
                                     </CardTitle>
-                                    <Button
-                                        onClick={handleCreateNew}
-                                        className="h-9 cursor-pointer bg-green-600 hover:bg-green-700 w-full sm:w-auto"
-                                    >
-                                        <Plus className="h-4 w-4 mr-2" />
+                                    <Button onClick={handleCreateNew} className="h-9 cursor-pointer bg-green-600 hover:bg-green-700 text-xs">
+                                        <Plus className="h-4 w-4 mr-1" />
                                         Add Vehicle
                                     </Button>
                                 </div>
-
                             </CardHeader>
-                            <CardContent className="pt-0">
-                                <div className="flex flex-col gap-4">
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium">Search Type</label>
-                                        <div className="flex gap-2">
-                                            <Button
-                                                variant={searchType === "reg" ? "default" : "outline"}
-                                                size="sm"
-                                                onClick={() => setSearchType("reg")}
-                                                className="h-9 text-xs cursor-pointer flex-1 sm:flex-none"
-                                            >
-                                                Registration
-                                            </Button>
-                                            <Button
-                                                variant={searchType === "driver" ? "default" : "outline"}
-                                                size="sm"
-                                                onClick={() => setSearchType("driver")}
-                                                className="h-9 text-xs cursor-pointer flex-1 sm:flex-none"
-                                            >
-                                                Driver
-                                            </Button>
-                                        </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium">
-                                            {searchType === "reg" ? "Search by Registration" : "Search by Driver"}
-                                        </label>
-                                        <div className="relative">
-                                            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                                            <Input
-                                                placeholder={searchType === "reg" ? "Enter registration..." : "Enter driver name..."}
-                                                value={searchTerm}
-                                                onChange={handleSearch}
-                                                className="pl-8 h-9 text-sm"
-                                            />
-                                        </div>
-                                    </div>
+                            <CardContent className="pt-0 space-y-3">
+                                <div className="flex gap-2">
+                                    <Button
+                                        variant={searchType === "reg" ? "default" : "outline"}
+                                        size="sm"
+                                        onClick={() => setSearchType("reg")}
+                                        className="h-8 text-xs cursor-pointer flex-1"
+                                    >
+                                        Registration
+                                    </Button>
+                                    <Button
+                                        variant={searchType === "driver" ? "default" : "outline"}
+                                        size="sm"
+                                        onClick={() => setSearchType("driver")}
+                                        className="h-8 text-xs cursor-pointer flex-1"
+                                    >
+                                        Driver
+                                    </Button>
+                                </div>
+                                <div className="relative">
+                                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                                    <Input
+                                        placeholder={searchType === "reg" ? "Search registration..." : "Search driver..."}
+                                        value={searchTerm}
+                                        onChange={handleSearch}
+                                        className="pl-8 h-9 text-sm"
+                                    />
                                 </div>
                                 {searchTerm && (
-                                    <p className="text-sm text-muted-foreground mt-2">
-                                        Showing {filteredFleets.length} of {fleets.length} vehicles
+                                    <p className="text-xs text-muted-foreground">
+                                        {filteredFleets.length} of {fleets.length} vehicles
                                     </p>
                                 )}
                             </CardContent>
@@ -700,7 +684,7 @@ export default function FleetPage() {
                                                 className="h-9 text-sm"
                                             />
                                         </div>
-                                             <div className="space-y-2">
+                                        <div className="space-y-2">
                                             <label className="text-sm font-medium">Liscense Disc Expiry</label>
                                             <Input
                                                 type="date"

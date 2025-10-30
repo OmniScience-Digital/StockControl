@@ -6,6 +6,12 @@ export interface vifForm {
   lastServicedate:Date;
   lastServicekm:Number;
   lastRotationkm:Number;
+  fleetNumber:string,
+  servicePlanStatus: Boolean,
+  servicePlan:string,
+  lastRotationdate:Date,
+      
+
 }
 
 export interface Fleet {

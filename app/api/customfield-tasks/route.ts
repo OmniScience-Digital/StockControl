@@ -6,26 +6,34 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
   try {
-    const {title, vehicleId, vehicleReg, odometer, username,serviceRequired,reviewRequired,tyreRotationRequired,inspectionNo,vehicleVin,timestamp } = await req.json();
+    const { issuetype, title, servicePlanStatus, lastRotationdate, lastRotationkm, servicePlan, lastServiceDate, lastServicekm, vehicleReg, odometer, username, serviceRequired, reviewRequired, tyreRotationRequired, vehicleVin } = await req.json();
 
+    let description = '';
+
+    if (issuetype === "service") {
+      description = `Vehicle Reg: ${vehicleReg}\nVehicle Vin: ${vehicleVin}\nService Plan Status: ${servicePlanStatus}\nService Plan: ${servicePlan}\nPrevious Service km: ${lastServicekm}\nPrevious Service Date: ${lastServiceDate}\nCurrent Driver: ${username}\nCurrent Km: ${odometer}`;
+    }
+    else if (issuetype === "rotation") {
+      description = `Vehicle Reg: ${vehicleReg}\nVehicle Vin: ${vehicleVin}\nService Plan Status: ${servicePlanStatus}\nService Plan: ${servicePlan}\nPrevious Rotation km: ${lastRotationkm}\nPrevious Rotation Date: ${lastRotationdate}\nCurrent Driver: ${username}\nCurrent Km: ${odometer}`;
+    }
 
     const taskBody = {
-      name: `${title} - ${vehicleReg} ${timestamp}`,
-      description: `Inspection No: ${inspectionNo}\nVehicle Vin: ${vehicleVin}\nVehicle Reg: ${vehicleReg}\nVehicle ID: ${vehicleId}\nOdometer: ${odometer}\nUsername: ${username}`,
+      name: `${title}`,
+      description: description,
       custom_fields: [
         {
           id: constants.USERNAME_FIELD_ID,
           value: normalize(username || ''),
         },
-          {
+        {
           id: constants.SERVICE_FIELD_ID,
           value: normalize(serviceRequired),
         },
-          {
+        {
           id: constants.TYRE_FIELD_ID,
           value: normalize(tyreRotationRequired),
         },
-          {
+        {
           id: constants.REVIEW_FIELD_ID,
           value: normalize(reviewRequired),
         },
@@ -46,10 +54,10 @@ export async function POST(req: NextRequest) {
 
     if (!taskData.id) {
       console.error('Failed to create ClickUp task', taskData);
-      return NextResponse.json({ 
-        success: false, 
+      return NextResponse.json({
+        success: false,
         error: 'Failed to create ClickUp task',
-        details: taskData 
+        details: taskData
       }, { status: 500 });
     }
 
@@ -61,9 +69,9 @@ export async function POST(req: NextRequest) {
 
   } catch (error: any) {
     console.error('Error creating task:', error);
-    return NextResponse.json({ 
-      success: false, 
-      error: error.message 
+    return NextResponse.json({
+      success: false,
+      error: error.message
     }, { status: 500 });
   }
 }
