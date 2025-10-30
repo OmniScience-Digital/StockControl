@@ -71,6 +71,7 @@ const schema = a.schema({
     breakandLuxTest: a.string().array(),
     serviceplankm:a.float(),
     breakandLuxExpirey: a.date(),
+    liscenseDiscExpirey: a.date(),
     history: a.string(),
     inspection:a.hasMany('Inspection','fleetid'),
   }).authorization((allow) => [allow.publicApiKey()]),

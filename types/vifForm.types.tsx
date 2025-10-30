@@ -31,6 +31,7 @@ export interface Fleet {
     breakandLuxTest: string[] | [];
     serviceplankm: number | null;
     breakandLuxExpirey: string | null;
+    liscenseDiscExpirey:string | null;
     history: string | null;
 }
 

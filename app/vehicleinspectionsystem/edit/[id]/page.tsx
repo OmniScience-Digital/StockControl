@@ -85,6 +85,7 @@ const getS3DocumentUrls = async (s3Keys: string[]): Promise<string[]> => {
                     breakandLuxTest: documentUrls, 
                     serviceplankm: fleetData.serviceplankm,
                     breakandLuxExpirey: fleetData.breakandLuxExpirey,
+                    liscenseDiscExpirey:fleetData.liscenseDiscExpirey,
                     history: fleetData.history
                 };
 
@@ -109,100 +110,6 @@ const getS3DocumentUrls = async (s3Keys: string[]): Promise<string[]> => {
     }, []);
 
     // Handle save
-    // const handleSave = async () => {
-    //     if (!fleet) return;
-
-    //     try {
-    //         setSaving(true);
-    //         // Get user from localStorage
-    //         let storedName = "Unknown User";
-    //         try {
-    //             const userData = localStorage.getItem("user");
-    //             if (userData) {
-    //                 storedName = userData.replace(/^"|"$/g, '').trim();
-    //             }
-    //         } catch (error) {
-    //             console.error("Error getting user from localStorage:", error);
-    //         }
-
-    //         const johannesburgTime = new Date().toLocaleString("en-ZA", {
-    //             timeZone: "Africa/Johannesburg"
-    //         });
-
-    //         let historyEntries = "";
-
-    //         // Create history for changes
-    //         Object.keys(editedFleet).forEach(key => {
-    //             const typedKey = key as keyof Fleet;
-    //             if (editedFleet[typedKey] !== fleet[typedKey]) {
-    //                 historyEntries += `${storedName} updated ${typedKey} from ${fleet[typedKey]} to ${editedFleet[typedKey]} at ${johannesburgTime}\n`;
-    //             }
-    //         });
-
-    //         // Helper function to handle date fields for AWS Amplify
-    //         const formatDateForAmplify = (dateValue: string | null): string | null => {
-    //             if (!dateValue || dateValue.trim() === "") return null;
-    //             if (/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) return dateValue;
-    //             if (dateValue.includes('T')) return dateValue.split('T')[0];
-    //             try {
-    //                 const date = new Date(dateValue);
-    //                 if (isNaN(date.getTime())) return null;
-    //                 const year = date.getFullYear();
-    //                 const month = String(date.getMonth() + 1).padStart(2, '0');
-    //                 const day = String(date.getDate()).padStart(2, '0');
-    //                 return `${year}-${month}-${day}`;
-    //             } catch {
-    //                 return null;
-    //             }
-    //         };
-
-    //         const fleetData = {
-    //             ...fleet,
-    //             ...editedFleet,
-    //             lastServicedate: formatDateForAmplify(editedFleet.lastServicedate || fleet.lastServicedate),
-    //             lastRotationdate: formatDateForAmplify(editedFleet.lastRotationdate || fleet.lastRotationdate),
-    //             breakandLuxExpirey: formatDateForAmplify(editedFleet.breakandLuxExpirey || fleet.breakandLuxExpirey),
-    //             history: historyEntries ? (fleet.history || "") + historyEntries : fleet.history
-    //         };
-
-    //         // Update existing fleet
-    //         const result = await client.models.Fleet.update({
-    //             id: fleetData.id,
-    //             vehicleVin: fleetData.vehicleVin || null,
-    //             vehicleReg: fleetData.vehicleReg || null,
-    //             vehicleMake: fleetData.vehicleMake || null,
-    //             vehicleModel: fleetData.vehicleModel || null,
-    //             transmitionType: fleetData.transmitionType || null,
-    //             ownershipStatus: fleetData.ownershipStatus || null,
-    //             fleetIndex: fleetData.fleetIndex || null,
-    //             fleetNumber: fleetData.fleetNumber || null,
-    //             lastServicedate: fleetData.lastServicedate,
-    //             lastServicekm: fleetData.lastServicekm || null,
-    //             lastRotationdate: fleetData.lastRotationdate,
-    //             lastRotationkm: fleetData.lastRotationkm || null,
-    //             servicePlanStatus: fleetData.servicePlanStatus,
-    //             servicePlan: fleetData.servicePlan || null,
-    //             currentDriver: fleetData.currentDriver || null,
-    //             currentkm: fleetData.currentkm || null,
-    //             codeRequirement: fleetData.codeRequirement || null,
-    //             pdpRequirement: fleetData.pdpRequirement,
-    //             breakandLuxTest: fleetData.breakandLuxTest || null,
-    //             serviceplankm: fleetData.serviceplankm || null,
-    //             breakandLuxExpirey: fleetData.breakandLuxExpirey,
-    //             history: fleetData.history || null
-    //         });
-
-    //         // Navigate back to list page
-    //         router.push('/vehicleinspectionsystem');
-
-    //     } catch (error) {
-    //         console.error("Error saving fleet:", error);
-
-    //     } finally {
-    //         setSaving(false);
-    //     }
-    // };
-
 const handleSave = async () => {
     if (!fleet) return;
 
@@ -279,6 +186,7 @@ const handleSave = async () => {
             lastServicedate: formatDateForAmplify(editedFleet.lastServicedate || fleet.lastServicedate),
             lastRotationdate: formatDateForAmplify(editedFleet.lastRotationdate || fleet.lastRotationdate),
             breakandLuxExpirey: formatDateForAmplify(editedFleet.breakandLuxExpirey || fleet.breakandLuxExpirey),
+            liscenseDiscExpirey: formatDateForAmplify(editedFleet.liscenseDiscExpirey || fleet.liscenseDiscExpirey),
             history: historyEntries ? (fleet.history || "") + historyEntries : fleet.history
         };
 
@@ -306,6 +214,7 @@ const handleSave = async () => {
             breakandLuxTest: fleetData.breakandLuxTest || null,
             serviceplankm: fleetData.serviceplankm || null,
             breakandLuxExpirey: fleetData.breakandLuxExpirey,
+            liscenseDiscExpirey:fleetData.liscenseDiscExpirey,
             history: fleetData.history || null
         });
 
@@ -375,7 +284,7 @@ const handleSave = async () => {
         <div className="flex flex-col min-h-screen bg-background text-foreground">
             <Navbar />
 
-            <main className="flex-1 px-2 sm:px-4 mt-20 pb-8">
+            <main className="flex-1 px-2 sm:px-4 mt-20 pb-20">
                 <div className="container mx-auto max-w-7xl mt-5">
                     {/* Header */}
                     <div className="mb-4 sm:mb-6">
@@ -639,6 +548,16 @@ const handleSave = async () => {
                                         type="date"
                                         value={editedFleet.breakandLuxExpirey ?? fleet.breakandLuxExpirey ?? ''}
                                         onChange={(e) => handleChange("breakandLuxExpirey", e.target.value)}
+                                        className="h-9 text-sm"
+                                    />
+                                </div>
+
+                                        <div className="space-y-2">
+                                    <label className="text-sm font-medium">Liscense Disc Expiry</label>
+                                    <Input
+                                        type="date"
+                                        value={editedFleet.liscenseDiscExpirey ?? fleet.liscenseDiscExpirey ?? ''}
+                                        onChange={(e) => handleChange("liscenseDiscExpirey", e.target.value)}
                                         className="h-9 text-sm"
                                     />
                                 </div>

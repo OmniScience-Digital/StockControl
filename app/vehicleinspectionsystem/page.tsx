@@ -70,8 +70,10 @@ export default function FleetPage() {
                     ),
                     serviceplankm: item.serviceplankm ?? null,
                     breakandLuxExpirey: item.breakandLuxExpirey ?? null,
+                    liscenseDiscExpirey: item.liscenseDiscExpirey ?? null,
                     history: item.history ?? null
                 }));
+    
 
                 setFleets(mappedFleets);
                 setFilteredFleets(mappedFleets);
@@ -248,6 +250,7 @@ export default function FleetPage() {
             breakandLuxTest: [],
             serviceplankm: null,
             breakandLuxExpirey: null,
+            liscenseDiscExpirey:null,
             history: null
         });
         setEditedFleet({});
@@ -324,6 +327,7 @@ export default function FleetPage() {
                 lastServicedate: formatDateForAmplify(editedFleet.lastServicedate || editingFleet.lastServicedate),
                 lastRotationdate: formatDateForAmplify(editedFleet.lastRotationdate || editingFleet.lastRotationdate),
                 breakandLuxExpirey: formatDateForAmplify(editedFleet.breakandLuxExpirey || editingFleet.breakandLuxExpirey),
+                liscenseDiscExpirey: formatDateForAmplify(editedFleet.liscenseDiscExpirey || editingFleet.liscenseDiscExpirey),
                 history: historyEntries ? (editingFleet.history || "") + historyEntries : editingFleet.history
             };
 
@@ -359,6 +363,7 @@ export default function FleetPage() {
                     breakandLuxTest: fleetData.breakandLuxTest || null,
                     serviceplankm: fleetData.serviceplankm || null,
                     breakandLuxExpirey: fleetData.breakandLuxExpirey,
+                    liscenseDiscExpirey:fleetData.liscenseDiscExpirey,
                     history: fleetData.history || null
                 });
             }
@@ -435,7 +440,7 @@ export default function FleetPage() {
             {loading ? (
                 <Loading />
             ) : (
-                <main className="flex-1 px-2 sm:px-4 mt-20 pb-8">
+                <main className="flex-1 px-2 sm:px-4 mt-20 pb-20">
                     <div className="container mx-auto max-w-7xl mt-5">
                         {/* Search Card */}
                         <Card className="mb-4 sm:mb-6">
@@ -692,6 +697,15 @@ export default function FleetPage() {
                                                 type="date"
                                                 value={editedFleet.breakandLuxExpirey ?? editingFleet.breakandLuxExpirey ?? ''}
                                                 onChange={(e) => handleChange("breakandLuxExpirey", e.target.value)}
+                                                className="h-9 text-sm"
+                                            />
+                                        </div>
+                                             <div className="space-y-2">
+                                            <label className="text-sm font-medium">Liscense Disc Expiry</label>
+                                            <Input
+                                                type="date"
+                                                value={editedFleet.liscenseDiscExpirey ?? editingFleet.liscenseDiscExpirey ?? ''}
+                                                onChange={(e) => handleChange("liscenseDiscExpirey", e.target.value)}
                                                 className="h-9 text-sm"
                                             />
                                         </div>
