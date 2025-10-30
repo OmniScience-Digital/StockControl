@@ -111,6 +111,17 @@ Inspection: a.model({
         .queryField('inspectionsByFleetAndDate')
 ]).authorization((allow) => [allow.publicApiKey()]),
 
+TaskTable: a
+  .model({
+    vehicleReg: a.string().required(),
+    taskType: a.enum(["service", "rotation"]),
+    clickupTaskId: a.string(), // Store ClickUp task ID for reference
+  })
+  .secondaryIndexes((index) => [
+    index("vehicleReg").sortKeys(["taskType"]), // Check if task exists for vehicle+type
+  ])
+  .authorization((allow) => [allow.publicApiKey()]),
+
 });
 
 export type Schema = ClientSchema<typeof schema>;

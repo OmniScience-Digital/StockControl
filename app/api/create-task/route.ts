@@ -2,10 +2,9 @@ import * as constants from "@/app/constants";
 import { normalize } from "@/utils/helper/time";
 import { NextRequest, NextResponse } from "next/server";
 
-
 export async function POST(req: NextRequest) {
   try {
-    const { vehicleId, vehicleReg, odometer, username, inspectionResults,timestamp,inspectionNo,vehicleVin } = await req.json();
+    const { vehicleId, vehicleReg, odometer, username,serviceRequired,reviewRequired,tyreRotationRequired, inspectionResults,timestamp,inspectionNo,vehicleVin } = await req.json();
 
     // Format inspection questions
     const questionLines = inspectionResults.length > 0
@@ -25,6 +24,18 @@ export async function POST(req: NextRequest) {
         {
           id: constants.USERNAME_FIELD_ID,
           value: normalize(username || ''),
+        },
+          {
+          id: constants.SERVICE_FIELD_ID,
+          value: normalize(serviceRequired),
+        },
+          {
+          id: constants.TYRE_FIELD_ID,
+          value: normalize(tyreRotationRequired),
+        },
+          {
+          id: constants.REVIEW_FIELD_ID,
+          value: normalize(reviewRequired),
         },
       ],
       status: 'to do',

@@ -13,7 +13,9 @@ export const mapApiCategoryToVehicle = (apiVehicle: any): vifForm => ({
   id: apiVehicle.id,
   vehicleReg: apiVehicle.vehicleReg,
   vehicleVin: apiVehicle.vehicleVin,
-
+  lastServicedate: apiVehicle.lastServicedate,
+  lastServicekm: apiVehicle.lastServicekm,
+  lastRotationkm: apiVehicle.lastRotationkm,
 });
 
 

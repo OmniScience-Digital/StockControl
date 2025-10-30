@@ -15,6 +15,7 @@ import ResponseModal from "@/components/widgets/response";
 import { Loader2 } from "lucide-react";
 import { getJhbTimestamp } from "@/utils/helper/time";
 import ImageUploadLoader from "./components/imageLoader";
+import { calculateCustomFields } from "./components/customfield";
 
 export default function Vehicle_Inspection_Form() {
     const [loading, setLoading] = useState(false);
@@ -27,9 +28,8 @@ export default function Vehicle_Inspection_Form() {
     const [currentInspectionNumber, setCurrentInspectionNumber] = useState<number>(0);
 
     useEffect(() => {
-  window.scrollTo({ top: 0, behavior: "smooth" });
-}, []);
-
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    }, []);
 
     // Add upload progress state
     const [uploadProgress, setUploadProgress] = useState({
@@ -172,6 +172,10 @@ export default function Vehicle_Inspection_Form() {
                 history: historyEntry, // Append new history entry
             };
 
+            const customFields = await calculateCustomFields(formState, vehicles);
+
+
+
             await client.models.Inspection.create(inspectionData);
 
             // Create ClickUp task with S3 references (FAST - no file uploads)
@@ -185,6 +189,9 @@ export default function Vehicle_Inspection_Form() {
                     vehicleVin: formState.selectedVehicleVin,
                     odometer: formState.odometerValue,
                     username: savedUser,
+                    serviceRequired: customFields.serviceRequired,
+                    reviewRequired: customFields.reviewRequired,
+                    tyreRotationRequired: customFields.tyreRotationRequired,
                     inspectionResults,
                     timestamp,
                     s3PhotoKeys, // Send S3 keys instead of uploading files
@@ -279,6 +286,25 @@ export default function Vehicle_Inspection_Form() {
         }
     };
 
+
+    // const handleSubmit = async (e: React.FormEvent) => {
+    //     e.preventDefault();
+    //     try {
+
+
+    //       const customFields = calculateCustomFields(formState, vehicles);
+    //           console.log( customFields.tyreRotationRequired);
+
+
+
+    //     } catch (err) {
+    //         console.error("Error submitting form:", err);
+    //         setMessage("Failed to submit inspection: " + (err instanceof Error ? err.message : 'Unknown error'));
+    //         setShow(true);
+    //         setSuccessful(false);
+    //     }
+    // };
+
     useEffect(() => {
         const subscription = client.models.Fleet.observeQuery().subscribe({
             next: ({ items: allVehicles, isSynced }) => {
@@ -301,19 +327,21 @@ export default function Vehicle_Inspection_Form() {
         <div className="flex flex-col min-h-screen bg-background text-foreground">
             <Navbar />
 
-            {/* Image Upload Loader */}
-            {uploadProgress.isUploading && (
-                <ImageUploadLoader
-                    currentImage={uploadProgress.currentImage}
-                    totalImages={uploadProgress.totalImages}
-                    message={`Uploading image ${uploadProgress.currentImage} of ${uploadProgress.totalImages}`}
-                />
-            )}
+
 
             {loading ? (
                 <Loading />
             ) : (
                 <main className="flex-1 p-6 mt-20 min-h-screen">
+
+                    {/* Image Upload Loader */}
+                    {uploadProgress.isUploading && (
+                        <ImageUploadLoader
+                            currentImage={uploadProgress.currentImage}
+                            totalImages={uploadProgress.totalImages}
+                            message={`Uploading image ${uploadProgress.currentImage} of ${uploadProgress.totalImages}`}
+                        />
+                    )}
                     {show && (
                         <ResponseModal
                             successful={successful}
@@ -328,6 +356,7 @@ export default function Vehicle_Inspection_Form() {
                             </CardHeader>
                             <CardContent>
                                 <div className="overflow-x-auto">
+                                    {/* <Button onClick={handleSubmit} title="Test Submit"/> */}
                                     <form className="space-y-6 mt-2" onSubmit={handleSubmit}>
                                         <VifForm
                                             onVehicleChange={handleVehicleChange}

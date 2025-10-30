@@ -3,6 +3,9 @@ export interface vifForm {
   id: string;
   vehicleReg: string;
   vehicleVin:string;
+  lastServicedate:Date;
+  lastServicekm:Number;
+  lastRotationkm:Number;
 }
 
 export interface Fleet {
