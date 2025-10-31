@@ -120,6 +120,7 @@ TaskTable: a
   })
   .secondaryIndexes((index) => [
     index("vehicleReg").sortKeys(["taskType"]), // Check if task exists for vehicle+type
+    index("clickupTaskId")
   ])
   .authorization((allow) => [allow.publicApiKey()]),
 
