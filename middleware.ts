@@ -6,7 +6,11 @@ import { runWithAmplifyServerContext } from "@/utils/amplifyServerUtils";
 const protectedRoutes = [
   "/landing",
   "/inventorymanagementsystem",
-  "/stockcontrolform"
+  "/stockcontrolform",
+  "vehicleinspectionsystem",
+  "forms",
+  "vehicleinspectionform",
+  "subcategories"
 ];
 const publicRoutes = ["/"];
 
