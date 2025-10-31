@@ -7,10 +7,10 @@ const protectedRoutes = [
   "/landing",
   "/inventorymanagementsystem",
   "/stockcontrolform",
-  "vehicleinspectionsystem",
-  "forms",
-  "vehicleinspectionform",
-  "subcategories"
+  "/vehicleinspectionsystem",
+  "/forms",
+  "/vehicleinspectionform",
+  "/subcategories"
 ];
 const publicRoutes = ["/"];
 
@@ -58,3 +58,5 @@ export default async function middleware(request: NextRequest) {
 export const config = {
   matcher: ["/((?!api|_next/static|_next/image|.*\\.png$).*)"],
 };
+
+
