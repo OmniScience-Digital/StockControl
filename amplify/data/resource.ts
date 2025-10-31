@@ -115,7 +115,7 @@ Inspection: a.model({
 TaskTable: a
   .model({
     vehicleReg: a.string().required(),
-    taskType: a.enum(["service", "rotation"]),
+    taskType: a.enum(["service", "rotation","licensedisc","breaknlux"]),
     clickupTaskId: a.string(), // Store ClickUp task ID for reference
   })
   .secondaryIndexes((index) => [
