@@ -127,6 +127,111 @@ TaskTable: a
   ])
   .authorization((allow) => [allow.publicApiKey()]),
 
+
+  Employee: a
+    .model({
+      employeeId: a.string().required(),
+      employeeNumber: a.string(),
+      firstName: a.string().required(),
+      surname: a.string().required(),
+      knownAs: a.string(),
+      idNumber: a.string(),
+      passportNumber: a.string(),
+      passportExpiry: a.date(),
+      passportAttachment: a.string(), // reference to file in storage
+      driversLicenseCode: a.string(),
+      driversLicenseExpiry: a.date(),
+      driversLicenseAttachment: a.string(),
+      authorizedDriver: a.boolean(),
+      pdpExpiry: a.date(),
+      pdpAttachment: a.string(),
+      // Core documents
+      cvAttachment: a.string(),
+      ppeListAttachment: a.string(),
+      ppeExpiry: a.date(),
+      // Medical certificates as relations
+      medicalCertificates: a.hasMany('EmployeeMedicalCertificate', 'employeeId'),
+      // Training certificates as relations
+      trainingCertificates: a.hasMany('EmployeeTrainingCertificate', 'employeeId'),
+      // Additional certificates
+      additionalCertificates: a.hasMany('EmployeeAdditionalCertificate', 'employeeId'),
+    })
+    .secondaryIndexes((index) => [
+      index("employeeId"),
+      index("employeeNumber"),
+      index("driversLicenseExpiry").queryField("employeesByLicenseExpiry"),
+      index("passportExpiry").queryField("employeesByPassportExpiry")
+    ])
+    .authorization((allow) => [allow.publicApiKey()]),
+
+  EmployeeMedicalCertificate: a
+    .model({
+      employeeId: a.string().required(),
+      certificateType: a.enum([
+        "CLINIC_PLUS",
+        "HEARTLY_HEALTH", 
+        "KLIPSPRUIT_MEDICAL",
+        "LUYUYO_MEDICAL",
+        "KRIEL_MEDICAL",
+        "PRO_HEALTH_MEDICAL"
+      ]),
+      expiryDate: a.date().required(),
+      attachment: a.string(), // file reference
+      employee: a.belongsTo('Employee', 'employeeId'),
+    })
+    .secondaryIndexes((index) => [
+      index("employeeId").sortKeys(["expiryDate"]).queryField("medicalCertsByEmployee"),
+      index("expiryDate").queryField("medicalCertsByExpiry")
+    ])
+    .authorization((allow) => [allow.publicApiKey()]),
+
+  EmployeeTrainingCertificate: a
+    .model({
+      employeeId: a.string().required(),
+      certificateType: a.enum([
+        "FIREFIGHTING",
+        "FIRST_AID_LEVEL_1",
+        "FIRST_AID_LEVEL_2",
+        "WORKING_AT_HEIGHTS",
+        "WORKING_WITH_HAND_TOOLS",
+        "WORKING_WITH_POWER_TOOLS",
+        "SATS_CONVEYOR",
+        "SATS_COP_SOP",
+        "SATS_ILOT",
+        "WILGE_VXR",
+        "OHS_ACT",
+        "MHSA",
+        "HIRA_TRAINING",
+        "APPOINTMENT_2_9_2",
+        "OEM_CERT",
+        "CLINIC_PLUS_INDUCTION"
+      ]),
+      expiryDate: a.date().required(),
+      attachment: a.string(),
+      employee: a.belongsTo('Employee', 'employeeId'),
+    })
+    .secondaryIndexes((index) => [
+      index("employeeId").sortKeys(["expiryDate"]).queryField("trainingCertsByEmployee"),
+      index("expiryDate").queryField("trainingCertsByExpiry"),
+      index("certificateType").queryField("trainingCertsByType")
+    ])
+    .authorization((allow) => [allow.publicApiKey()]),
+
+  EmployeeAdditionalCertificate: a
+    .model({
+      employeeId: a.string().required(),
+      certificateName: a.string().required(),
+      expiryDate: a.date().required(),
+      attachment: a.string(),
+      employee: a.belongsTo('Employee', 'employeeId'),
+    })
+    .secondaryIndexes((index) => [
+      index("employeeId").sortKeys(["expiryDate"]).queryField("additionalCertsByEmployee"),
+      index("expiryDate").queryField("additionalCertsByExpiry")
+    ])
+    .authorization((allow) => [allow.publicApiKey()]),
+
+
 });
 
 export type Schema = ClientSchema<typeof schema>;
