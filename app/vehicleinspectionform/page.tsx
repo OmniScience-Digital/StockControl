@@ -24,6 +24,8 @@ export default function Vehicle_Inspection_Form() {
     const [show, setShow] = useState(false);
     const [successful, setSuccessful] = useState(false);
     const [message, setMessage] = useState("");
+    const [inspectionNumber, setInspectionNumber] = useState<number>(1);
+
 
 
 
@@ -82,13 +84,17 @@ export default function Vehicle_Inspection_Form() {
 
 
 
-    const handleVehicleChange = useCallback((vehicleId: string, vehicleReg: string, vehicleVin: string) => {
+    const handleVehicleChange = useCallback(async (vehicleId: string, vehicleReg: string, vehicleVin: string) => {
         setFormState(prev => ({
             ...prev,
             selectedVehicleId: vehicleId,
             selectedVehicleReg: vehicleReg,
             selectedVehicleVin: vehicleVin
         }));
+        if (vehicleId) {
+            const nextNumber = await getNextInspectionNumber(vehicleId);
+            setInspectionNumber(nextNumber);
+        }
     }, []);
 
     const handleOdometerChange = useCallback((value: string) => {
@@ -142,9 +148,9 @@ export default function Vehicle_Inspection_Form() {
             }));
 
             const inspectionNo = await getNextInspectionNumber(formState.selectedVehicleId);
+
             // Save to Amplify Data
             const historyEntry = `${savedUser} @ ${new Date().toISOString().split('T')[0]} ${new Date().toTimeString().split(' ')[0]}: Inspection #${inspectionNo} for vehicle ${formState.selectedVehicleReg}\n`;
-
 
             const inspectionData = {
                 fleetid: formState.selectedVehicleId,
@@ -173,14 +179,21 @@ export default function Vehicle_Inspection_Form() {
                 serviceBook: formState.booleanQuestions[15].value,
                 siteKit: formState.booleanQuestions[16].value,
                 photo: s3PhotoKeys,
-                history: historyEntry, // Append new history entry
+                history: historyEntry,
             };
 
-
             const customFields = await calculateCustomFields(formState, vehicles, timestamp);
+
+            // 1. Create the inspection first
             await client.models.Inspection.create(inspectionData);
 
-            // Create ClickUp task with S3 references (FAST - no file uploads)
+            // 2. Update the Fleet's currentkm with the new odometer reading
+            await client.models.Fleet.update({
+                id: formState.selectedVehicleId,
+                currentkm: parseFloat(formState.odometerValue)
+            });
+
+            // 3. Create ClickUp task
             const createTaskResponse = await fetch("/api/create-task", {
                 method: "POST",
                 headers: { 'Content-Type': 'application/json' },
@@ -196,14 +209,12 @@ export default function Vehicle_Inspection_Form() {
                     tyreRotationRequired: customFields.tyreRotationRequired,
                     inspectionResults,
                     timestamp,
-                    s3PhotoKeys, // Send S3 keys instead of uploading files
+                    s3PhotoKeys,
                     photoCount: formState.photos.length
                 }),
             });
 
             const taskResult = await createTaskResponse.json();
-
-
             if (!taskResult.success) {
                 throw new Error(taskResult.error || 'Failed to create task');
             }
@@ -217,25 +228,21 @@ export default function Vehicle_Inspection_Form() {
                 totalImages: formState.photos.length
             });
 
-            //Step 2: Upload photos one by one
+            // Upload photos one by one
             for (let i = 0; i < formState.photos.length; i++) {
-                // Update progress
                 setUploadProgress(prev => ({
                     ...prev,
                     currentImage: i + 1
                 }));
 
-                const photo = formState.photos[i]; // Rename to 'photo' for clarity
-
-                // Your existing ClickUp upload
+                const photo = formState.photos[i];
                 const photoFormData = new FormData();
-                photoFormData.append("photo", photo.file); // Use photo.file (the actual File object)
+                photoFormData.append("photo", photo.file);
                 photoFormData.append("taskId", taskId);
                 photoFormData.append("timestamp", timestamp);
                 photoFormData.append('vehicleReg', formState.selectedVehicleReg);
                 photoFormData.append('vehicleVin', formState.selectedVehicleVin);
                 photoFormData.append('inspectionNo', inspectionNo.toString());
-
 
                 const uploadResponse = await fetch("/api/upload-photo", {
                     method: "POST",
@@ -243,13 +250,10 @@ export default function Vehicle_Inspection_Form() {
                 });
 
                 const uploadResult = await uploadResponse.json();
-
                 if (!uploadResult.success) {
-                    throw new Error(`Failed to upload photo ${i + 1}: ${photo.file.name}`); // Use photo.file.name
+                    throw new Error(`Failed to upload photo ${i + 1}: ${photo.file.name}`);
                 }
             }
-
-
 
             // Upload complete
             setUploadProgress({
@@ -258,8 +262,7 @@ export default function Vehicle_Inspection_Form() {
                 totalImages: 0
             });
 
-
-            setMessage("Inspection submitted successfully");
+            setMessage("Inspection submitted successfully and vehicle odometer updated");
             setShow(true);
             setSuccessful(true);
 
@@ -287,6 +290,30 @@ export default function Vehicle_Inspection_Form() {
             });
         }
     };
+
+    //  const handleSubmit = async (e: React.FormEvent) => {
+    //     e.preventDefault();
+    //     try {
+
+    //         const inspectionNo = await getNextInspectionNumber(formState.selectedVehicleId);
+
+    //         console.log("inspectionNo ",inspectionNo);
+
+
+    //     } catch (err) {
+    //         console.error("Error submitting form:", err);
+    //         setMessage("Failed to submit inspection: " + (err instanceof Error ? err.message : 'Unknown error'));
+    //         setShow(true);
+    //         setSuccessful(false);
+    //     } finally {
+    //         setLoadingbtn(false);
+    //         setUploadProgress({
+    //             isUploading: false,
+    //             currentImage: 0,
+    //             totalImages: 0
+    //         });
+    //     }
+    // };
 
 
     useEffect(() => {
@@ -348,7 +375,7 @@ export default function Vehicle_Inspection_Form() {
                                             onPhotosChange={handlePhotosChange}
                                             formState={formState}
                                             vehicles={vehicles}
-                                            inspectionNumber={1}
+                                            inspectionNumber={inspectionNumber}
                                         />
                                         <div className="flex justify-end mt-2">
                                             <Button

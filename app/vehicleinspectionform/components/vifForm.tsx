@@ -10,11 +10,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useMemo, useState, useEffect } from "react";
-import { 
-  BooleanQuestion, 
-  booleanQuestions as initialQuestions, 
-  PhotoUpload, 
-  PhotoState 
+import {
+  BooleanQuestion,
+  booleanQuestions as initialQuestions,
+  PhotoUpload,
+  PhotoState
 } from "./questions";
 import { vifForm } from "@/types/vifForm.types";
 import { client } from "@/services/schema";
@@ -25,7 +25,7 @@ interface VifFormProps {
   onOdometerChange: (value: string) => void;
   onBooleanQuestionsChange: (questions: typeof initialQuestions) => void;
   onPhotosChange: (photos: PhotoState[]) => void;
-  inspectionNumber:number | null,
+  inspectionNumber: number | null,
   formState: {
     selectedVehicleReg: string;
     selectedVehicleId: string;
@@ -66,9 +66,11 @@ export default function VifForm({
 
       setLoadingInspection(true);
       try {
-        const { data: inspections } = await client.models.Inspection.list({
-          filter: { fleetid: { eq: formState.selectedVehicleId } }
-        });
+        // Use the GSI to get inspections sorted by inspection number (highest first)
+        const { data: inspections } = await client.models.Inspection.inspectionsByFleetAndNumber(
+          { fleetid: formState.selectedVehicleId },
+          { sortDirection: 'DESC', limit: 1 }
+        );
 
         const mostRecent = inspections && inspections.length > 0
           ? inspections.sort((a: any, b: any) =>
@@ -150,10 +152,10 @@ export default function VifForm({
     return fieldName ? inspection[fieldName] : null;
   };
 
-  const canSubmit = formState.photos.length > 0 && 
-                   formState.photos.every(photo => photo.status === 'success') &&
-                   formState.odometerValue &&
-                   !formState.booleanQuestions.some(q => q.value === null);
+  const canSubmit = formState.photos.length > 0 &&
+    formState.photos.every(photo => photo.status === 'success') &&
+    formState.odometerValue &&
+    !formState.booleanQuestions.some(q => q.value === null);
 
   return (
     <div className="p-4 border rounded-lg space-y-4 bg-background shadow-sm">
@@ -208,8 +210,8 @@ export default function VifForm({
       {formState.selectedVehicleId && (
         <div className="space-y-2 animate-in fade-in-0 duration-300">
           <label className="text-sm font-medium">Upload Inspection Photos</label>
-          <PhotoUpload 
-            onPhotosChange={onPhotosChange} 
+          <PhotoUpload
+            onPhotosChange={onPhotosChange}
             vehicleReg={formState.selectedVehicleReg}
             inspectionNumber={inspectionNumber}
           />
@@ -266,14 +268,13 @@ export default function VifForm({
             })}
           </div>
 
-          <div className={`p-3 rounded-md border ${
-            canSubmit 
-              ? 'bg-green-50 border-green-200 text-green-800' 
+          <div className={`p-3 rounded-md border ${canSubmit
+              ? 'bg-green-50 border-green-200 text-green-800'
               : 'bg-amber-50 border-amber-200 text-amber-800'
-          }`}>
+            }`}>
             <p className="text-sm font-medium">
-              {canSubmit 
-                ? '✅ All set! Form is ready for submission.' 
+              {canSubmit
+                ? '✅ All set! Form is ready for submission.'
                 : '⚠️ Please complete all fields and ensure all photos are uploaded'}
             </p>
           </div>
