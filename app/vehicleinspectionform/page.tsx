@@ -24,8 +24,8 @@ export default function Vehicle_Inspection_Form() {
     const [show, setShow] = useState(false);
     const [successful, setSuccessful] = useState(false);
     const [message, setMessage] = useState("");
-    //State for inspection number
-    const [currentInspectionNumber, setCurrentInspectionNumber] = useState<number>(0);
+
+
 
     useEffect(() => {
         window.scrollTo({ top: 0, behavior: "smooth" });
@@ -47,6 +47,31 @@ export default function Vehicle_Inspection_Form() {
         photos: [] as PhotoState[]
     });
 
+
+    const getNextInspectionNumber = async (fleetId: string): Promise<number> => {
+        try {
+            // Use the new GSI that sorts by inspectionNo
+            const { data } = await client.models.Inspection.inspectionsByFleetAndNumber(
+                { fleetid: fleetId },
+                { sortDirection: 'DESC', limit: 1 }
+            );
+
+            console.log("Latest inspection by number:", data);
+
+            const lastInspection = data?.[0];
+            const lastNo = lastInspection?.inspectionNo ?? 0;
+
+            const nextNumber = lastNo + 1;
+            console.log("Next inspection number:", nextNumber);
+
+            return nextNumber;
+        } catch (error) {
+            console.error("Error fetching existing inspections:", error);
+            return 1;
+        }
+    };
+
+
     // Check if form can be submitted
     const canSubmit = formState.selectedVehicleId &&
         formState.odometerValue &&
@@ -54,30 +79,7 @@ export default function Vehicle_Inspection_Form() {
         formState.photos.every(photo => photo.status === 'success') &&
         !formState.booleanQuestions.some(q => q.value === null);
 
-    useEffect(() => {
-        const getNextInspectionNumber = async (fleetId: string) => {
-            try {
-                const existingInspections = await client.models.Inspection.inspectionsByFleetAndDate(
-                    { fleetid: fleetId },
-                    { sortDirection: 'DESC', limit: 1 }
-                );
 
-                if (existingInspections.data && existingInspections.data.length > 0) {
-                    setCurrentInspectionNumber((existingInspections.data[0].inspectionNo || 0) + 1);
-                } else {
-                    setCurrentInspectionNumber(1);
-                }
-            } catch (error) {
-                console.error('Error fetching existing inspections:', error);
-                setCurrentInspectionNumber(1);
-            }
-        };
-
-
-        if (formState.selectedVehicleId) {
-            getNextInspectionNumber(formState.selectedVehicleId);
-        }
-    }, [formState.selectedVehicleId]);
 
 
     const handleVehicleChange = useCallback((vehicleId: string, vehicleReg: string, vehicleVin: string) => {
@@ -139,12 +141,14 @@ export default function Vehicle_Inspection_Form() {
                 answer: String(q.value)
             }));
 
+            const inspectionNo = await getNextInspectionNumber(formState.selectedVehicleId);
             // Save to Amplify Data
-            const historyEntry = `${savedUser} @ ${new Date().toISOString().split('T')[0]} ${new Date().toTimeString().split(' ')[0]}: Inspection #${currentInspectionNumber} for vehicle ${formState.selectedVehicleReg}\n`;
+            const historyEntry = `${savedUser} @ ${new Date().toISOString().split('T')[0]} ${new Date().toTimeString().split(' ')[0]}: Inspection #${inspectionNo} for vehicle ${formState.selectedVehicleReg}\n`;
+
 
             const inspectionData = {
                 fleetid: formState.selectedVehicleId,
-                inspectionNo: currentInspectionNumber,
+                inspectionNo: inspectionNo,
                 vehicleVin: formState.selectedVehicleVin,
                 inspectionDate: new Date().toISOString().split('T')[0],
                 inspectionTime: new Date().toTimeString().split(' ')[0],
@@ -182,7 +186,7 @@ export default function Vehicle_Inspection_Form() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     vehicleId: formState.selectedVehicleId,
-                    inspectionNo: currentInspectionNumber,
+                    inspectionNo: inspectionNo,
                     vehicleReg: formState.selectedVehicleReg,
                     vehicleVin: formState.selectedVehicleVin,
                     odometer: formState.odometerValue,
@@ -230,7 +234,7 @@ export default function Vehicle_Inspection_Form() {
                 photoFormData.append("timestamp", timestamp);
                 photoFormData.append('vehicleReg', formState.selectedVehicleReg);
                 photoFormData.append('vehicleVin', formState.selectedVehicleVin);
-                photoFormData.append('inspectionNo', currentInspectionNumber.toString());
+                photoFormData.append('inspectionNo', inspectionNo.toString());
 
 
                 const uploadResponse = await fetch("/api/upload-photo", {
@@ -344,7 +348,7 @@ export default function Vehicle_Inspection_Form() {
                                             onPhotosChange={handlePhotosChange}
                                             formState={formState}
                                             vehicles={vehicles}
-                                            inspectionNumber={currentInspectionNumber}
+                                            inspectionNumber={1}
                                         />
                                         <div className="flex justify-end mt-2">
                                             <Button

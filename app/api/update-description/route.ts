@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
   try {
-    const { taskId, timestamp } = await req.json();
+    const { taskId, odometer } = await req.json();
 
     // Get current task to preserve the base title
     const getTaskResponse = await fetch(`https://api.clickup.com/api/v2/task/${taskId}`, {
@@ -14,14 +14,18 @@ export async function POST(req: NextRequest) {
     });
 
     const existingTask = await getTaskResponse.json();
-    
+
     // Extract base title without timestamp (remove everything after last comma)
     const currentName = existingTask.name || '';
-    const baseTitle = currentName.split(',')[0].trim();
-    
+    const currentDescription = existingTask.description || '';
+
+    // Append current km to description
+    const updatedDescription = `${currentDescription}\nCurrent Km: ${odometer}`;
+
     // Update with new timestamp
     const updateBody = {
-      name: `${baseTitle} , ${timestamp}`,
+      name: currentName,
+      description: updatedDescription,
     };
 
     const updateResponse = await fetch(`https://api.clickup.com/api/v2/task/${taskId}`, {

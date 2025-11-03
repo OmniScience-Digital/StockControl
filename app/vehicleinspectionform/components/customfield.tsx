@@ -56,7 +56,7 @@ export const calculateCustomFields = async (
         return false;
     });
 
-    //  secondary index query
+
     //  secondary index query - return the actual tasks data
     const getExistingTasks = async (vehicleReg: string, taskType: "service" | "rotation") => {
         const { data: existingTasks } = await client.models.TaskTable.listTaskTableByVehicleRegAndTaskType({
@@ -66,6 +66,7 @@ export const calculateCustomFields = async (
         return existingTasks || [];
     };
 
+    
     // --- Service Task ---
      if (serviceRequired) {
     
@@ -116,7 +117,7 @@ export const calculateCustomFields = async (
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     taskId: existingServiceTasks[0].clickupTaskId,
-                    timestamp,
+                    odometer:odometer
                 }),
             });
         }
@@ -172,7 +173,7 @@ export const calculateCustomFields = async (
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     taskId: existingRotationTasks[0].clickupTaskId,
-                    timestamp,
+                    odometer:odometer
                 }),
             });
         }

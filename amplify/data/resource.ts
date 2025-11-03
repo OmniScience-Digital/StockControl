@@ -109,7 +109,10 @@ Inspection: a.model({
 }).secondaryIndexes((index) => [
     index('fleetid')
         .sortKeys(['inspectionDate'])
-        .queryField('inspectionsByFleetAndDate')
+        .queryField('inspectionsByFleetAndDate'),
+    index('fleetid')
+        .sortKeys(['inspectionNo'])
+        .queryField('inspectionsByFleetAndNumber')
 ]).authorization((allow) => [allow.publicApiKey()]),
 
 TaskTable: a
