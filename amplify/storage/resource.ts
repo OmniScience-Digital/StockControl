@@ -16,11 +16,11 @@ export const storage = defineStorage({
       allow.guest.to(['read', 'write'])
     ],
     // specific HR paths for better organization
-    "hr/employees/*": [
+    "hr/employees/{employeeId}/documents/*": [
       allow.authenticated.to(['read', 'write', 'delete']),
       allow.guest.to(['read', 'write'])
     ],
-    "hr/certificates/*": [
+    "hr/employees/{employeeId}/certificates/*": [
       allow.authenticated.to(['read', 'write', 'delete']),
       allow.guest.to(['read', 'write'])
     ]

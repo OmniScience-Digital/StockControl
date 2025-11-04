@@ -69,18 +69,18 @@ const schema = a.schema({
     codeRequirement: a.string(),
     pdpRequirement: a.boolean(),
     breakandLuxTest: a.string().array(),
-    serviceplankm:a.float(),
+    serviceplankm: a.float(),
     breakandLuxExpirey: a.date(),
     liscenseDiscExpirey: a.date(),
     history: a.string(),
-    inspection:a.hasMany('Inspection','fleetid'),
+    inspection: a.hasMany('Inspection', 'fleetid'),
   }).authorization((allow) => [allow.publicApiKey()]),
 
 
-Inspection: a.model({
+  Inspection: a.model({
     fleetid: a.string().required(),
-    inspectionNo: a.integer(), 
-    vehicleVin: a.string(), 
+    inspectionNo: a.integer(),
+    vehicleVin: a.string(),
     inspectionDate: a.date(),
     inspectionTime: a.time(),
     odometerStart: a.float(),
@@ -103,29 +103,29 @@ Inspection: a.model({
     windscreenWipers: a.boolean(),
     serviceBook: a.boolean(),
     siteKit: a.boolean(),
-    photo: a.string().array(), 
+    photo: a.string().array(),
     history: a.string(),
-    fleet: a.belongsTo('Fleet','fleetid'),
-}).secondaryIndexes((index) => [
+    fleet: a.belongsTo('Fleet', 'fleetid'),
+  }).secondaryIndexes((index) => [
     index('fleetid')
-        .sortKeys(['inspectionDate'])
-        .queryField('inspectionsByFleetAndDate'),
+      .sortKeys(['inspectionDate'])
+      .queryField('inspectionsByFleetAndDate'),
     index('fleetid')
-        .sortKeys(['inspectionNo'])
-        .queryField('inspectionsByFleetAndNumber')
-]).authorization((allow) => [allow.publicApiKey()]),
+      .sortKeys(['inspectionNo'])
+      .queryField('inspectionsByFleetAndNumber')
+  ]).authorization((allow) => [allow.publicApiKey()]),
 
-TaskTable: a
-  .model({
-    vehicleReg: a.string().required(),
-    taskType: a.enum(["service", "rotation","licensedisc","breaknlux"]),
-    clickupTaskId: a.string(), // Store ClickUp task ID for reference
-  })
-  .secondaryIndexes((index) => [
-    index("vehicleReg").sortKeys(["taskType"]), // Check if task exists for vehicle+type
-    index("clickupTaskId")
-  ])
-  .authorization((allow) => [allow.publicApiKey()]),
+  TaskTable: a
+    .model({
+      vehicleReg: a.string().required(),
+      taskType: a.enum(["service", "rotation", "licensedisc", "breaknlux"]),
+      clickupTaskId: a.string(), // Store ClickUp task ID for reference
+    })
+    .secondaryIndexes((index) => [
+      index("vehicleReg").sortKeys(["taskType"]), // Check if task exists for vehicle+type
+      index("clickupTaskId")
+    ])
+    .authorization((allow) => [allow.publicApiKey()]),
 
 
   Employee: a
@@ -134,11 +134,12 @@ TaskTable: a
       employeeNumber: a.string(),
       firstName: a.string().required(),
       surname: a.string().required(),
+      employeeIdAttachment: a.string(),
       knownAs: a.string(),
       idNumber: a.string(),
       passportNumber: a.string(),
       passportExpiry: a.date(),
-      passportAttachment: a.string(), // reference to file in storage
+      passportAttachment: a.string(),
       driversLicenseCode: a.string(),
       driversLicenseExpiry: a.date(),
       driversLicenseAttachment: a.string(),
@@ -169,11 +170,13 @@ TaskTable: a
       employeeId: a.string().required(),
       certificateType: a.enum([
         "CLINIC_PLUS",
-        "HEARTLY_HEALTH", 
+        "CLINIC_PLUS_INDUCTION",
+        "HEARTLY_HEALTH",
         "KLIPSPRUIT_MEDICAL",
         "LUYUYO_MEDICAL",
         "KRIEL_MEDICAL",
-        "PRO_HEALTH_MEDICAL"
+        "PRO_HEALTH_MEDICAL",
+        "LEGAL_LIABILITY",
       ]),
       expiryDate: a.date().required(),
       attachment: a.string(), // file reference
@@ -204,7 +207,6 @@ TaskTable: a
         "HIRA_TRAINING",
         "APPOINTMENT_2_9_2",
         "OEM_CERT",
-        "CLINIC_PLUS_INDUCTION"
       ]),
       expiryDate: a.date().required(),
       attachment: a.string(),
