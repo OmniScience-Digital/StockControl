@@ -136,7 +136,6 @@ const schema = a.schema({
       surname: a.string().required(),
       employeeIdAttachment: a.string(),
       knownAs: a.string(),
-      idNumber: a.string(),
       passportNumber: a.string(),
       passportExpiry: a.date(),
       passportAttachment: a.string(),

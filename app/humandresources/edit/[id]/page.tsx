@@ -9,8 +9,9 @@ import {
   User,
   Loader2,
   Upload,
-  Camera,
   FileText,
+  Plus,
+  Trash2,
   Calendar
 } from "lucide-react";
 import Footer from "@/components/layout/footer";
@@ -18,15 +19,16 @@ import Navbar from "@/components/layout/navbar";
 import Loading from "@/components/widgets/loading";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { formatDateForAmplify } from "@/utils/helper/time";
-
+import { Textarea } from "@/components/ui/textarea";
 
 interface Employee {
   id: string;
@@ -35,7 +37,6 @@ interface Employee {
   firstName: string;
   surname: string;
   knownAs?: string;
-  idNumber?: string;
   passportNumber?: string;
   passportExpiry?: string;
   passportAttachment?: string;
@@ -50,7 +51,39 @@ interface Employee {
   ppeExpiry?: string;
   employeeIdAttachment?: string;
   history?: string;
+  medicalCertificates?: any[];
+  trainingCertificates?: any[];
+  additionalCertificates?: any[];
 }
+
+const MEDICAL_CERTIFICATE_TYPES = [
+  "CLINIC_PLUS",
+  "CLINIC_PLUS_INDUCTION",
+  "HEARTLY_HEALTH",
+  "KLIPSPRUIT_MEDICAL",
+  "LUYUYO_MEDICAL",
+  "KRIEL_MEDICAL",
+  "PRO_HEALTH_MEDICAL",
+  "LEGAL_LIABILITY"
+];
+
+const TRAINING_CERTIFICATE_TYPES = [
+  "FIREFIGHTING",
+  "FIRST_AID_LEVEL_1",
+  "FIRST_AID_LEVEL_2",
+  "WORKING_AT_HEIGHTS",
+  "WORKING_WITH_HAND_TOOLS",
+  "WORKING_WITH_POWER_TOOLS",
+  "SATS_CONVEYOR",
+  "SATS_COP_SOP",
+  "SATS_ILOT",
+  "WILGE_VXR",
+  "OHS_ACT",
+  "MHSA",
+  "HIRA_TRAINING",
+  "APPOINTMENT_2_9_2",
+  "OEM_CERT"
+];
 
 export default function EditEmployeePage() {
   const router = useRouter();
@@ -61,40 +94,89 @@ export default function EditEmployeePage() {
   const [saving, setSaving] = useState(false);
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [formData, setFormData] = useState<Partial<Employee>>({});
+  const [medicalCerts, setMedicalCerts] = useState<any[]>([]);
+  const [trainingCerts, setTrainingCerts] = useState<any[]>([]);
+  const [additionalCerts, setAdditionalCerts] = useState<any[]>([]);
+  const [fileUploads, setFileUploads] = useState({
+    passport: null as File | null,
+    driversLicense: null as File | null,
+    pdp: null as File | null,
+    cv: null as File | null,
+    ppeList: null as File | null,
+    employeeId: null as File | null,
+    medicalCerts: [] as (File | null)[],
+    trainingCerts: [] as (File | null)[],
+    additionalCerts: [] as (File | null)[]
+  });
+
+  const fetchEmployeeWithRelations = async (): Promise<Employee | null> => {
+    try {
+      const { data: employee, errors } = await client.models.Employee.get(
+        { id: employeeId },
+        {
+          selectionSet: [
+            'id',
+            'employeeId',
+            'employeeNumber',
+            'firstName',
+            'surname',
+            'knownAs',
+            'passportNumber',
+            'passportExpiry',
+            'passportAttachment',
+            'driversLicenseCode',
+            'driversLicenseExpiry',
+            'driversLicenseAttachment',
+            'authorizedDriver',
+            'pdpExpiry',
+            'pdpAttachment',
+            'cvAttachment',
+            'ppeListAttachment',
+            'ppeExpiry',
+            'employeeIdAttachment',
+            'history',
+            'medicalCertificates.*',
+            'trainingCertificates.*',
+            'additionalCertificates.*'
+          ]
+        }
+      );
+
+      if (errors || !employee) {
+        console.error("Error fetching employee with relations:", errors);
+        return null;
+      }
+
+      return employee as unknown as Employee;
+    } catch (error) {
+      console.error("Error in fetchEmployeeWithRelations:", error);
+      return null;
+    }
+  };
 
   useEffect(() => {
     const fetchEmployee = async () => {
       try {
-        const { data: employeeData } = await client.models.Employee.get({ id: employeeId });
+        const employeeData = await fetchEmployeeWithRelations();
+
         if (employeeData) {
-          const mappedEmployee: Employee = {
-            id: employeeData.id,
-            employeeId: employeeData.employeeId,
-            employeeNumber: employeeData.employeeNumber ?? undefined,
-            firstName: employeeData.firstName,
-            surname: employeeData.surname,
-            knownAs: employeeData.knownAs ?? undefined,
-            idNumber: employeeData.idNumber ?? undefined,
-            passportNumber: employeeData.passportNumber ?? undefined,
-            passportExpiry: employeeData.passportExpiry ?? undefined,
-            passportAttachment: employeeData.passportAttachment ?? undefined,
-            driversLicenseCode: employeeData.driversLicenseCode ?? undefined,
-            driversLicenseExpiry: employeeData.driversLicenseExpiry ?? undefined,
-            driversLicenseAttachment: employeeData.driversLicenseAttachment ?? undefined,
-            authorizedDriver: employeeData.authorizedDriver ?? false,
-            pdpExpiry: employeeData.pdpExpiry ?? undefined,
-            pdpAttachment: employeeData.pdpAttachment ?? undefined,
-            cvAttachment: employeeData.cvAttachment ?? undefined,
-            ppeListAttachment: employeeData.ppeListAttachment ?? undefined,
-            ppeExpiry: employeeData.ppeExpiry ?? undefined,
-            employeeIdAttachment: employeeData.employeeIdAttachment ?? undefined,
-            history: employeeData?.history || ""
-          };
-          setEmployee(mappedEmployee);
-          setFormData(mappedEmployee);
+          setEmployee(employeeData);
+          setFormData(employeeData);
+          setMedicalCerts(employeeData.medicalCertificates || []);
+          setTrainingCerts(employeeData.trainingCertificates || []);
+          setAdditionalCerts(employeeData.additionalCertificates || []);
+
+          // Initialize file upload arrays
+          setFileUploads(prev => ({
+            ...prev,
+            medicalCerts: Array(employeeData.medicalCertificates?.length || 0).fill(null),
+            trainingCerts: Array(employeeData.trainingCertificates?.length || 0).fill(null),
+            additionalCerts: Array(employeeData.additionalCertificates?.length || 0).fill(null)
+          }));
         }
       } catch (error) {
         console.error("Error fetching employee:", error);
+        toast.error("Failed to load employee data");
       } finally {
         setLoading(false);
       }
@@ -107,7 +189,165 @@ export default function EditEmployeePage() {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  const handleMedicalCertChange = (index: number, field: string, value: string) => {
+    const updated = [...medicalCerts];
+    updated[index] = { ...updated[index], [field]: value };
+    setMedicalCerts(updated);
+  };
 
+  const handleTrainingCertChange = (index: number, field: string, value: string) => {
+    const updated = [...trainingCerts];
+    updated[index] = { ...updated[index], [field]: value };
+    setTrainingCerts(updated);
+  };
+
+  const handleAdditionalCertChange = (index: number, field: string, value: string) => {
+    const updated = [...additionalCerts];
+    updated[index] = { ...updated[index], [field]: value };
+    setAdditionalCerts(updated);
+  };
+
+  const handleFileUpload = (field: keyof typeof fileUploads, file: File | null, index?: number) => {
+    if (index !== undefined) {
+      // For certificate arrays
+      const updated = [...fileUploads[field] as (File | null)[]];
+      updated[index] = file;
+      setFileUploads(prev => ({ ...prev, [field]: updated }));
+
+      // Update the attachment field in the certificate data
+      if (field === 'medicalCerts') {
+        handleMedicalCertChange(index, 'attachment', file ? file.name : '');
+      } else if (field === 'trainingCerts') {
+        handleTrainingCertChange(index, 'attachment', file ? file.name : '');
+      } else if (field === 'additionalCerts') {
+        handleAdditionalCertChange(index, 'attachment', file ? file.name : '');
+      }
+    } else {
+      // For single files
+      setFileUploads(prev => ({ ...prev, [field]: file }));
+
+      // Update formData with filename
+      const attachmentFieldMap: Record<string, keyof Employee> = {
+        passport: 'passportAttachment',
+        driversLicense: 'driversLicenseAttachment',
+        pdp: 'pdpAttachment',
+        cv: 'cvAttachment',
+        ppeList: 'ppeListAttachment',
+        employeeId: 'employeeIdAttachment'
+      };
+
+      if (attachmentFieldMap[field]) {
+        handleInputChange(attachmentFieldMap[field], file ? file.name : '');
+      }
+    }
+  };
+
+  const addMedicalCertificate = () => {
+    setMedicalCerts(prev => [...prev, { certificateType: "", expiryDate: "", attachment: "" }]);
+    setFileUploads(prev => ({
+      ...prev,
+      medicalCerts: [...prev.medicalCerts, null]
+    }));
+  };
+
+  const addTrainingCertificate = () => {
+    setTrainingCerts(prev => [...prev, { certificateType: "", expiryDate: "", attachment: "" }]);
+    setFileUploads(prev => ({
+      ...prev,
+      trainingCerts: [...prev.trainingCerts, null]
+    }));
+  };
+
+  const addAdditionalCertificate = () => {
+    setAdditionalCerts(prev => [...prev, { certificateName: "", expiryDate: "", attachment: "" }]);
+    setFileUploads(prev => ({
+      ...prev,
+      additionalCerts: [...prev.additionalCerts, null]
+    }));
+  };
+
+  const removeMedicalCertificate = (index: number) => {
+    setMedicalCerts(prev => prev.filter((_, i) => i !== index));
+    setFileUploads(prev => ({
+      ...prev,
+      medicalCerts: prev.medicalCerts.filter((_, i) => i !== index)
+    }));
+  };
+
+  const removeTrainingCertificate = (index: number) => {
+    setTrainingCerts(prev => prev.filter((_, i) => i !== index));
+    setFileUploads(prev => ({
+      ...prev,
+      trainingCerts: prev.trainingCerts.filter((_, i) => i !== index)
+    }));
+  };
+
+  const removeAdditionalCertificate = (index: number) => {
+    setAdditionalCerts(prev => prev.filter((_, i) => i !== index));
+    setFileUploads(prev => ({
+      ...prev,
+      additionalCerts: prev.additionalCerts.filter((_, i) => i !== index)
+    }));
+  };
+
+  const FileUploadButton = ({
+    onFileSelect,
+    currentFile,
+    accept = "*",
+    className = ""
+  }: {
+    onFileSelect: (file: File | null) => void;
+    currentFile: File | null;
+    accept?: string;
+    className?: string;
+  }) => {
+    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0] || null;
+      onFileSelect(file);
+    };
+
+    return (
+      <div className={`flex flex-col gap-2 ${className}`}>
+        <Input
+          type="file"
+          accept={accept}
+          onChange={handleFileChange}
+          className="hidden"
+          id={`file-upload-${Math.random()}`}
+        />
+        <Button
+          variant="outline"
+          className="w-full border-slate-300 hover:bg-white"
+          onClick={() => document.getElementById(`file-upload-${Math.random()}`)?.click()}
+          type="button"
+        >
+          <Upload className="h-4 w-4 mr-2" />
+          {currentFile ? `Change File (${currentFile.name})` : "Upload File"}
+        </Button>
+        {currentFile && (
+          <span className="text-xs text-green-600">
+            Selected: {currentFile.name}
+          </span>
+        )}
+      </div>
+    );
+  };
+
+  const uploadFileToStorage = async (file: File, employeeId: string, fileType: string): Promise<string | null> => {
+    try {
+      // Implement your actual file upload logic here
+      console.log(`Uploading ${fileType} for employee ${employeeId}:`, file.name);
+
+      // Simulate file upload - replace with your actual storage upload
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Return mock file path - replace with actual path from your storage
+      return `employees/${employeeId}/${fileType}/${file.name}`;
+    } catch (error) {
+      console.error(`Error uploading ${fileType}:`, error);
+      return null;
+    }
+  };
 
   const handleSave = async () => {
     if (!employee) return;
@@ -126,15 +366,92 @@ export default function EditEmployeePage() {
         }
       });
 
+      // Upload files and get their paths
+      const uploadPromises = [];
 
+      // Upload single files
+      if (fileUploads.passport) {
+        uploadPromises.push(
+          uploadFileToStorage(fileUploads.passport, employee.employeeId, 'passport')
+            .then(path => { if (path) formData.passportAttachment = path; })
+        );
+      }
 
+      if (fileUploads.driversLicense) {
+        uploadPromises.push(
+          uploadFileToStorage(fileUploads.driversLicense, employee.employeeId, 'driversLicense')
+            .then(path => { if (path) formData.driversLicenseAttachment = path; })
+        );
+      }
+
+      if (fileUploads.pdp) {
+        uploadPromises.push(
+          uploadFileToStorage(fileUploads.pdp, employee.employeeId, 'pdp')
+            .then(path => { if (path) formData.pdpAttachment = path; })
+        );
+      }
+
+      if (fileUploads.cv) {
+        uploadPromises.push(
+          uploadFileToStorage(fileUploads.cv, employee.employeeId, 'cv')
+            .then(path => { if (path) formData.cvAttachment = path; })
+        );
+      }
+
+      if (fileUploads.ppeList) {
+        uploadPromises.push(
+          uploadFileToStorage(fileUploads.ppeList, employee.employeeId, 'ppeList')
+            .then(path => { if (path) formData.ppeListAttachment = path; })
+        );
+      }
+
+      if (fileUploads.employeeId) {
+        uploadPromises.push(
+          uploadFileToStorage(fileUploads.employeeId, employee.employeeId, 'employeeId')
+            .then(path => { if (path) formData.employeeIdAttachment = path; })
+        );
+      }
+
+      // Upload medical certificate files
+      fileUploads.medicalCerts.forEach((file, index) => {
+        if (file) {
+          uploadPromises.push(
+            uploadFileToStorage(file, employee.employeeId, `medical-${medicalCerts[index]?.certificateType || 'cert'}`)
+              .then(path => { if (path) medicalCerts[index].attachment = path; })
+          );
+        }
+      });
+
+      // Upload training certificate files
+      fileUploads.trainingCerts.forEach((file, index) => {
+        if (file) {
+          uploadPromises.push(
+            uploadFileToStorage(file, employee.employeeId, `training-${trainingCerts[index]?.certificateType || 'cert'}`)
+              .then(path => { if (path) trainingCerts[index].attachment = path; })
+          );
+        }
+      });
+
+      // Upload additional certificate files
+      fileUploads.additionalCerts.forEach((file, index) => {
+        if (file) {
+          uploadPromises.push(
+            uploadFileToStorage(file, employee.employeeId, `additional-${additionalCerts[index]?.certificateName || 'cert'}`)
+              .then(path => { if (path) additionalCerts[index].attachment = path; })
+          );
+        }
+      });
+
+      // Wait for all file uploads to complete
+      await Promise.all(uploadPromises);
+
+      // Update main employee record
       const employeeData = {
         employeeId: formData.employeeId!,
         firstName: formData.firstName!,
         surname: formData.surname!,
         employeeNumber: formData.employeeNumber || null,
         knownAs: formData.knownAs || null,
-        idNumber: formData.idNumber || null,
         passportNumber: formData.passportNumber || null,
         passportExpiry: formatDateForAmplify(formData.passportExpiry),
         passportAttachment: formData.passportAttachment || null,
@@ -147,7 +464,7 @@ export default function EditEmployeePage() {
         cvAttachment: formData.cvAttachment || null,
         ppeListAttachment: formData.ppeListAttachment || null,
         ppeExpiry: formatDateForAmplify(formData.ppeExpiry),
-        employeeIdAttachment: formData.employeeIdAttachment ?? undefined,
+        employeeIdAttachment: formData.employeeIdAttachment || null,
         history: historyEntries + (employee.history || "")
       };
 
@@ -156,20 +473,77 @@ export default function EditEmployeePage() {
         ...employeeData
       });
 
-      if (!result.errors) {
-        toast.success("Employee data update successfully!");
-        console.log("New employee updayed:", result.data);
-        setTimeout(() => {
-          router.push('/humanresources');
-        }, 1500);
-      } else {
-        console.error("Update errors:", result.errors);
-        throw new Error(result.errors?.[0]?.message || "Failed to update employee");
+      if (result.errors) {
+        throw new Error("Failed to update employee");
       }
+
+      // Update medical certificates
+      for (const cert of medicalCerts) {
+        if (cert.id) {
+          // Update existing
+          await client.models.EmployeeMedicalCertificate.update({
+            id: cert.id,
+            certificateType: cert.certificateType,
+            expiryDate: formatDateForAmplify(cert.expiryDate) || "",
+            attachment: cert.attachment || null
+          });
+        } else if (cert.certificateType) {
+          // Create new
+          await client.models.EmployeeMedicalCertificate.create({
+            employeeId: employee.employeeId,
+            certificateType: cert.certificateType,
+            expiryDate: formatDateForAmplify(cert.expiryDate) || "",
+            attachment: cert.attachment || null
+          });
+        }
+      }
+
+      // Update training certificates
+      for (const cert of trainingCerts) {
+        if (cert.id) {
+          await client.models.EmployeeTrainingCertificate.update({
+            id: cert.id,
+            certificateType: cert.certificateType,
+            expiryDate: formatDateForAmplify(cert.expiryDate) || "",
+            attachment: cert.attachment || null
+          });
+        } else if (cert.certificateType) {
+          await client.models.EmployeeTrainingCertificate.create({
+            employeeId: employee.employeeId,
+            certificateType: cert.certificateType,
+            expiryDate: formatDateForAmplify(cert.expiryDate) || "",
+            attachment: cert.attachment || null
+          });
+        }
+      }
+
+      // Update additional certificates
+      for (const cert of additionalCerts) {
+        if (cert.id) {
+          await client.models.EmployeeAdditionalCertificate.update({
+            id: cert.id,
+            certificateName: cert.certificateName,
+            expiryDate: formatDateForAmplify(cert.expiryDate) || "",
+            attachment: cert.attachment || null
+          });
+        } else if (cert.certificateName) {
+          await client.models.EmployeeAdditionalCertificate.create({
+            employeeId: employee.employeeId,
+            certificateName: cert.certificateName,
+            expiryDate: formatDateForAmplify(cert.expiryDate) || "",
+            attachment: cert.attachment || null
+          });
+        }
+      }
+
+      toast.success("Employee updated successfully!");
+      setTimeout(() => {
+        router.push('/humanresources');
+      }, 1500);
 
     } catch (error) {
       console.error("Error saving employee:", error);
-      toast.warning("Error saving employee!");
+      toast.error("Error saving employee data!");
     } finally {
       setSaving(false);
     }
@@ -181,7 +555,7 @@ export default function EditEmployeePage() {
 
   if (loading) {
     return (
-      <div className="flex flex-col min-h-screen bg-background from-slate-50 to-blue-50/30">
+      <div className="flex flex-col min-h-screen bg-background">
         <Navbar />
         <Loading />
         <Footer />
@@ -191,7 +565,7 @@ export default function EditEmployeePage() {
 
   if (!employee) {
     return (
-      <div className="flex flex-col min-h-screen bg-background from-slate-50 to-blue-50/30">
+      <div className="flex flex-col min-h-screen bg-background">
         <Navbar />
         <div className="flex-1 flex items-center justify-center">
           <p>Employee not found</p>
@@ -202,7 +576,7 @@ export default function EditEmployeePage() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-background from-slate-50 to-blue-50/30">
+    <div className="flex flex-col min-h-screen bg-background">
       <Navbar />
 
       <main className="flex-1 px-4 sm:px-6 mt-20 pb-20">
@@ -214,15 +588,15 @@ export default function EditEmployeePage() {
                 variant="ghost"
                 size="sm"
                 onClick={() => router.push('/humanresources')}
-                className="h-9 w-9 p-0 hover:bg-white"
+                className="h-9 w-9 p-0"
               >
                 <ArrowLeft className="h-5 w-5" />
               </Button>
               <div>
-                <h1 className="text-3xl font-bold text-slate-900">
+                <h1 className="text-3xl font-bold">
                   Edit {employee.firstName} {employee.surname}
                 </h1>
-                <p className="text-slate-600 mt-2">
+                <p className="text-muted-foreground mt-2">
                   Update employee information and documents
                 </p>
               </div>
@@ -232,35 +606,66 @@ export default function EditEmployeePage() {
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
             {/* Sidebar */}
             <div className="lg:col-span-1">
-              <Card className="bg-white border-slate-200 shadow-sm sticky top-24">
+              <Card className="sticky top-24">
                 <CardContent className="p-6">
                   <div className="text-center mb-6">
                     <Avatar className="h-24 w-24 border-4 border-white shadow-lg mx-auto mb-4">
-                      <AvatarFallback className="bg-background from-blue-500 to-purple-600 text-white text-xl font-bold">
+                      <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-xl font-bold">
                         {getInitials(formData.firstName || '', formData.surname || '')}
                       </AvatarFallback>
                     </Avatar>
-                    <Button variant="outline" size="sm" className="border-slate-300">
-                      <Camera className="h-4 w-4 mr-2" />
-                      Upload Photo
-                    </Button>
+                    <div className="text-center">
+                      <h3 className="font-semibold">
+                        {formData.firstName} {formData.surname}
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        {formData.employeeId}
+                      </p>
+                    </div>
                   </div>
 
                   <div className="space-y-4">
                     <div>
-                      <Label className="text-sm font-medium text-slate-700">Employee Status</Label>
+                      <Label>Employee Status</Label>
                       <div className="flex items-center justify-between mt-2">
-                        <span className="text-sm text-slate-600">Active Employee</span>
+                        <span className="text-sm">Active Employee</span>
                         <Switch defaultChecked />
                       </div>
                     </div>
 
                     <div>
-                      <Label className="text-sm font-medium text-slate-700">Completion</Label>
-                      <div className="w-full bg-slate-200 rounded-full h-2 mt-2">
-                        <div className="bg-green-600 h-2 rounded-full" style={{ width: '85%' }}></div>
+                      <Label>Driver Status</Label>
+                      <div className="flex items-center justify-between mt-2">
+                        <span className="text-sm">Authorized Driver</span>
+                        <Switch
+                          checked={formData.authorizedDriver || false}
+                          onCheckedChange={(checked) => handleInputChange('authorizedDriver', checked)}
+                        />
                       </div>
-                      <p className="text-xs text-slate-500 mt-1">85% complete</p>
+                    </div>
+
+                    <div className="pt-4">
+                      <Label className="mb-2 block">Document Summary</Label>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span>Medical Certs:</span>
+                          <Badge variant={medicalCerts.length > 0 ? "default" : "secondary"}>
+                            {medicalCerts.length}
+                          </Badge>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Training Certs:</span>
+                          <Badge variant={trainingCerts.length > 0 ? "default" : "secondary"}>
+                            {trainingCerts.length}
+                          </Badge>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Additional Certs:</span>
+                          <Badge variant={additionalCerts.length > 0 ? "default" : "secondary"}>
+                            {additionalCerts.length}
+                          </Badge>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
@@ -270,25 +675,20 @@ export default function EditEmployeePage() {
             {/* Main Form */}
             <div className="lg:col-span-3">
               <Tabs defaultValue="personal" className="space-y-6">
-                <TabsList className="grid w-full grid-cols-4">
-                  <TabsTrigger value="personal" className="data-[state=active]:bg-blue-100 data-[state=active]:text-blue-700">
-                    Personal
-                  </TabsTrigger>
-                  <TabsTrigger value="documents" className="data-[state=active]:bg-blue-100 data-[state=active]:text-blue-700">
-                    Documents
-                  </TabsTrigger>
-                  <TabsTrigger value="employment" className="data-[state=active]:bg-blue-100 data-[state=active]:text-blue-700">
-                    Employment
-                  </TabsTrigger>
-                  <TabsTrigger value="history" className="data-[state=active]:bg-blue-100 data-[state=active]:text-blue-700">
-                    History
-                  </TabsTrigger>
+                <TabsList className="grid w-full grid-cols-6">
+                  <TabsTrigger value="personal">Personal</TabsTrigger>
+                  <TabsTrigger value="documents">Documents</TabsTrigger>
+                  <TabsTrigger value="medical">Medical</TabsTrigger>
+                  <TabsTrigger value="training">Training</TabsTrigger>
+                  <TabsTrigger value="additional">Additional</TabsTrigger>
+                  <TabsTrigger value="history">History</TabsTrigger>
                 </TabsList>
 
+                {/* Personal Information Tab */}
                 <TabsContent value="personal">
-                  <Card className="bg-white border-slate-200 shadow-sm">
-                    <CardHeader className="bg-slate-50 border-b border-slate-200">
-                      <CardTitle className="flex items-center gap-2 text-slate-900">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
                         <User className="h-5 w-5" />
                         Personal Information
                       </CardTitle>
@@ -297,93 +697,60 @@ export default function EditEmployeePage() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-4">
                           <div>
-                            <Label htmlFor="employeeId" className="text-sm font-medium text-slate-700">
-                              Employee ID *
-                            </Label>
+                            <Label>Employee ID *</Label>
                             <Input
-                              id="employeeId"
                               value={formData.employeeId || ''}
                               onChange={(e) => handleInputChange('employeeId', e.target.value)}
-                              className="mt-1 border-slate-300 focus:border-blue-500"
-                              placeholder="EMP001"
+                              placeholder="1234567890123"
                             />
                           </div>
 
                           <div>
-                            <Label htmlFor="firstName" className="text-sm font-medium text-slate-700">
-                              First Name *
-                            </Label>
+                            <Label>First Name *</Label>
                             <Input
-                              id="firstName"
                               value={formData.firstName || ''}
                               onChange={(e) => handleInputChange('firstName', e.target.value)}
-                              className="mt-1 border-slate-300 focus:border-blue-500"
                               placeholder="John"
                             />
                           </div>
 
                           <div>
-                            <Label htmlFor="surname" className="text-sm font-medium text-slate-700">
-                              Surname *
-                            </Label>
+                            <Label>Surname *</Label>
                             <Input
-                              id="surname"
                               value={formData.surname || ''}
                               onChange={(e) => handleInputChange('surname', e.target.value)}
-                              className="mt-1 border-slate-300 focus:border-blue-500"
                               placeholder="Doe"
                             />
                           </div>
 
                           <div>
-                            <Label htmlFor="knownAs" className="text-sm font-medium text-slate-700">
-                              Known As
-                            </Label>
+                            <Label>Known As</Label>
                             <Input
-                              id="knownAs"
                               value={formData.knownAs || ''}
                               onChange={(e) => handleInputChange('knownAs', e.target.value)}
-                              className="mt-1 border-slate-300 focus:border-blue-500"
                               placeholder="Johnny"
                             />
                           </div>
                         </div>
 
                         <div className="space-y-4">
-                          <div>
-                            <Label htmlFor="idNumber" className="text-sm font-medium text-slate-700">
-                              ID Number
-                            </Label>
-                            <Input
-                              id="idNumber"
-                              value={formData.idNumber || ''}
-                              onChange={(e) => handleInputChange('idNumber', e.target.value)}
-                              className="mt-1 border-slate-300 focus:border-blue-500"
-                              placeholder="1234567890123"
-                            />
-                          </div>
 
                           <div>
-                            <Label htmlFor="employeeNumber" className="text-sm font-medium text-slate-700">
-                              Employee Number
-                            </Label>
+                            <Label>Employee Number</Label>
                             <Input
-                              id="employeeNumber"
                               value={formData.employeeNumber || ''}
                               onChange={(e) => handleInputChange('employeeNumber', e.target.value)}
-                              className="mt-1 border-slate-300 focus:border-blue-500"
                               placeholder="001"
                             />
                           </div>
 
-                          <div className="flex items-center space-x-2 pt-6">
-                            <Switch
-                              checked={formData.authorizedDriver || false}
-                              onCheckedChange={(checked) => handleInputChange('authorizedDriver', checked)}
+                          <div>
+                            <Label>Employee ID Attachment</Label>
+                            <FileUploadButton
+                              onFileSelect={(file) => handleFileUpload('employeeId', file)}
+                              currentFile={fileUploads.employeeId}
+                              accept=".pdf,.jpg,.jpeg,.png"
                             />
-                            <Label htmlFor="authorizedDriver" className="text-sm font-medium text-slate-700">
-                              Authorized Driver
-                            </Label>
                           </div>
                         </div>
                       </div>
@@ -391,150 +758,384 @@ export default function EditEmployeePage() {
                   </Card>
                 </TabsContent>
 
+                {/* Core Documents Tab */}
                 <TabsContent value="documents">
-                  <Card className="bg-white border-slate-200 shadow-sm">
-                    <CardHeader className="bg-slate-50 border-b border-slate-200">
-                      <CardTitle className="flex items-center gap-2 text-slate-900">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
                         <FileText className="h-5 w-5" />
-                        Documents & Certifications
+                        Core Documents
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="p-6">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        {/* Passport Section */}
                         <div className="space-y-4">
+                          <h4 className="font-semibold border-b pb-2">Passport Details</h4>
                           <div>
-                            <Label htmlFor="passportNumber" className="text-sm font-medium text-slate-700">
-                              Passport Number
-                            </Label>
+                            <Label>Passport Number</Label>
                             <Input
-                              id="passportNumber"
                               value={formData.passportNumber || ''}
                               onChange={(e) => handleInputChange('passportNumber', e.target.value)}
-                              className="mt-1 border-slate-300 focus:border-blue-500"
+                              placeholder="A12345678"
                             />
                           </div>
 
                           <div>
-                            <Label htmlFor="passportExpiry" className="text-sm font-medium text-slate-700">
-                              Passport Expiry
-                            </Label>
+                            <Label>Passport Expiry</Label>
                             <Input
-                              id="passportExpiry"
                               type="date"
                               value={formData.passportExpiry || ''}
                               onChange={(e) => handleInputChange('passportExpiry', e.target.value)}
-                              className="mt-1 border-slate-300 focus:border-blue-500"
                             />
                           </div>
 
-                          <Button variant="outline" className="w-full border-slate-300 hover:bg-white">
-                            <Upload className="h-4 w-4 mr-2" />
-                            Upload Passport
-                          </Button>
+                          <FileUploadButton
+                            onFileSelect={(file) => handleFileUpload('passport', file)}
+                            currentFile={fileUploads.passport}
+                            accept=".pdf,.jpg,.jpeg,.png"
+                          />
                         </div>
 
+                        {/* Driver's License Section */}
                         <div className="space-y-4">
+                          <h4 className="font-semibold border-b pb-2">Driver's License</h4>
                           <div>
-                            <Label htmlFor="driversLicenseCode" className="text-sm font-medium text-slate-700">
-                              Driver's License Code
-                            </Label>
+                            <Label>License Code</Label>
                             <Input
-                              id="driversLicenseCode"
                               value={formData.driversLicenseCode || ''}
                               onChange={(e) => handleInputChange('driversLicenseCode', e.target.value)}
-                              className="mt-1 border-slate-300 focus:border-blue-500"
+                              placeholder="B, C1, etc."
                             />
                           </div>
 
                           <div>
-                            <Label htmlFor="driversLicenseExpiry" className="text-sm font-medium text-slate-700">
-                              License Expiry
-                            </Label>
+                            <Label>License Expiry</Label>
                             <Input
-                              id="driversLicenseExpiry"
                               type="date"
                               value={formData.driversLicenseExpiry || ''}
                               onChange={(e) => handleInputChange('driversLicenseExpiry', e.target.value)}
-                              className="mt-1 border-slate-300 focus:border-blue-500"
                             />
                           </div>
 
-                          <Button variant="outline" className="w-full border-slate-300 hover:bg-white">
-                            <Upload className="h-4 w-4 mr-2" />
-                            Upload License
-                          </Button>
+                          <FileUploadButton
+                            onFileSelect={(file) => handleFileUpload('driversLicense', file)}
+                            currentFile={fileUploads.driversLicense}
+                            accept=".pdf,.jpg,.jpeg,.png"
+                          />
                         </div>
                       </div>
 
-                      <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <Button variant="outline" className="border-slate-300 hover:bg-white">
-                          <Upload className="h-4 w-4 mr-2" />
-                          Upload CV
-                        </Button>
-                        <Button variant="outline" className="border-slate-300 hover:bg-white">
-                          <Upload className="h-4 w-4 mr-2" />
-                          Upload PPE List
-                        </Button>
+                      {/* Additional Core Documents */}
+                      <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-4">
+                          <h4 className="font-semibold border-b pb-2">Professional Documents</h4>
+
+                          <div>
+                            <Label>PDP Expiry</Label>
+                            <Input
+                              type="date"
+                              value={formData.pdpExpiry || ''}
+                              onChange={(e) => handleInputChange('pdpExpiry', e.target.value)}
+                            />
+                          </div>
+
+                          <FileUploadButton
+                            onFileSelect={(file) => handleFileUpload('pdp', file)}
+                            currentFile={fileUploads.pdp}
+                            accept=".pdf,.jpg,.jpeg,.png"
+                          />
+
+                          <FileUploadButton
+                            onFileSelect={(file) => handleFileUpload('cv', file)}
+                            currentFile={fileUploads.cv}
+                            accept=".pdf,.doc,.docx"
+                          />
+                        </div>
+
+                        <div className="space-y-4">
+                          <h4 className="font-semibold border-b pb-2">Safety Documents</h4>
+
+                          <div>
+                            <Label>PPE Expiry</Label>
+                            <Input
+                              type="date"
+                              value={formData.ppeExpiry || ''}
+                              onChange={(e) => handleInputChange('ppeExpiry', e.target.value)}
+                            />
+                          </div>
+
+                          <FileUploadButton
+                            onFileSelect={(file) => handleFileUpload('ppeList', file)}
+                            currentFile={fileUploads.ppeList}
+                            accept=".pdf,.jpg,.jpeg,.png"
+                          />
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
                 </TabsContent>
 
-                <TabsContent value="employment">
-                  <Card className="bg-white border-slate-200 shadow-sm">
-                    <CardHeader className="bg-slate-50 border-b border-slate-200">
-                      <CardTitle className="flex items-center gap-2 text-slate-900">
-                        <Calendar className="h-5 w-5" />
-                        Employment Details
+                {/* Medical Certificates Tab */}
+                <TabsContent value="medical">
+                  <Card>
+                    <CardHeader>
+                      <div className="flex justify-between items-center">
+                        <CardTitle className="flex items-center gap-2">
+                          <FileText className="h-5 w-5" />
+                          Medical Certificates
+                        </CardTitle>
+                        <Button onClick={addMedicalCertificate} size="sm">
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add Medical Certificate
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="p-6">
+                      <div className="space-y-6">
+                        {medicalCerts.map((cert, index) => (
+                          <div key={index} className="p-4 border rounded-lg">
+                            <div className="flex justify-between items-start mb-4">
+                              <h4 className="font-semibold">Medical Certificate #{index + 1}</h4>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => removeMedicalCertificate(index)}
+                                className="text-red-600 hover:text-red-800"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <Label>Certificate Type</Label>
+                                <Select
+                                  value={cert.certificateType || ''}
+                                  onValueChange={(value) => handleMedicalCertChange(index, 'certificateType', value)}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select certificate type" />
+                                  </SelectTrigger>
+                                  <SelectContent position="popper" className="max-h-60 overflow-auto">
+                                    {MEDICAL_CERTIFICATE_TYPES.map(type => (
+                                      <SelectItem key={type} value={type}>
+                                        {type.replace(/_/g, ' ')}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div>
+                                <Label>Expiry Date</Label>
+                                <Input
+                                  type="date"
+                                  value={cert.expiryDate || ''}
+                                  onChange={(e) => handleMedicalCertChange(index, 'expiryDate', e.target.value)}
+                                />
+                              </div>
+                              <div className="md:col-span-2">
+                                <Label>Attachment</Label>
+                                <FileUploadButton
+                                  onFileSelect={(file) => handleFileUpload('medicalCerts', file, index)}
+                                  currentFile={fileUploads.medicalCerts[index]}
+                                  accept=".pdf,.jpg,.jpeg,.png"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                        {medicalCerts.length === 0 && (
+                          <div className="text-center py-8 text-muted-foreground">
+                            No medical certificates added yet.
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                {/* Training Certificates Tab */}
+                <TabsContent value="training">
+                  <Card>
+                    <CardHeader>
+                      <div className="flex justify-between items-center">
+                        <CardTitle className="flex items-center gap-2">
+                          <FileText className="h-5 w-5" />
+                          Training Certificates
+                        </CardTitle>
+                        <Button onClick={addTrainingCertificate} size="sm">
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add Training Certificate
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="p-6">
+                      <div className="space-y-6">
+                        {trainingCerts.map((cert, index) => (
+                          <div key={index} className="p-4 border rounded-lg">
+                            <div className="flex justify-between items-start mb-4">
+                              <h4 className="font-semibold">Training Certificate #{index + 1}</h4>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => removeTrainingCertificate(index)}
+                                className="text-red-600 hover:text-red-800"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <Label>Certificate Type</Label>
+                                <Select
+                                  value={cert.certificateType || ''}
+                                  onValueChange={(value) => handleTrainingCertChange(index, 'certificateType', value)}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select certificate type" />
+                                  </SelectTrigger>
+                                  <SelectContent position="popper" className="max-h-60 overflow-auto">
+                                    {TRAINING_CERTIFICATE_TYPES.map(type => (
+                                      <SelectItem key={type} value={type}>
+                                        {type.replace(/_/g, ' ')}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div>
+                                <Label>Expiry Date</Label>
+                                <Input
+                                  type="date"
+                                  value={cert.expiryDate || ''}
+                                  onChange={(e) => handleTrainingCertChange(index, 'expiryDate', e.target.value)}
+                                />
+                              </div>
+                              <div className="md:col-span-2">
+                                <Label>Attachment</Label>
+                                <FileUploadButton
+                                  onFileSelect={(file) => handleFileUpload('trainingCerts', file, index)}
+                                  currentFile={fileUploads.trainingCerts[index]}
+                                  accept=".pdf,.jpg,.jpeg,.png"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                        {trainingCerts.length === 0 && (
+                          <div className="text-center py-8 text-muted-foreground">
+                            No training certificates added yet.
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                {/* Additional Certificates Tab */}
+                <TabsContent value="additional">
+                  <Card>
+                    <CardHeader>
+                      <div className="flex justify-between items-center">
+                        <CardTitle className="flex items-center gap-2">
+                          <FileText className="h-5 w-5" />
+                          Additional Certificates
+                        </CardTitle>
+                        <Button onClick={addAdditionalCertificate} size="sm">
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add Certificate
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="p-6">
+                      <div className="space-y-6">
+                        {additionalCerts.map((cert, index) => (
+                          <div key={index} className="p-4 border rounded-lg">
+                            <div className="flex justify-between items-start mb-4">
+                              <h4 className="font-semibold">Additional Certificate #{index + 1}</h4>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => removeAdditionalCertificate(index)}
+                                className="text-red-600 hover:text-red-800"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <Label>Certificate Name</Label>
+                                <Input
+                                  value={cert.certificateName || ''}
+                                  onChange={(e) => handleAdditionalCertChange(index, 'certificateName', e.target.value)}
+                                  placeholder="Enter certificate name"
+                                />
+                              </div>
+                              <div>
+                                <Label>Expiry Date</Label>
+                                <Input
+                                  type="date"
+                                  value={cert.expiryDate || ''}
+                                  onChange={(e) => handleAdditionalCertChange(index, 'expiryDate', e.target.value)}
+                                />
+                              </div>
+                              <div className="md:col-span-2">
+                                <Label>Attachment</Label>
+                                <FileUploadButton
+                                  onFileSelect={(file) => handleFileUpload('additionalCerts', file, index)}
+                                  currentFile={fileUploads.additionalCerts[index]}
+                                  accept=".pdf,.jpg,.jpeg,.png"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                        {additionalCerts.length === 0 && (
+                          <div className="text-center py-8 text-muted-foreground">
+                            No additional certificates added yet.
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+                <TabsContent value="history">
+                  <Card className="bg-background border-slate-200 shadow-sm">
+                    <CardHeader className="bg-background border-b border-slate-200">
+                      <CardTitle className="flex items-center gap-2 text-foreground">
+                        <FileText className="h-5 w-5" />
+                        History & Notes
                       </CardTitle>
+                      <CardDescription>
+                        Employee history and additional notes
+                      </CardDescription>
                     </CardHeader>
                     <CardContent className="p-6">
                       <div className="space-y-4">
                         <div>
-                          <Label htmlFor="pdpExpiry" className="text-sm font-medium text-slate-700">
-                            PDP Expiry
+                          <Label htmlFor="history" className="text-sm font-medium text-slate-700">
+                            Employee History
                           </Label>
-                          <Input
-                            id="pdpExpiry"
-                            type="date"
-                            value={formData.pdpExpiry || ''}
-                            onChange={(e) => handleInputChange('pdpExpiry', e.target.value)}
-                            className="mt-1 border-slate-300 focus:border-blue-500"
+                          <Textarea
+                            id="history"
+                            value={formData.history || ''}
+                            onChange={(e) => handleInputChange('history', e.target.value)}
+                            className="min-h-[200px] text-sm resize-vertical border-slate-300 focus:border-blue-500"
+                            placeholder="Add any relevant history or notes about the employee..."
+                            readOnly
                           />
+                          <p className="text-xs text-slate-500 mt-1">
+                            This field will automatically record creation and updates. You can add additional notes here.
+                          </p>
                         </div>
-                        <div>
-                          <Label htmlFor="ppeExpiry" className="text-sm font-medium text-slate-700">
-                            PPE Expiry
-                          </Label>
-                          <Input
-                            id="ppeExpiry"
-                            type="date"
-                            value={formData.ppeExpiry || ''}
-                            onChange={(e) => handleInputChange('ppeExpiry', e.target.value)}
-                            className="mt-1 border-slate-300 focus:border-blue-500"
-                          />
+
+                        <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                          <p className="text-sm text-blue-800">
+                            <strong>Note:</strong> System-generated history entries will be automatically
+                            added when creating or updating this employee record.
+                          </p>
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-
-                <TabsContent value="history">
-                  <Card className="bg-white border-slate-200 shadow-sm">
-                    <CardHeader className="bg-slate-50 border-b border-slate-200">
-                      <CardTitle className="flex items-center gap-2 text-slate-900">
-                        <FileText className="h-5 w-5" />
-                        History
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-6">
-                      <Textarea
-                        value={formData.history || ''}
-                        onChange={(e) => handleInputChange('history', e.target.value)}
-                        className="min-h-[200px] text-sm resize-vertical border-slate-300 focus:border-blue-500"
-                        placeholder="Employee history will be automatically recorded here..."
-                        readOnly
-                      />
                     </CardContent>
                   </Card>
                 </TabsContent>
@@ -545,14 +1146,13 @@ export default function EditEmployeePage() {
                 <Button
                   variant="outline"
                   onClick={() => router.push('/humanresources')}
-                  className="border-slate-300 hover:bg-white"
                 >
                   Cancel
                 </Button>
                 <Button
                   onClick={handleSave}
                   disabled={saving || !formData.employeeId || !formData.firstName || !formData.surname}
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg shadow-blue-500/25"
+                  className="bg-blue-600 hover:bg-blue-700"
                 >
                   {saving ? (
                     <>

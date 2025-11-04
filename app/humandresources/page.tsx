@@ -41,7 +41,6 @@ interface Employee {
   firstName: string;
   surname: string;
   knownAs?: string;
-  idNumber?: string;
   passportNumber?: string;
   passportExpiry?: string;
   passportAttachment?: string;
@@ -80,7 +79,6 @@ export default function HumanResourcesPage() {
           firstName: item.firstName,
           surname: item.surname,
           knownAs: item.knownAs ?? undefined,
-          idNumber: item.idNumber ?? undefined,
           passportNumber: item.passportNumber ?? undefined,
           passportExpiry: item.passportExpiry ?? undefined,
           passportAttachment: item.passportAttachment ?? undefined,
@@ -169,7 +167,8 @@ export default function HumanResourcesPage() {
       cell: ({ row }: { row: any }) => (
         <div className="flex items-center gap-3">
           <Avatar className="h-10 w-10 border-2 border-slate-100">
-            <AvatarFallback className="bg-background from-blue-500 to-purple-600 text-white font-semibold">
+            
+              <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-sm font-bold">
               {getInitials(row.original.firstName, row.original.surname)}
             </AvatarFallback>
           </Avatar>
@@ -213,7 +212,7 @@ export default function HumanResourcesPage() {
     },
     {
       id: "actions",
-      header: "",
+      header: "Actions",
       cell: ({ row }: { row: any }) => (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -308,7 +307,7 @@ export default function HumanResourcesPage() {
           </div>
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-5">
             <Card className="bg-background border-slate-200 shadow-sm hover:shadow-md transition-shadow">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
