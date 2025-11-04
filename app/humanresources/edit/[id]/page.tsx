@@ -12,7 +12,7 @@ import {
   FileText,
   Plus,
   Trash2,
-  Calendar
+  FileArchive
 } from "lucide-react";
 import Footer from "@/components/layout/footer";
 import Navbar from "@/components/layout/navbar";
@@ -317,7 +317,7 @@ export default function EditEmployeePage() {
         />
         <Button
           variant="outline"
-          className="w-full border-slate-300 hover:bg-white"
+          className="w-full border-slate-300 hover:bg-gray-300"
           onClick={() => document.getElementById(`file-upload-${Math.random()}`)?.click()}
           type="button"
         >
@@ -676,12 +676,12 @@ export default function EditEmployeePage() {
             <div className="lg:col-span-3">
               <Tabs defaultValue="personal" className="space-y-6">
                 <TabsList className="grid w-full grid-cols-6">
-                  <TabsTrigger value="personal">Personal</TabsTrigger>
-                  <TabsTrigger value="documents">Documents</TabsTrigger>
-                  <TabsTrigger value="medical">Medical</TabsTrigger>
-                  <TabsTrigger value="training">Training</TabsTrigger>
-                  <TabsTrigger value="additional">Additional</TabsTrigger>
-                  <TabsTrigger value="history">History</TabsTrigger>
+                  <TabsTrigger value="personal" className="cursor-pointer">Personal</TabsTrigger>
+                  <TabsTrigger value="documents" className="cursor-pointer">Documents</TabsTrigger>
+                  <TabsTrigger value="medical" className="cursor-pointer">Medical</TabsTrigger>
+                  <TabsTrigger value="training" className="cursor-pointer">Training</TabsTrigger>
+                  <TabsTrigger value="additional" className="cursor-pointer">Additional</TabsTrigger>
+                  <TabsTrigger value="history" className="cursor-pointer">History</TabsTrigger>
                 </TabsList>
 
                 {/* Personal Information Tab */}
@@ -1149,6 +1149,15 @@ export default function EditEmployeePage() {
                 >
                   Cancel
                 </Button>
+                   
+                <Button
+                  className=" bg-[#165b8c] hover:bg-[#365b8c]"
+                  onClick={() => router.push(`/humanresources/certificates/${employeeId}`)}
+                >
+                  <FileArchive/>
+                  View Certs
+                </Button>
+
                 <Button
                   onClick={handleSave}
                   disabled={saving || !formData.employeeId || !formData.firstName || !formData.surname}

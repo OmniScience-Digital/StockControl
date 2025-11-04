@@ -5,10 +5,6 @@ import { usePathname } from "next/navigation";
 
 export default function Breadcrumbs() {
   let pathname = usePathname(); // Get current path
-  const segments = pathname.split("/");
-
-  pathname = segments.join("/"); // Reconstruct path without last segment
-  
 
   let pathSegments = pathname.split("/").filter(Boolean); // Remove empty segments
 
@@ -21,21 +17,18 @@ export default function Breadcrumbs() {
     });
 
 
-  if (
-    pathSegments.length === 1 &&
-    pathSegments[0].endsWith("form") &&
-    pathSegments[0] !== "forms"
-  ) {
+  if (pathSegments.length === 1 && /form$/i.test(pathSegments[0]) && pathSegments[0] !== "forms") {
     pathSegments = ["forms", pathSegments[0].replace(/form$/i, "")];
   }
 
-  
 
-    // Handle vehicleinspectionsystem/edit routes (keep the ID) and humanresources
-  if (pathSegments.includes("vehicleinspectionsystem") && pathSegments.includes("edit")||pathSegments.includes("humanresources") && pathSegments.includes("edit")) {
-      pathSegments = pathSegments.filter(segment => segment !== "edit");
+  // Handle vehicleinspectionsystem/edit routes (keep the ID) and humanresources
+  const removeSegmentIf = (arr: string[], a: string, b: string, seg: string) =>
+    arr.includes(a) && arr.includes(b) ? arr.filter(s => s !== seg) : arr;
 
-  }
+  pathSegments = removeSegmentIf(pathSegments, "vehicleinspectionsystem", "edit", "edit");
+  pathSegments = removeSegmentIf(pathSegments, "humanresources", "edit", "edit");
+  pathSegments = removeSegmentIf(pathSegments, "humanresources", "certificates", "certificates");
 
 
   // Function to truncate long text for mobile

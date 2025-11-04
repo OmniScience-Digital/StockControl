@@ -237,7 +237,7 @@ export default function CreateEmployeePage() {
                 />
                 <Button
                     variant="outline"
-                    className="w-full border-slate-300 hover:bg-white"
+                    className="w-full border-slate-300 hover:bg-gray-300"
                     onClick={() => document.getElementById(`file-upload-${Math.random()}`)?.click()}
                     type="button"
                 >
@@ -562,14 +562,15 @@ export default function CreateEmployeePage() {
 
                         {/* Main Form */}
                         <div className="lg:col-span-3">
+
                             <Tabs defaultValue="personal" className="space-y-6">
-                                <TabsList className="grid w-full grid-cols-6">
-                                    <TabsTrigger value="personal">Personal</TabsTrigger>
-                                    <TabsTrigger value="documents">Documents</TabsTrigger>
-                                    <TabsTrigger value="medical">Medical</TabsTrigger>
-                                    <TabsTrigger value="training">Training</TabsTrigger>
-                                    <TabsTrigger value="additional">Additional</TabsTrigger>
-                                    <TabsTrigger value="history">History</TabsTrigger>
+                                <TabsList className="grid w-full grid-cols-5">
+                                    <TabsTrigger value="personal" className="cursor-pointer">Personal</TabsTrigger>
+                                    <TabsTrigger value="documents" className="cursor-pointer">Documents</TabsTrigger>
+                                    <TabsTrigger value="medical" className="cursor-pointer">Medical</TabsTrigger>
+                                    <TabsTrigger value="training" className="cursor-pointer">Training</TabsTrigger>
+                                    <TabsTrigger value="additional" className="cursor-pointer">Additional</TabsTrigger>
+
                                 </TabsList>
 
                                 <TabsContent value="personal">
@@ -809,13 +810,13 @@ export default function CreateEmployeePage() {
                                                                     <SelectTrigger>
                                                                         <SelectValue placeholder="Select certificate type" />
                                                                     </SelectTrigger>
-                                                                <SelectContent position="popper" className="max-h-60 overflow-auto">
-                                                                    {MEDICAL_CERTIFICATE_TYPES.map(type => (
-                                                                        <SelectItem key={type} value={type}>
-                                                                            {type.replace(/_/g, ' ')}
-                                                                        </SelectItem>
-                                                                    ))}
-                                                                </SelectContent>
+                                                                    <SelectContent position="popper" className="max-h-60 overflow-auto">
+                                                                        {MEDICAL_CERTIFICATE_TYPES.map(type => (
+                                                                            <SelectItem key={type} value={type}>
+                                                                                {type.replace(/_/g, ' ')}
+                                                                            </SelectItem>
+                                                                        ))}
+                                                                    </SelectContent>
                                                                 </Select>
                                                             </div>
                                                             <div>
@@ -990,46 +991,7 @@ export default function CreateEmployeePage() {
                                         </CardContent>
                                     </Card>
                                 </TabsContent>
-                                <TabsContent value="history">
-                                    <Card className="bg-background border-slate-200 shadow-sm">
-                                        <CardHeader className="bg-background border-b border-slate-200">
-                                            <CardTitle className="flex items-center gap-2 text-foreground">
-                                                <FileText className="h-5 w-5" />
-                                                History & Notes
-                                            </CardTitle>
-                                            <CardDescription>
-                                                Employee history and additional notes
-                                            </CardDescription>
-                                        </CardHeader>
-                                        <CardContent className="p-6">
-                                            <div className="space-y-4">
-                                                <div>
-                                                    <Label htmlFor="history" className="text-sm font-medium text-slate-700">
-                                                        Employee History
-                                                    </Label>
-                                                    <Textarea
-                                                        id="history"
-                                                        value={formData.history || ''}
-                                                        onChange={(e) => handleInputChange('history', e.target.value)}
-                                                        className="min-h-[200px] text-sm resize-vertical border-slate-300 focus:border-blue-500"
-                                                        placeholder="Add any relevant history or notes about the employee..."
-                                                        readOnly
-                                                    />
-                                                    <p className="text-xs text-slate-500 mt-1">
-                                                        This field will automatically record creation and updates. You can add additional notes here.
-                                                    </p>
-                                                </div>
 
-                                                <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
-                                                    <p className="text-sm text-blue-800">
-                                                        <strong>Note:</strong> System-generated history entries will be automatically
-                                                        added when creating or updating this employee record.
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                </TabsContent>
                             </Tabs>
 
                             {/* Action Buttons */}

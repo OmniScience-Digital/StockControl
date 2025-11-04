@@ -229,7 +229,7 @@ export default function HumanResourcesPage() {
               Edit Profile
             </DropdownMenuItem>
             <DropdownMenuItem 
-              // onClick={() => router.push(`/humanresources/certificates/${row.original.id}`)}
+              onClick={() => router.push(`/humanresources/certificates/${row.original.employeeId}`)}
               className="cursor-pointer text-slate-700"
             >
               <BadgeCheck className="h-4 w-4 mr-2" />
