@@ -29,9 +29,10 @@ export default function Breadcrumbs() {
     pathSegments = ["forms", pathSegments[0].replace(/form$/i, "")];
   }
 
+  
 
-    // Handle vehicleinspectionsystem/edit routes (keep the ID)
-  if (pathSegments.includes("vehicleinspectionsystem") && pathSegments.includes("edit")) {
+    // Handle vehicleinspectionsystem/edit routes (keep the ID) and humanresources
+  if (pathSegments.includes("vehicleinspectionsystem") && pathSegments.includes("edit")||pathSegments.includes("humanresources") && pathSegments.includes("edit")) {
       pathSegments = pathSegments.filter(segment => segment !== "edit");
 
   }

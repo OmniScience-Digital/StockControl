@@ -3,11 +3,11 @@
 import { client } from "@/services/schema";
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { 
-  Save, 
-  ArrowLeft, 
-  User, 
-  Loader2, 
+import {
+  Save,
+  ArrowLeft,
+  User,
+  Loader2,
   Upload,
   Camera,
   FileText,
@@ -23,7 +23,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { toast } from "sonner";
+import { formatDateForAmplify } from "@/utils/helper/time";
 
 
 interface Employee {
@@ -46,6 +48,7 @@ interface Employee {
   cvAttachment?: string;
   ppeListAttachment?: string;
   ppeExpiry?: string;
+  employeeIdAttachment?: string;
   history?: string;
 }
 
@@ -84,7 +87,8 @@ export default function EditEmployeePage() {
             cvAttachment: employeeData.cvAttachment ?? undefined,
             ppeListAttachment: employeeData.ppeListAttachment ?? undefined,
             ppeExpiry: employeeData.ppeExpiry ?? undefined,
-            // history: employeeData.
+            employeeIdAttachment: employeeData.employeeIdAttachment ?? undefined,
+            history: employeeData?.history || ""
           };
           setEmployee(mappedEmployee);
           setFormData(mappedEmployee);
@@ -103,25 +107,14 @@ export default function EditEmployeePage() {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const formatDateForAmplify = (dateValue: string | null | undefined): string | null => {
-    if (!dateValue || dateValue.trim() === "") return null;
-    if (/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) return dateValue;
-    if (dateValue.includes('T')) return dateValue.split('T')[0];
-    try {
-      const date = new Date(dateValue);
-      if (isNaN(date.getTime())) return null;
-      return date.toISOString().split('T')[0];
-    } catch {
-      return null;
-    }
-  };
+
 
   const handleSave = async () => {
     if (!employee) return;
 
     try {
       setSaving(true);
-      
+
       const storedName = localStorage.getItem("user")?.replace(/^"|"$/g, '').trim() || "Unknown User";
       const johannesburgTime = new Date().toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg" });
 
@@ -133,8 +126,9 @@ export default function EditEmployeePage() {
         }
       });
 
+
+
       const employeeData = {
-        id: employeeId,
         employeeId: formData.employeeId!,
         firstName: formData.firstName!,
         surname: formData.surname!,
@@ -153,14 +147,29 @@ export default function EditEmployeePage() {
         cvAttachment: formData.cvAttachment || null,
         ppeListAttachment: formData.ppeListAttachment || null,
         ppeExpiry: formatDateForAmplify(formData.ppeExpiry),
+        employeeIdAttachment: formData.employeeIdAttachment ?? undefined,
         history: historyEntries + (employee.history || "")
       };
 
-      await client.models.Employee.update(employeeData);
-      router.push('/humanresources');
+      const result = await client.models.Employee.update({
+        id: employee.id,
+        ...employeeData
+      });
+
+      if (!result.errors) {
+        toast.success("Employee data update successfully!");
+        console.log("New employee updayed:", result.data);
+        setTimeout(() => {
+          router.push('/humanresources');
+        }, 1500);
+      } else {
+        console.error("Update errors:", result.errors);
+        throw new Error(result.errors?.[0]?.message || "Failed to update employee");
+      }
+
     } catch (error) {
       console.error("Error saving employee:", error);
-      alert("Error updating employee. Please check the console for details.");
+      toast.warning("Error saving employee!");
     } finally {
       setSaving(false);
     }

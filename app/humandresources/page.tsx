@@ -206,7 +206,7 @@ export default function HumanResourcesPage() {
       accessorKey: "status",
       header: "Status",
       cell: ({ row }: { row: any }) => (
-        <div className="flex justify-center">
+        <div className="flex justify-start">
           {getStatusBadge(row.original)}
         </div>
       ),
@@ -230,17 +230,13 @@ export default function HumanResourcesPage() {
               Edit Profile
             </DropdownMenuItem>
             <DropdownMenuItem 
-              onClick={() => router.push(`/humanresources/certificates/${row.original.id}`)}
+              // onClick={() => router.push(`/humanresources/certificates/${row.original.id}`)}
               className="cursor-pointer text-slate-700"
             >
               <BadgeCheck className="h-4 w-4 mr-2" />
               View Certificates
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="cursor-pointer text-slate-700">
-              <FileText className="h-4 w-4 mr-2" />
-              Download Documents
-            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       ),

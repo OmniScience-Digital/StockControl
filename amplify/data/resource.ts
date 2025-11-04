@@ -146,6 +146,7 @@ const schema = a.schema({
       authorizedDriver: a.boolean(),
       pdpExpiry: a.date(),
       pdpAttachment: a.string(),
+      history: a.string(),
       // Core documents
       cvAttachment: a.string(),
       ppeListAttachment: a.string(),
