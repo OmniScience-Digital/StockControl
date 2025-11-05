@@ -12,7 +12,6 @@ import {
   Calendar,
   BadgeCheck,
   Shield,
-  FileText,
   MoreVertical,
   Filter,
 } from "lucide-react";
