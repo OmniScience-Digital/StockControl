@@ -523,10 +523,10 @@ export default function EditEmployeePage() {
                 <ArrowLeft className="h-5 w-5" />
               </Button>
               <div>
-                <h1 className="text-3xl font-bold">
+                <h1 className="text-2xl font-bold">
                   Edit {employee.firstName} {employee.surname}
                 </h1>
-                <p className="text-muted-foreground mt-2">
+                <p className="text-muted-foreground mt-2 text-base">
                   Update employee information and documents
                 </p>
               </div>

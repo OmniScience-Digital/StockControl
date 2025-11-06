@@ -10,7 +10,6 @@ import {
     Loader2,
     Upload,
     FileText,
-    Calendar,
     Plus,
     Trash2
 } from "lucide-react";
@@ -478,10 +477,10 @@ export default function CreateEmployeePage() {
                                 <ArrowLeft className="h-5 w-5" />
                             </Button>
                             <div>
-                                <h1 className="text-3xl font-bold">
+                                <h1 className="text-2xl font-bold">
                                     Add New Employee
                                 </h1>
-                                <p className="text-muted-foreground mt-2">
+                                <p className="text-muted-foreground mt-2 text-base">
                                     Create a new employee profile
                                 </p>
                             </div>

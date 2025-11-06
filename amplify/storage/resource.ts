@@ -14,18 +14,11 @@ export const storage = defineStorage({
       allow.authenticated.to(['read', 'write', 'delete']),
       allow.guest.to(['read', 'write'])
     ],
-    "hr/employees/{employeeId}/certificates/*": [
+    "hr/*": [
       allow.authenticated.to(['read', 'write', 'delete']),
       allow.guest.to(['read', 'write'])
     ],
-    "hr/employees/{employeeId}/medical/*": [
-      allow.authenticated.to(['read', 'write', 'delete']),
-      allow.guest.to(['read', 'write'])
-    ],
-    "hr/employees/{employeeId}/training/*": [
-      allow.authenticated.to(['read', 'write', 'delete']),
-      allow.guest.to(['read', 'write'])
-    ]
+
   })
 });
 
