@@ -23,7 +23,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { formatDateForAmplify } from "@/utils/helper/time";
@@ -117,86 +117,101 @@ export default function EditEmployeePage() {
 
   const fetchEmployeeWithRelations = async (): Promise<Employee | null> => {
     try {
+      // Fetch employee base record
       const { data: employee, errors } = await client.models.Employee.get(
-        { id: employeeId },
-        {
-          selectionSet: [
-            'id',
-            'employeeId',
-            'employeeNumber',
-            'firstName',
-            'surname',
-            'knownAs',
-            'passportNumber',
-            'passportExpiry',
-            'passportAttachment',
-            'driversLicenseCode',
-            'driversLicenseExpiry',
-            'driversLicenseAttachment',
-            'authorizedDriver',
-            'pdpExpiry',
-            'pdpAttachment',
-            'cvAttachment',
-            'ppeListAttachment',
-            'ppeExpiry',
-            'employeeIdAttachment',
-            'history',
-            'medicalCertificates.*',
-            'trainingCertificates.*',
-            'additionalCertificates.*'
-          ]
-        }
+        { id: employeeId }
       );
 
       if (errors || !employee) {
-        console.error("Error fetching employee with relations:", errors);
+        console.error("Error fetching employee:", errors);
         return null;
       }
 
-      return employee as unknown as Employee;
+      // Fetch all related certificates using GSIs
+      const [
+        { data: medicalCertificates },
+        { data: trainingCertificates },
+        { data: additionalCertificates }
+      ] = await Promise.all([
+        client.models.EmployeeMedicalCertificate.medicalCertsByEmployee({
+          employeeId: employee.employeeId
+        }),
+        client.models.EmployeeTrainingCertificate.trainingCertsByEmployee({
+          employeeId: employee.employeeId
+        }),
+        client.models.EmployeeAdditionalCertificate.additionalCertsByEmployee({
+          employeeId: employee.employeeId
+        })
+      ]);
+
+
+      return {
+        ...employee,
+        medicalCertificates: medicalCertificates || [],
+        trainingCertificates: trainingCertificates || [],
+        additionalCertificates: additionalCertificates || []
+      } as unknown as Employee;
     } catch (error) {
       console.error("Error in fetchEmployeeWithRelations:", error);
       return null;
     }
   };
 
-useEffect(() => {
-  const fetchEmployee = async () => {
-    try {
-      const employeeData = await fetchEmployeeWithRelations();
+  useEffect(() => {
+    const fetchEmployee = async () => {
+      try {
+        const employeeData = await fetchEmployeeWithRelations();
 
-      if (employeeData) {
-        setEmployee(employeeData);
-        setFormData(employeeData);
-        
-        // Create array with ALL 8 certificate types, fill with existing data
-        const certsMap = new Map(
-          employeeData.medicalCertificates?.map(cert => [cert.certificateType, cert])
-        );
-        
-        const allMedicalCerts = MEDICAL_CERTIFICATE_TYPES.map(type => 
-          certsMap.get(type) || { 
-            certificateType: type, 
-            expiryDate: "", 
-            attachment: "" 
-          }
-        );
-        console.log(allMedicalCerts);
-        setMedicalCerts(allMedicalCerts);
-        setTrainingCerts(employeeData.trainingCertificates || []);
-        setAdditionalCerts(employeeData.additionalCertificates || []);
+        if (employeeData) {
+          setEmployee(employeeData);
+          setFormData(employeeData);
+
+          // Create array with ALL 8 certificate types, fill with existing data
+          const certsMap = new Map(
+            employeeData.medicalCertificates?.map(cert => [cert.certificateType, cert])
+          );
+
+          const allMedicalCerts = MEDICAL_CERTIFICATE_TYPES.map(type =>
+            certsMap.get(type) || {
+              certificateType: type,
+              expiryDate: "",
+              attachment: ""
+            }
+          );
+
+          // Create array with ALL 15 certificate types, fill with existing data
+          const trainingcertsMap = new Map(
+            employeeData.trainingCertificates?.map(cert => [cert.certificateType, cert])
+          );
+
+
+          const alltrainingCerts = TRAINING_CERTIFICATE_TYPES.map(type =>
+            trainingcertsMap.get(type) || {
+              certificateType: type,
+              expiryDate: "",
+              attachment: ""
+            }
+          );
+
+          setMedicalCerts(allMedicalCerts);
+          setTrainingCerts(alltrainingCerts);
+          setAdditionalCerts(employeeData.additionalCertificates || []);
+        }
+      } catch (error) {
+        console.error("Error fetching employee:", error);
+        toast.error("Failed to load employee data");
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error("Error fetching employee:", error);
-      toast.error("Failed to load employee data");
-    } finally {
-      setLoading(false);
-    }
+    };
+
+    fetchEmployee();
+  }, [employeeId]);
+
+
+  const getInitials = (firstName: string, surname: string) => {
+    return `${firstName.charAt(0)}${surname.charAt(0)}`.toUpperCase();
   };
-
-  fetchEmployee();
-}, [employeeId]);
-
   const handleInputChange = (field: keyof Employee, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
@@ -219,22 +234,6 @@ useEffect(() => {
     setAdditionalCerts(updated);
   };
 
-  const addMedicalCertificate = () => {
-    setMedicalCerts(prev => [...prev, { certificateType: "", expiryDate: "", attachment: "" }]);
-    setFileUploads(prev => ({
-      ...prev,
-      medicalCerts: [...prev.medicalCerts, null]
-    }));
-  };
-
-  const addTrainingCertificate = () => {
-    setTrainingCerts(prev => [...prev, { certificateType: "", expiryDate: "", attachment: "" }]);
-    setFileUploads(prev => ({
-      ...prev,
-      trainingCerts: [...prev.trainingCerts, null]
-    }));
-  };
-
   const addAdditionalCertificate = () => {
     setAdditionalCerts(prev => [...prev, { certificateName: "", expiryDate: "", attachment: "" }]);
     setFileUploads(prev => ({
@@ -243,21 +242,6 @@ useEffect(() => {
     }));
   };
 
-  const removeMedicalCertificate = (index: number) => {
-    setMedicalCerts(prev => prev.filter((_, i) => i !== index));
-    setFileUploads(prev => ({
-      ...prev,
-      medicalCerts: prev.medicalCerts.filter((_, i) => i !== index)
-    }));
-  };
-
-  const removeTrainingCertificate = (index: number) => {
-    setTrainingCerts(prev => prev.filter((_, i) => i !== index));
-    setFileUploads(prev => ({
-      ...prev,
-      trainingCerts: prev.trainingCerts.filter((_, i) => i !== index)
-    }));
-  };
 
   const removeAdditionalCertificate = (index: number) => {
     setAdditionalCerts(prev => prev.filter((_, i) => i !== index));
@@ -347,6 +331,7 @@ useEffect(() => {
     }
   }
 
+
   const handleSave = async () => {
     if (!employee) return;
 
@@ -396,16 +381,19 @@ useEffect(() => {
         throw new Error("Failed to update employee");
       }
 
-      // Update medical certificates
-
-      const existingCerts = employee.medicalCertificates || [];
-
+      // Update medical certificates - only if changed
+      const existingMedicalCerts = employee.medicalCertificates || [];
       for (const cert of medicalCerts) {
-        if (cert.expiryDate || cert.attachment) {
-          const existingCert = existingCerts.find(ec => ec.certificateType === cert.certificateType);
+        const existingCert = existingMedicalCerts.find(ec => ec.certificateType === cert.certificateType);
 
+        // Check if data actually changed or is new
+        const expiryChanged = existingCert?.expiryDate !== cert.expiryDate;
+        const attachmentChanged = existingCert?.attachment !== cert.attachment;
+        const hasNewData = cert.expiryDate || cert.attachment;
+
+        if ((expiryChanged || attachmentChanged || !existingCert) && hasNewData) {
           if (existingCert) {
-            // Update existing
+
             await client.models.EmployeeMedicalCertificate.update({
               id: existingCert.id,
               certificateType: cert.certificateType,
@@ -413,7 +401,7 @@ useEffect(() => {
               attachment: cert.attachment || null
             });
           } else {
-            // Create new
+
             await client.models.EmployeeMedicalCertificate.create({
               employeeId: employee.employeeId,
               certificateType: cert.certificateType,
@@ -424,48 +412,72 @@ useEffect(() => {
         }
       }
 
-      // Update training certificates
+      // Update training certificates - only if changed
+      const existingTrainingCerts = employee.trainingCertificates || [];
       for (const cert of trainingCerts) {
-        if (cert.id) {
-          await client.models.EmployeeTrainingCertificate.update({
-            id: cert.id,
-            certificateType: cert.certificateType,
-            expiryDate: formatDateForAmplify(cert.expiryDate) || "",
-            attachment: cert.attachment || null
-          });
-        } else if (cert.certificateType) {
-          await client.models.EmployeeTrainingCertificate.create({
-            employeeId: employee.employeeId,
-            certificateType: cert.certificateType,
-            expiryDate: formatDateForAmplify(cert.expiryDate) || "",
-            attachment: cert.attachment || null
-          });
+        const existingCert = existingTrainingCerts.find(ec => ec.certificateType === cert.certificateType);
+
+        // Check if data actually changed or is new
+        const expiryChanged = existingCert?.expiryDate !== cert.expiryDate;
+        const attachmentChanged = existingCert?.attachment !== cert.attachment;
+        const hasNewData = cert.expiryDate || cert.attachment;
+
+        if ((expiryChanged || attachmentChanged || !existingCert) && hasNewData) {
+          if (existingCert) {
+
+            await client.models.EmployeeTrainingCertificate.update({
+              id: existingCert.id,
+              certificateType: cert.certificateType,
+              expiryDate: formatDateForAmplify(cert.expiryDate) || "",
+              attachment: cert.attachment || null
+            });
+          } else {
+
+            await client.models.EmployeeTrainingCertificate.create({
+              employeeId: employee.employeeId,
+              certificateType: cert.certificateType,
+              expiryDate: formatDateForAmplify(cert.expiryDate) || "",
+              attachment: cert.attachment || null
+            });
+          }
         }
       }
 
-      // Update additional certificates
+      // Update additional certificates - only if changed
+      const existingAdditionalCerts = employee.additionalCertificates || [];
       for (const cert of additionalCerts) {
-        if (cert.id) {
-          await client.models.EmployeeAdditionalCertificate.update({
-            id: cert.id,
-            certificateName: cert.certificateName,
-            expiryDate: formatDateForAmplify(cert.expiryDate) || "",
-            attachment: cert.attachment || null
-          });
-        } else if (cert.certificateName) {
-          await client.models.EmployeeAdditionalCertificate.create({
-            employeeId: employee.employeeId,
-            certificateName: cert.certificateName,
-            expiryDate: formatDateForAmplify(cert.expiryDate) || "",
-            attachment: cert.attachment || null
-          });
+        const existingCert = existingAdditionalCerts.find(ec => ec.id === cert.id);
+
+        // Check if data actually changed or is new
+        const nameChanged = existingCert?.certificateName !== cert.certificateName;
+        const expiryChanged = existingCert?.expiryDate !== cert.expiryDate;
+        const attachmentChanged = existingCert?.attachment !== cert.attachment;
+        const hasNewData = cert.expiryDate || cert.attachment || cert.certificateName;
+
+        if ((nameChanged || expiryChanged || attachmentChanged || !existingCert) && hasNewData) {
+          if (existingCert) {
+
+            await client.models.EmployeeAdditionalCertificate.update({
+              id: existingCert.id,
+              certificateName: cert.certificateName,
+              expiryDate: formatDateForAmplify(cert.expiryDate) || "",
+              attachment: cert.attachment || null
+            });
+          } else if (cert.certificateName) {
+
+            await client.models.EmployeeAdditionalCertificate.create({
+              employeeId: employee.employeeId,
+              certificateName: cert.certificateName,
+              expiryDate: formatDateForAmplify(cert.expiryDate) || "",
+              attachment: cert.attachment || null
+            });
+          }
         }
       }
 
-      toast.success("Employee updated successfully!");
-      setTimeout(() => {
-        router.push('/humanresources');
-      }, 1500);
+
+      // router.push('/humanresources');
+
 
     } catch (error) {
       console.error("Error saving employee:", error);
@@ -473,10 +485,6 @@ useEffect(() => {
     } finally {
       setSaving(false);
     }
-  };
-
-  const getInitials = (firstName: string, surname: string) => {
-    return `${firstName.charAt(0)}${surname.charAt(0)}`.toUpperCase();
   };
 
   if (loading) {
@@ -855,54 +863,31 @@ useEffect(() => {
                 </TabsContent>
 
                 {/* Medical Induction Tab */}
+
                 <TabsContent value="medical">
                   <Card>
                     <CardHeader>
-                      <div className="flex justify-between items-center">
-                        <CardTitle className="flex items-center gap-2">
+                      <CardTitle className="flex items-center gap-2">
+                        <BriefcaseMedical className="h-5 w-5" />
+                        Medical Documents
+                      </CardTitle>
 
-                          <BriefcaseMedical className="h-5 w-5" />
-                          Medical Documents
-                        </CardTitle>
-                        <Button onClick={addMedicalCertificate} size="sm">
-                          <Plus className="h-4 w-4 mr-2" />
-                          Add Medical Certificate
-                        </Button>
-                      </div>
                     </CardHeader>
                     <CardContent className="p-6">
                       <div className="space-y-6">
                         {medicalCerts.map((cert, index) => (
-                          <div key={index} className="p-4 border rounded-lg">
+                          <div key={cert.certificateType} className="p-4 border rounded-lg">
                             <div className="flex justify-between items-start mb-4">
-                              <h4 className="font-semibold">Medical Certificate #{index + 1}</h4>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => removeMedicalCertificate(index)}
-                                className="text-red-600 hover:text-red-800"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                              <h4 className="font-semibold">{cert.certificateType.replace(/_/g, ' ')}</h4>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <div>
                                 <Label>Certificate Type</Label>
-                                <Select
-                                  value={cert.certificateType || ''}
-                                  onValueChange={(value) => handleMedicalCertChange(index, 'certificateType', value)}
-                                >
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Select certificate type" />
-                                  </SelectTrigger>
-                                  <SelectContent position="popper" className="max-h-60 overflow-auto">
-                                    {MEDICAL_CERTIFICATE_TYPES.map(type => (
-                                      <SelectItem key={type} value={type}>
-                                        {type.replace(/_/g, ' ')}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
+                                <Input
+                                  value={cert.certificateType}
+                                  disabled
+                                  className="bg-gray-50"
+                                />
                               </div>
                               <div>
                                 <Label>Expiry Date</Label>
@@ -914,28 +899,29 @@ useEffect(() => {
                               </div>
                               <div className="md:col-span-2">
                                 <Label>Attachment</Label>
-                             <HrdPDFUpload
-                              employeeID={employee.employeeId}
-                              filetitle="Medical Certs Attachment"
-                              filename="medicalCerts"
-                              folder="Medical"
-                              existingFiles={cert.attachment ? [cert.attachment] : []} 
-                              onPDFsChange={(pdfs) => {
-                                const pdfUrls = pdfs.map(pdf => pdf.s3Key);
-                                setUploadingCertIndex({ type: 'medical', index }); 
-                                handleChange("medicalCerts", pdfUrls);
-                              }}
-                            />
+                                <HrdPDFUpload
+                                  employeeID={employee.employeeId}
+                                  filetitle={`${cert.certificateType} Attachment`}
+                                  filename={`medical-${cert.certificateType}`}
+                                  folder="Medical"
+                                  existingFiles={cert.attachment ? [cert.attachment] : []}
+                                  onPDFsChange={(pdfs) => {
 
+                                    const pdfUrls = pdfs.map(pdf => pdf.s3Key);
+
+                                    // Update the specific medical certificate directly
+                                    const updatedCerts = [...medicalCerts];
+                                    updatedCerts[index] = {
+                                      ...updatedCerts[index],
+                                      attachment: pdfUrls[0] || ''
+                                    };
+                                    setMedicalCerts(updatedCerts);
+                                  }}
+                                />
                               </div>
                             </div>
                           </div>
                         ))}
-                        {medicalCerts.length === 0 && (
-                          <div className="text-center py-8 text-muted-foreground">
-                            No medical certificates added yet.
-                          </div>
-                        )}
                       </div>
                     </CardContent>
                   </Card>
@@ -945,50 +931,27 @@ useEffect(() => {
                 <TabsContent value="training">
                   <Card>
                     <CardHeader>
-                      <div className="flex justify-between items-center">
-                        <CardTitle className="flex items-center gap-2">
-                          <FileText className="h-5 w-5" />
-                          Training Certificates
-                        </CardTitle>
-                        <Button onClick={addTrainingCertificate} size="sm">
-                          <Plus className="h-4 w-4 mr-2" />
-                          Add Training Certificate
-                        </Button>
-                      </div>
+                      <CardTitle className="flex items-center gap-2">
+                        <FileText className="h-5 w-5" />
+                        Training Certificates
+                      </CardTitle>
+
                     </CardHeader>
                     <CardContent className="p-6">
                       <div className="space-y-6">
                         {trainingCerts.map((cert, index) => (
-                          <div key={index} className="p-4 border rounded-lg">
+                          <div key={cert.certificateType} className="p-4 border rounded-lg">
                             <div className="flex justify-between items-start mb-4">
-                              <h4 className="font-semibold">Training Certificate #{index + 1}</h4>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => removeTrainingCertificate(index)}
-                                className="text-red-600 hover:text-red-800"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                              <h4 className="font-semibold">{cert.certificateType.replace(/_/g, ' ')}</h4>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <div>
                                 <Label>Certificate Type</Label>
-                                <Select
-                                  value={cert.certificateType || ''}
-                                  onValueChange={(value) => handleTrainingCertChange(index, 'certificateType', value)}
-                                >
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Select certificate type" />
-                                  </SelectTrigger>
-                                  <SelectContent position="popper" className="max-h-60 overflow-auto">
-                                    {TRAINING_CERTIFICATE_TYPES.map(type => (
-                                      <SelectItem key={type} value={type}>
-                                        {type.replace(/_/g, ' ')}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
+                                <Input
+                                  value={cert.certificateType}
+                                  disabled
+                                  className="bg-gray-50"
+                                />
                               </div>
                               <div>
                                 <Label>Expiry Date</Label>
@@ -1000,32 +963,31 @@ useEffect(() => {
                               </div>
                               <div className="md:col-span-2">
                                 <Label>Attachment</Label>
-
                                 <HrdPDFUpload
                                   employeeID={employee.employeeId}
-                                  filetitle="Training Certs Attachment"
-                                  filename="trainingCerts"
+                                  filetitle={`${cert.certificateType} Attachment`}
+                                  filename={`training-${cert.certificateType}`}
                                   folder="Training"
-                                  existingFiles={[]}
+                                  existingFiles={cert.attachment ? [cert.attachment] : []}
                                   onPDFsChange={(pdfs) => {
                                     const pdfUrls = pdfs.map(pdf => pdf.s3Key);
-                                    handleChange("trainingCerts", pdfUrls);
+
+                                    const updatedCerts = [...trainingCerts];
+                                    updatedCerts[index] = {
+                                      ...updatedCerts[index],
+                                      attachment: pdfUrls[0] || ''
+                                    };
+                                    setTrainingCerts(updatedCerts);
                                   }}
                                 />
                               </div>
                             </div>
                           </div>
                         ))}
-                        {trainingCerts.length === 0 && (
-                          <div className="text-center py-8 text-muted-foreground">
-                            No training certificates added yet.
-                          </div>
-                        )}
                       </div>
                     </CardContent>
                   </Card>
                 </TabsContent>
-
                 {/* Additional Certificates Tab */}
                 <TabsContent value="additional">
                   <Card>
@@ -1040,6 +1002,7 @@ useEffect(() => {
                           Add Certificate
                         </Button>
                       </div>
+
                     </CardHeader>
                     <CardContent className="p-6">
                       <div className="space-y-6">
@@ -1078,13 +1041,20 @@ useEffect(() => {
 
                                 <HrdPDFUpload
                                   employeeID={employee.employeeId}
-                                  filetitle="Additional Certs Attachment"
-                                  filename="additionalCerts"
+                                  filetitle={`${cert.certificateName || 'Additional'} Attachment`}
+                                  filename={`additional-${index}`}
                                   folder="Additional"
-                                  existingFiles={[]}
+                                  existingFiles={cert.attachment ? [cert.attachment] : []}
                                   onPDFsChange={(pdfs) => {
                                     const pdfUrls = pdfs.map(pdf => pdf.s3Key);
-                                    handleChange("additionalCerts", pdfUrls);
+
+                                    // Update the specific additional certificate directly
+                                    const updatedCerts = [...additionalCerts];
+                                    updatedCerts[index] = {
+                                      ...updatedCerts[index],
+                                      attachment: pdfUrls[0] || ''
+                                    };
+                                    setAdditionalCerts(updatedCerts);
                                   }}
                                 />
 

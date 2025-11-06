@@ -36,45 +36,65 @@ export const HrdPDFUpload = ({ onPDFsChange, employeeID, folder, existingFiles =
     const fileInputRef = useRef<HTMLInputElement>(null);
     const previewUrlsRef = useRef<Set<string>>(new Set());
 
-    // Use refs to track initialization and prevent loops
+    // Use refs to track the last state to prevent loops
+    const lastPdfsRef = useRef<PDFState[]>([]);
     const hasInitialized = useRef(false);
-    const lastExistingFiles = useRef<string[]>(existingFiles);
 
-
-    // Update existing files initialization to generate URLs
+    // Initialize existing files - only run once
     useEffect(() => {
+        if (hasInitialized.current) return;
+
         const initializeExistingFiles = async () => {
             if (existingFiles.length > 0) {
                 const existingFile = existingFiles[0];
-                const fileName = existingFile.split('/').pop() || `${filename}_1.pdf`;
-                const s3Url = await generateS3Url(existingFile);
+                if (existingFile) {
+                    const fileName = existingFile.split('/').pop() || `${filename}_1.pdf`;
 
-                const existingPDF: PDFState = {
-                    id: `existing-0`,
-                    file: new File([], fileName),
-                    s3Key: existingFile,
-                    status: 'success',
-                    url: s3Url, // Store the proper S3 URL
-                    name: fileName,
-                    size: "Unknown",
-                    uploadDate: new Date().toLocaleDateString()
-                };
-                setPdfs([existingPDF]);
+                    const existingPDF: PDFState = {
+                        id: `existing-0`,
+                        file: new File([], fileName),
+                        s3Key: existingFile,
+                        status: 'success',
+                        url: existingFile,
+                        name: fileName,
+                        size: "Unknown",
+                        uploadDate: new Date().toLocaleDateString()
+                    };
+
+                    setPdfs([existingPDF]);
+                    lastPdfsRef.current = [existingPDF];
+                    hasInitialized.current = true;
+
+                    onPDFsChange([existingPDF]);
+                }
+            } else {
+                hasInitialized.current = true;
             }
         };
 
         initializeExistingFiles();
-    }, [existingFiles]);
+    }, [existingFiles, filename, onPDFsChange]);
 
-    // Sync with parent ONLY when pdfs actually change from user actions
-    const lastPdfsRef = useRef<PDFState[]>([]);
-
+    // Only call onPDFsChange when pdfs actually change due to user actions
     useEffect(() => {
-        // Only call onPDFsChange if pdfs actually changed and it's not the initial setup
-        if (JSON.stringify(pdfs) !== JSON.stringify(lastPdfsRef.current) && hasInitialized.current) {
-            onPDFsChange(pdfs);
-            lastPdfsRef.current = [...pdfs];
+        // Skip if not initialized or if pdfs haven't actually changed
+        if (!hasInitialized.current ||
+            JSON.stringify(pdfs) === JSON.stringify(lastPdfsRef.current)) {
+            return;
         }
+
+        // Only notify parent for success states (after upload completes)
+        const hasSuccessfulUpload = pdfs.some(pdf => pdf.status === 'success');
+        const hasNewUpload = pdfs.some(pdf =>
+            !lastPdfsRef.current.find(lastPdf => lastPdf.id === pdf.id && lastPdf.status === 'success')
+        );
+
+        if (hasSuccessfulUpload && hasNewUpload) {
+            
+            onPDFsChange(pdfs);
+        }
+
+        lastPdfsRef.current = [...pdfs];
     }, [pdfs, onPDFsChange]);
 
     // Clean up object URLs on unmount
@@ -85,16 +105,11 @@ export const HrdPDFUpload = ({ onPDFsChange, employeeID, folder, existingFiles =
         };
     }, []);
 
-    const generateS3Url = async (s3Key: string): Promise<string> => {
-        const { url } = await getUrl({ path: s3Key });
-        return url.toString();
-    };
-
-
     const generateS3Key = useCallback((file: File): string => {
         const cleanFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '-');
+        const timestamp = Date.now();
         return `hr/${employeeID}/${folder}/${cleanFileName}`;
-    }, [employeeID]);
+    }, [employeeID, folder]);
 
     const createPreviewUrl = useCallback((file: File): string => {
         const url = URL.createObjectURL(file);
@@ -104,6 +119,7 @@ export const HrdPDFUpload = ({ onPDFsChange, employeeID, folder, existingFiles =
 
     const uploadToS3 = async (pdf: PDFState): Promise<void> => {
         try {
+
             const { result } = await uploadData({
                 path: pdf.s3Key,
                 data: pdf.file,
@@ -112,6 +128,7 @@ export const HrdPDFUpload = ({ onPDFsChange, employeeID, folder, existingFiles =
                 }
             });
             await result;
+
 
             setPdfs(prev => prev.map(p =>
                 p.id === pdf.id ? { ...p, status: 'success' } : p
@@ -131,6 +148,7 @@ export const HrdPDFUpload = ({ onPDFsChange, employeeID, folder, existingFiles =
     const deleteFromS3 = async (s3Key: string): Promise<void> => {
         try {
             await remove({ path: s3Key });
+            console.log(`Deleted from S3: ${s3Key}`);
         } catch (error) {
             console.error('S3 delete failed:', error);
         }
@@ -162,13 +180,11 @@ export const HrdPDFUpload = ({ onPDFsChange, employeeID, folder, existingFiles =
     };
 
     const handleFiles = async (files: FileList) => {
-        // Only take the first file for single upload
         const pdfFiles = Array.from(files).filter(file => file.type === 'application/pdf');
-
         if (pdfFiles.length === 0) return;
 
-        // If there's already a file, replace it
         const newFile = pdfFiles[0];
+
 
         setIsUploading(true);
 
@@ -196,10 +212,8 @@ export const HrdPDFUpload = ({ onPDFsChange, employeeID, folder, existingFiles =
             uploadDate: new Date().toLocaleDateString()
         };
 
-        // Replace existing file with new one (single file only)
-        setPdfs([newPDF]);
 
-        // Upload PDF
+        setPdfs([newPDF]);
         await uploadToS3(newPDF);
 
         setIsUploading(false);
@@ -222,9 +236,10 @@ export const HrdPDFUpload = ({ onPDFsChange, employeeID, folder, existingFiles =
             previewUrlsRef.current.delete(pdfToRemove.previewUrl);
         }
 
-        // Remove file completely
+        // Remove file completely and notify parent
         setPdfs([]);
-    }, [pdfs]);
+        onPDFsChange([]);
+    }, [pdfs, onPDFsChange]);
 
     const replacePDF = useCallback(async (index: number) => {
         const pdfToRemove = pdfs[index];
@@ -237,11 +252,18 @@ export const HrdPDFUpload = ({ onPDFsChange, employeeID, folder, existingFiles =
 
         // Remove file completely
         setPdfs([]);
-    }, [pdfs]);
+        onPDFsChange([]);
+
+        // Trigger file input for new selection
+        setTimeout(() => {
+            fileInputRef.current?.click();
+        }, 100);
+    }, [pdfs, onPDFsChange]);
 
     const retryUpload = useCallback((pdfId: string) => {
         const pdf = pdfs.find(p => p.id === pdfId);
         if (pdf) {
+
             setPdfs(prev => prev.map(p =>
                 p.id === pdfId ? { ...p, status: 'uploading', error: undefined } : p
             ));
@@ -266,7 +288,12 @@ export const HrdPDFUpload = ({ onPDFsChange, employeeID, folder, existingFiles =
         let url = pdf.previewUrl;
 
         if (!url && pdf.s3Key && pdf.status === 'success') {
-            url = await generateS3Url(pdf.s3Key);
+            try {
+                const { url: s3Url } = await getUrl({ path: pdf.s3Key });
+                url = s3Url.toString();
+            } catch (error) {
+                console.error('Error generating preview URL:', error);
+            }
         }
 
         if (url) {
@@ -279,7 +306,6 @@ export const HrdPDFUpload = ({ onPDFsChange, employeeID, folder, existingFiles =
     };
 
     const allPDFsUploaded = pdfs.length > 0 && pdfs.every(pdf => pdf.status === 'success');
-    const hasUploadErrors = pdfs.some(pdf => pdf.status === 'error');
 
     return (
         <div className="space-y-4 mt-2">
@@ -319,7 +345,7 @@ export const HrdPDFUpload = ({ onPDFsChange, employeeID, folder, existingFiles =
                         ref={fileInputRef}
                         onChange={handleFileSelect}
                         accept=".pdf"
-                        multiple={false} // Single file only
+                        multiple={false}
                         className="hidden"
                         disabled={!employeeID || pdfs.length >= 1}
                     />
@@ -337,9 +363,7 @@ export const HrdPDFUpload = ({ onPDFsChange, employeeID, folder, existingFiles =
                                 Uploaded Document
                             </h4>
 
-                            {/* Single PDF Card */}
                             <div className="bg-background border rounded-lg p-4 hover:shadow-md transition-shadow">
-                                {/* File Header */}
                                 <div className="flex items-start justify-between mb-3">
                                     <div className="flex items-center gap-2 flex-1 min-w-0">
                                         <FileText className="h-5 w-5 text-red-500 flex-shrink-0" />
@@ -347,7 +371,7 @@ export const HrdPDFUpload = ({ onPDFsChange, employeeID, folder, existingFiles =
                                             className="text-sm font-medium truncate flex-1 text-foreground"
                                             title={pdfs[0].name}
                                         >
-                                            {pdfs[0].name?.split('?')[0]?.split('/').pop() || pdfs[0].name || 'Document'}
+                                            {pdfs[0].name}
                                         </span>
                                     </div>
 
@@ -374,7 +398,6 @@ export const HrdPDFUpload = ({ onPDFsChange, employeeID, folder, existingFiles =
                                     </div>
                                 </div>
 
-                                {/* File Info */}
                                 <div className="flex justify-between items-center mb-3">
                                     <span className="text-xs text-gray-500">
                                         {pdfs[0].size}
@@ -384,9 +407,6 @@ export const HrdPDFUpload = ({ onPDFsChange, employeeID, folder, existingFiles =
                                     </span>
                                 </div>
 
-
-
-                                {/* Action Buttons */}
                                 <div className="flex gap-2">
                                     <Button
                                         variant="outline"
@@ -400,7 +420,6 @@ export const HrdPDFUpload = ({ onPDFsChange, employeeID, folder, existingFiles =
                                     </Button>
                                 </div>
 
-                                {/* Error Retry Button */}
                                 {pdfs[0].status === 'error' && (
                                     <div className="mt-2">
                                         <Button
@@ -416,7 +435,6 @@ export const HrdPDFUpload = ({ onPDFsChange, employeeID, folder, existingFiles =
                                 )}
                             </div>
 
-                            {/* Upload Status */}
                             <div className="text-xs text-gray-500 text-center">
                                 {pdfs[0]?.status === 'success' && 'Document uploaded to cloud'}
                                 {pdfs[0]?.status === 'uploading' && 'Uploading document...'}
