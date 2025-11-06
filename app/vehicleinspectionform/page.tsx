@@ -27,8 +27,6 @@ export default function Vehicle_Inspection_Form() {
     const [inspectionNumber, setInspectionNumber] = useState<number>(1);
 
 
-
-
     useEffect(() => {
         window.scrollTo({ top: 0, behavior: "smooth" });
     }, []);

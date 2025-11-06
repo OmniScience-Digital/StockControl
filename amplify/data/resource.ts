@@ -176,10 +176,10 @@ const schema = a.schema({
         "LUYUYO_MEDICAL",
         "KRIEL_MEDICAL",
         "PRO_HEALTH_MEDICAL",
-        "LEGAL_LIABILITY",
+        "WILGE_VXR"
       ]),
       expiryDate: a.date().required(),
-      attachment: a.string(), // file reference
+      attachment: a.string(),
       employee: a.belongsTo('Employee', 'employeeId'),
     })
     .secondaryIndexes((index) => [
@@ -201,12 +201,12 @@ const schema = a.schema({
         "SATS_CONVEYOR",
         "SATS_COP_SOP",
         "SATS_ILOT",
-        "WILGE_VXR",
         "OHS_ACT",
         "MHSA",
         "HIRA_TRAINING",
         "APPOINTMENT_2_9_2",
         "OEM_CERT",
+        "LEGAL_LIABILITY"
       ]),
       expiryDate: a.date().required(),
       attachment: a.string(),

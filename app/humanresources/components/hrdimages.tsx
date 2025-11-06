@@ -2,443 +2,437 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
-import { Upload, FileText, X, Eye, ChevronLeft, ChevronRight, Loader2, CheckCircle, AlertCircle } from "lucide-react";
+import { Upload, FileText, X, Eye, Loader2, CheckCircle, AlertCircle, Replace } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { uploadData } from 'aws-amplify/storage';
+import { uploadData, remove, getUrl } from 'aws-amplify/storage';
 
 export interface PDFState {
-  id: string;
-  file: File;
-  s3Key: string;
-  status: 'uploading' | 'success' | 'error';
-  url?: string;
-  error?: string;
-  previewUrl?: string;
-  name: string;
-  size: string;
-  uploadDate: string;
+    id: string;
+    file: File;
+    s3Key: string;
+    status: 'uploading' | 'success' | 'error';
+    url?: string;
+    error?: string;
+    previewUrl?: string;
+    name: string;
+    size: string;
+    uploadDate: string;
 }
 
 interface PDFUploadProps {
-  onPDFsChange: (pdfs: PDFState[]) => void;
-  vehicleReg: string;
-  filetitle:string;
-  filename:string;
-  existingFiles?: string[];
+    onPDFsChange: (pdfs: PDFState[]) => void;
+    employeeID: string;
+    filetitle: string;
+    filename: string;
+    folder: string;
+    existingFiles?: string[];
 }
 
-export const HrdPDFUpload = ({ onPDFsChange, vehicleReg, existingFiles = [],filetitle,filename }: PDFUploadProps) => {
-  const [pdfs, setPdfs] = useState<PDFState[]>([]);
-  const [isUploading, setIsUploading] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const previewUrlsRef = useRef<Set<string>>(new Set());
+export const HrdPDFUpload = ({ onPDFsChange, employeeID, folder, existingFiles = [], filetitle, filename }: PDFUploadProps) => {
+    const [pdfs, setPdfs] = useState<PDFState[]>([]);
+    const [isUploading, setIsUploading] = useState(false);
+    const [isDragging, setIsDragging] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const previewUrlsRef = useRef<Set<string>>(new Set());
 
-  // Use refs to track initialization and prevent loops
-  const hasInitialized = useRef(false);
-  const lastExistingFiles = useRef<string[]>(existingFiles);
+    // Use refs to track initialization and prevent loops
+    const hasInitialized = useRef(false);
+    const lastExistingFiles = useRef<string[]>(existingFiles);
 
 
-  // Initialize with existing files - ONLY ONCE and only when existingFiles actually changes
-  useEffect(() => {
-    const existingFilesChanged = JSON.stringify(existingFiles) !== JSON.stringify(lastExistingFiles.current);
+    // Update existing files initialization to generate URLs
+    useEffect(() => {
+        const initializeExistingFiles = async () => {
+            if (existingFiles.length > 0) {
+                const existingFile = existingFiles[0];
+                const fileName = existingFile.split('/').pop() || `${filename}_1.pdf`;
+                const s3Url = await generateS3Url(existingFile);
 
-    if (!hasInitialized.current || existingFilesChanged) {
-      if (existingFiles.length > 0) {
-        const existingPDFs: PDFState[] = existingFiles.map((url, index) => {
-          const fileName = url.split('/').pop() || `${filename}_${index + 1}.pdf`;
-          return {
-            id: `existing-${index}`,
-            file: new File([], fileName),
-            s3Key: url,
-            status: 'success' as const,
-            url: url,
-            name: fileName,
-            size: "Unknown",
-            uploadDate: new Date().toLocaleDateString()
-          };
-        });
-        setPdfs(existingPDFs);
-      } else {
-        setPdfs([]);
-      }
+                const existingPDF: PDFState = {
+                    id: `existing-0`,
+                    file: new File([], fileName),
+                    s3Key: existingFile,
+                    status: 'success',
+                    url: s3Url, // Store the proper S3 URL
+                    name: fileName,
+                    size: "Unknown",
+                    uploadDate: new Date().toLocaleDateString()
+                };
+                setPdfs([existingPDF]);
+            }
+        };
 
-      hasInitialized.current = true;
-      lastExistingFiles.current = [...existingFiles];
-    }
-  }, [existingFiles]);
+        initializeExistingFiles();
+    }, [existingFiles]);
 
-  // Sync with parent ONLY when pdfs actually change from user actions
-  const lastPdfsRef = useRef<PDFState[]>([]);
+    // Sync with parent ONLY when pdfs actually change from user actions
+    const lastPdfsRef = useRef<PDFState[]>([]);
 
-  useEffect(() => {
-    // Only call onPDFsChange if pdfs actually changed and it's not the initial setup
-    if (JSON.stringify(pdfs) !== JSON.stringify(lastPdfsRef.current) && hasInitialized.current) {
-      onPDFsChange(pdfs);
-      lastPdfsRef.current = [...pdfs];
-    }
-  }, [pdfs, onPDFsChange]);
-
-  // Clean up object URLs on unmount
-  useEffect(() => {
-    return () => {
-      previewUrlsRef.current.forEach(url => URL.revokeObjectURL(url));
-      previewUrlsRef.current.clear();
-    };
-  }, []);
-
-  const generateS3Key = useCallback((file: File): string => {
-    const cleanVehicleReg = vehicleReg.replace(/[^a-zA-Z0-9]/g, '-');
-
-    const cleanFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '-');
-    return `documents/${cleanVehicleReg}/brake-lux-tests/${cleanFileName}`;
-  }, [vehicleReg]);
-
-  const createPreviewUrl = useCallback((file: File): string => {
-    const url = URL.createObjectURL(file);
-    previewUrlsRef.current.add(url);
-    return url;
-  }, []);
-
-  const uploadToS3 = async (pdf: PDFState): Promise<void> => {
-    try {
-      const { result } = await uploadData({
-        path: pdf.s3Key,
-        data: pdf.file,
-        options: {
-          contentType: 'application/pdf',
+    useEffect(() => {
+        // Only call onPDFsChange if pdfs actually changed and it's not the initial setup
+        if (JSON.stringify(pdfs) !== JSON.stringify(lastPdfsRef.current) && hasInitialized.current) {
+            onPDFsChange(pdfs);
+            lastPdfsRef.current = [...pdfs];
         }
-      });
-      await result;
+    }, [pdfs, onPDFsChange]);
 
-      setPdfs(prev => prev.map(p =>
-        p.id === pdf.id ? { ...p, status: 'success' } : p
-      ));
-    } catch (error) {
-      console.error('S3 upload failed:', error);
-      setPdfs(prev => prev.map(p =>
-        p.id === pdf.id ? {
-          ...p,
-          status: 'error',
-          error: 'Upload failed'
-        } : p
-      ));
-    }
-  };
+    // Clean up object URLs on unmount
+    useEffect(() => {
+        return () => {
+            previewUrlsRef.current.forEach(url => URL.revokeObjectURL(url));
+            previewUrlsRef.current.clear();
+        };
+    }, []);
+
+    const generateS3Url = async (s3Key: string): Promise<string> => {
+        const { url } = await getUrl({ path: s3Key });
+        return url.toString();
+    };
 
 
+    const generateS3Key = useCallback((file: File): string => {
+        const cleanFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '-');
+        return `hr/${employeeID}/${folder}/${cleanFileName}`;
+    }, [employeeID]);
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (!files || !vehicleReg) return;
+    const createPreviewUrl = useCallback((file: File): string => {
+        const url = URL.createObjectURL(file);
+        previewUrlsRef.current.add(url);
+        return url;
+    }, []);
 
-    handleFiles(files);
-  };
+    const uploadToS3 = async (pdf: PDFState): Promise<void> => {
+        try {
+            const { result } = await uploadData({
+                path: pdf.s3Key,
+                data: pdf.file,
+                options: {
+                    contentType: 'application/pdf',
+                }
+            });
+            await result;
 
-  const handleDragOver = (event: React.DragEvent) => {
-    event.preventDefault();
-    setIsDragging(true);
-  };
+            setPdfs(prev => prev.map(p =>
+                p.id === pdf.id ? { ...p, status: 'success' } : p
+            ));
+        } catch (error) {
+            console.error('S3 upload failed:', error);
+            setPdfs(prev => prev.map(p =>
+                p.id === pdf.id ? {
+                    ...p,
+                    status: 'error',
+                    error: 'Upload failed'
+                } : p
+            ));
+        }
+    };
 
-  const handleDragLeave = (event: React.DragEvent) => {
-    event.preventDefault();
-    setIsDragging(false);
-  };
+    const deleteFromS3 = async (s3Key: string): Promise<void> => {
+        try {
+            await remove({ path: s3Key });
+        } catch (error) {
+            console.error('S3 delete failed:', error);
+        }
+    };
 
-  const handleDrop = (event: React.DragEvent) => {
-    event.preventDefault();
-    setIsDragging(false);
+    const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const files = event.target.files;
+        if (!files || !employeeID) return;
 
-    const files = event.dataTransfer.files;
-    handleFiles(files);
-  };
+        handleFiles(files);
+    };
 
-  const handleFiles = async (files: FileList) => {
-    const newFiles = Array.from(files).slice(0, 10 - pdfs.length);
-    const pdfFiles = newFiles.filter(file => file.type === 'application/pdf');
+    const handleDragOver = (event: React.DragEvent) => {
+        event.preventDefault();
+        setIsDragging(true);
+    };
 
-    if (pdfFiles.length === 0) return;
+    const handleDragLeave = (event: React.DragEvent) => {
+        event.preventDefault();
+        setIsDragging(false);
+    };
 
-    setIsUploading(true);
+    const handleDrop = (event: React.DragEvent) => {
+        event.preventDefault();
+        setIsDragging(false);
 
-    const newPDFs: PDFState[] = pdfFiles.map((file) => {
-      const previewUrl = createPreviewUrl(file);
-      return {
-        id: Math.random().toString(36).substring(2, 9),
-        file,
-        s3Key: generateS3Key(file),
-        status: 'uploading',
-        previewUrl,
-        name: file.name,
-        size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
-        uploadDate: new Date().toLocaleDateString()
-      };
-    });
+        const files = event.dataTransfer.files;
+        handleFiles(files);
+    };
 
-    // Add new files to the BEGINNING instead of the end
-    const updatedPDFs = [...newPDFs, ...pdfs];
-    setPdfs(updatedPDFs);
+    const handleFiles = async (files: FileList) => {
+        // Only take the first file for single upload
+        const pdfFiles = Array.from(files).filter(file => file.type === 'application/pdf');
 
-    // Upload PDFs
-    await Promise.all(newPDFs.map(pdf => uploadToS3(pdf)));
+        if (pdfFiles.length === 0) return;
 
-    setIsUploading(false);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
-  const removePDF = useCallback((index: number) => {
-    setPdfs(prev => {
-      const pdfToRemove = prev[index];
-      if (pdfToRemove.previewUrl) {
-        URL.revokeObjectURL(pdfToRemove.previewUrl);
-        previewUrlsRef.current.delete(pdfToRemove.previewUrl);
-      }
-      return prev.filter((_, i) => i !== index);
-    });
-  }, []);
+        // If there's already a file, replace it
+        const newFile = pdfFiles[0];
 
-  const retryUpload = useCallback((pdfId: string) => {
-    const pdf = pdfs.find(p => p.id === pdfId);
-    if (pdf) {
-      setPdfs(prev => prev.map(p =>
-        p.id === pdfId ? { ...p, status: 'uploading', error: undefined } : p
-      ));
-      uploadToS3(pdf);
-    }
-  }, [pdfs]);
+        setIsUploading(true);
 
-  const getUploadStatusIcon = (pdf: PDFState) => {
-    switch (pdf.status) {
-      case 'uploading':
-        return <Loader2 className="h-4 w-4 animate-spin text-blue-500" />;
-      case 'success':
-        return <CheckCircle className="h-4 w-4 text-green-500" />;
-      case 'error':
-        return <AlertCircle className="h-4 w-4 text-red-500" />;
-      default:
-        return null;
-    }
-  };
+        // Clean up existing file preview URL
+        if (pdfs.length > 0) {
+            const existingPdf = pdfs[0];
+            if (existingPdf.previewUrl) {
+                URL.revokeObjectURL(existingPdf.previewUrl);
+                previewUrlsRef.current.delete(existingPdf.previewUrl);
+            }
+            // Delete existing file from S3 if it was uploaded
+            if (existingPdf.status === 'success' && existingPdf.s3Key) {
+                await deleteFromS3(existingPdf.s3Key);
+            }
+        }
 
-  const handlePreview = (pdf: PDFState) => {
-    // Directly open in new tab instead of showing preview modal
-    const url = pdf.url || pdf.previewUrl;
-    if (url) {
-      window.open(url, '_blank');
-    }
-  };
+        const newPDF: PDFState = {
+            id: Math.random().toString(36).substring(2, 9),
+            file: newFile,
+            s3Key: generateS3Key(newFile),
+            status: 'uploading',
+            previewUrl: createPreviewUrl(newFile),
+            name: newFile.name,
+            size: `${(newFile.size / (1024 * 1024)).toFixed(1)} MB`,
+            uploadDate: new Date().toLocaleDateString()
+        };
 
-  const triggerFileInput = () => {
-    fileInputRef.current?.click();
-  };
+        // Replace existing file with new one (single file only)
+        setPdfs([newPDF]);
 
-  const scrollLeft = () => {
-    scrollContainerRef.current?.scrollBy({ left: -300, behavior: 'smooth' });
-  };
+        // Upload PDF
+        await uploadToS3(newPDF);
 
-  const scrollRight = () => {
-    scrollContainerRef.current?.scrollBy({ left: 300, behavior: 'smooth' });
-  };
+        setIsUploading(false);
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
+    };
 
-  const canScrollLeft = () => {
-    return (scrollContainerRef.current?.scrollLeft || 0) > 0;
-  };
+    const removePDF = useCallback(async (index: number) => {
+        const pdfToRemove = pdfs[index];
 
-  const canScrollRight = () => {
-    const container = scrollContainerRef.current;
-    if (!container) return false;
-    return container.scrollLeft < container.scrollWidth - container.clientWidth - 10;
-  };
+        // Delete from S3 if it was uploaded
+        if (pdfToRemove.status === 'success' && pdfToRemove.s3Key) {
+            await deleteFromS3(pdfToRemove.s3Key);
+        }
 
-  const allPDFsUploaded = pdfs.length > 0 && pdfs.every(pdf => pdf.status === 'success');
-  const hasUploadErrors = pdfs.some(pdf => pdf.status === 'error');
+        // Clean up preview URL
+        if (pdfToRemove.previewUrl) {
+            URL.revokeObjectURL(pdfToRemove.previewUrl);
+            previewUrlsRef.current.delete(pdfToRemove.previewUrl);
+        }
 
-  return (
-    <div className="space-y-4 mt-2">
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <FileText className="h-4 w-4" />
-            {filetitle}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="pt-0">
-          {/* Upload Zone */}
-          <div
-            className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${isDragging
-                ? 'border-blue-500 bg-blue-50'
-                : 'border-gray-300 hover:border-gray-400'
-              }`}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-            onClick={triggerFileInput}
-          >
-            <Upload className="h-4 w-4 text-gray-400 mx-auto mb-2" />
-            <p className="text-sm font-medium mb-1">
-              Upload PDF documents
-            </p>
-            <p className="text-xs text-gray-500">
-              Drag and drop files here or click to browse
-            </p>
-            <p className="text-xs text-gray-400 mt-1">
-              Only PDF files are accepted
-            </p>
-          </div>
+        // Remove file completely
+        setPdfs([]);
+    }, [pdfs]);
 
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileSelect}
-            accept=".pdf"
-            multiple
-            className="hidden"
-            disabled={!vehicleReg || pdfs.length >= 10}
-          />
+    const replacePDF = useCallback(async (index: number) => {
+        const pdfToRemove = pdfs[index];
 
-          {!vehicleReg && (
-            <p className="text-sm text-amber-600 mt-2">
-              Please enter vehicle registration first to upload PDFs
-            </p>
-          )}
+        // Clean up preview URL
+        if (pdfToRemove.previewUrl) {
+            URL.revokeObjectURL(pdfToRemove.previewUrl);
+            previewUrlsRef.current.delete(pdfToRemove.previewUrl);
+        }
 
-          {/* Uploaded PDFs with Horizontal Scroll */}
-          {pdfs.length > 0 && (
-            <div className="mt-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <h4 className="text-sm font-medium">
-                  Uploaded Documents ({pdfs.length})
-                </h4>
+        // Remove file completely
+        setPdfs([]);
+    }, [pdfs]);
 
-                {pdfs.length > 2 && (
-                  <div className="flex gap-1">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={scrollLeft}
-                      disabled={!canScrollLeft()}
-                      className="h-7 w-7 p-0"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={scrollRight}
-                      disabled={!canScrollRight()}
-                      className="h-7 w-7 p-0"
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
-              </div>
+    const retryUpload = useCallback((pdfId: string) => {
+        const pdf = pdfs.find(p => p.id === pdfId);
+        if (pdf) {
+            setPdfs(prev => prev.map(p =>
+                p.id === pdfId ? { ...p, status: 'uploading', error: undefined } : p
+            ));
+            uploadToS3(pdf);
+        }
+    }, [pdfs]);
 
-              {/* Horizontal Scroll Container */}
-              <div className="relative">
-                <div
-                  ref={scrollContainerRef}
-                  className="flex gap-4 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100"
-                >
-                  {pdfs.map((pdf, index) => (
+    const getUploadStatusIcon = (pdf: PDFState) => {
+        switch (pdf.status) {
+            case 'uploading':
+                return <Loader2 className="h-4 w-4 animate-spin text-blue-500" />;
+            case 'success':
+                return <CheckCircle className="h-4 w-4 text-green-500" />;
+            case 'error':
+                return <AlertCircle className="h-4 w-4 text-red-500" />;
+            default:
+                return null;
+        }
+    };
+
+    const handlePreview = async (pdf: PDFState) => {
+        let url = pdf.previewUrl;
+
+        if (!url && pdf.s3Key && pdf.status === 'success') {
+            url = await generateS3Url(pdf.s3Key);
+        }
+
+        if (url) {
+            window.open(url, '_blank');
+        }
+    };
+
+    const triggerFileInput = () => {
+        fileInputRef.current?.click();
+    };
+
+    const allPDFsUploaded = pdfs.length > 0 && pdfs.every(pdf => pdf.status === 'success');
+    const hasUploadErrors = pdfs.some(pdf => pdf.status === 'error');
+
+    return (
+        <div className="space-y-4 mt-2">
+            <Card>
+                <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                        <FileText className="h-4 w-4" />
+                        {filetitle}
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0">
+                    {/* Upload Zone */}
                     <div
-                      key={pdf.id}
-                      className="flex-shrink-0 w-64 bg-white border rounded-lg p-4 hover:shadow-md transition-shadow"
+                        className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${isDragging
+                            ? 'border-blue-500 bg-blue-50'
+                            : 'border-gray-300 hover:border-gray-400'
+                            } ${pdfs.length >= 1 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop}
+                        onClick={pdfs.length >= 1 ? undefined : triggerFileInput}
                     >
-                      {/* File Header */}
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex items-center gap-2 flex-1 min-w-0">
-                          <FileText className="h-5 w-5 text-red-500 flex-shrink-0" />
-                          <span
-                            className="text-sm font-medium truncate flex-1"
-                            title={pdf.name}
-                          >
-                            {/* Clean the filename for display */}
-                            {pdf.name?.split('?')[0]?.split('/').pop() || pdf.name || 'Document'}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <div className="flex-shrink-0">
-                            {getUploadStatusIcon(pdf)}
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removePDF(index)}
-                            className="h-6 w-6 p-0 text-gray-400 hover:text-red-500 flex-shrink-0"
-                          >
-                            <X className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </div>
-
-                      {/* File Info */}
-                      <div className="flex  justify-end mb-3">
-               
-                        <span className="text-xs text-gray-500">
-                          {pdf.uploadDate}
-                        </span>
-                      </div>
-
-                      {/* Action Buttons */}
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handlePreview(pdf)}
-                          className="flex-1 h-8 text-xs"
-                          disabled={pdf.status === 'uploading'}
-                        >
-                          <Eye className="h-3 w-3 mr-1" />
-                          View
-                        </Button>
-
-                      </div>
-
-                      {/* Error Retry Button */}
-                      {pdf.status === 'error' && (
-                        <div className="mt-2">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="w-full h-6 text-xs bg-white"
-                            onClick={() => retryUpload(pdf.id)}
-                          >
-                            Retry Upload
-                          </Button>
-                        </div>
-                      )}
+                        <Upload className="h-4 w-4 text-gray-400 mx-auto mb-2" />
+                        <p className="text-sm font-medium mb-1">
+                            {pdfs.length >= 1 ? 'Document Uploaded' : 'Upload PDF Document'}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                            {pdfs.length >= 1 ? 'Remove current file to upload new one' : 'Drag and drop file here or click to browse'}
+                        </p>
+                        <p className="text-xs text-gray-400 mt-1">
+                            Only PDF files are accepted • Maximum 1 file
+                        </p>
                     </div>
-                  ))}
-                </div>
-              </div>
 
-              {/* Upload Status */}
-              <div className="text-xs text-gray-500 text-center">
-                {pdfs.length} PDF(s) • {pdfs.filter(p => p.status === 'success').length} uploaded •
-                {pdfs.filter(p => p.status === 'uploading').length} uploading •
-                {pdfs.filter(p => p.status === 'error').length} failed
-                {hasUploadErrors && " • Please fix errors before saving"}
-              </div>
+                    <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleFileSelect}
+                        accept=".pdf"
+                        multiple={false} // Single file only
+                        className="hidden"
+                        disabled={!employeeID || pdfs.length >= 1}
+                    />
 
-              {allPDFsUploaded && (
-                <div className="flex items-center justify-center text-green-600 text-sm">
-                  <CheckCircle className="h-4 w-4 mr-1" />
-                  All PDFs uploaded to cloud
-                </div>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                    {!employeeID && (
+                        <p className="text-sm text-amber-600 mt-2">
+                            Please enter Employee ID registration first to upload PDFs
+                        </p>
+                    )}
 
-  
-    </div>
-  );
+                    {/* Uploaded PDF */}
+                    {pdfs.length > 0 && (
+                        <div className="mt-4 space-y-3">
+                            <h4 className="text-sm font-medium">
+                                Uploaded Document
+                            </h4>
+
+                            {/* Single PDF Card */}
+                            <div className="bg-background border rounded-lg p-4 hover:shadow-md transition-shadow">
+                                {/* File Header */}
+                                <div className="flex items-start justify-between mb-3">
+                                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                                        <FileText className="h-5 w-5 text-red-500 flex-shrink-0" />
+                                        <span
+                                            className="text-sm font-medium truncate flex-1 text-foreground"
+                                            title={pdfs[0].name}
+                                        >
+                                            {pdfs[0].name?.split('?')[0]?.split('/').pop() || pdfs[0].name || 'Document'}
+                                        </span>
+                                    </div>
+
+                                    <div className="flex items-center gap-1">
+                                        <div className="flex-shrink-0">
+                                            {getUploadStatusIcon(pdfs[0])}
+                                        </div>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => replacePDF(0)}
+                                            className="h-6 w-6 p-0 text-gray-400 hover:text-gray-500 flex-shrink-0"
+                                        >
+                                            <Replace className="h-3 w-3" />
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => removePDF(0)}
+                                            className="h-6 w-6 p-0 text-gray-400 hover:text-red-500 flex-shrink-0"
+                                        >
+                                            <X className="h-3 w-3" />
+                                        </Button>
+                                    </div>
+                                </div>
+
+                                {/* File Info */}
+                                <div className="flex justify-between items-center mb-3">
+                                    <span className="text-xs text-gray-500">
+                                        {pdfs[0].size}
+                                    </span>
+                                    <span className="text-xs text-gray-500">
+                                        {pdfs[0].uploadDate}
+                                    </span>
+                                </div>
+
+
+
+                                {/* Action Buttons */}
+                                <div className="flex gap-2">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => handlePreview(pdfs[0])}
+                                        className="flex-1 h-8 text-xs"
+                                        disabled={pdfs[0].status === 'uploading'}
+                                    >
+                                        <Eye className="h-3 w-3 mr-1" />
+                                        View
+                                    </Button>
+                                </div>
+
+                                {/* Error Retry Button */}
+                                {pdfs[0].status === 'error' && (
+                                    <div className="mt-2">
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            className="w-full h-6 text-xs bg-white"
+                                            onClick={() => retryUpload(pdfs[0].id)}
+                                        >
+                                            Retry Upload
+                                        </Button>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Upload Status */}
+                            <div className="text-xs text-gray-500 text-center">
+                                {pdfs[0]?.status === 'success' && 'Document uploaded to cloud'}
+                                {pdfs[0]?.status === 'uploading' && 'Uploading document...'}
+                                {pdfs[0]?.status === 'error' && 'Upload failed - Please retry'}
+                            </div>
+
+                            {allPDFsUploaded && (
+                                <div className="flex items-center justify-center text-green-600 text-sm">
+                                    <CheckCircle className="h-4 w-4 mr-1" />
+                                    Document uploaded to cloud
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+        </div>
+    );
 };
-
-
