@@ -23,10 +23,12 @@ export interface PDFState {
 interface PDFUploadProps {
   onPDFsChange: (pdfs: PDFState[]) => void;
   vehicleReg: string;
+  filetitle:string;
+  filename:string;
   existingFiles?: string[];
 }
 
-export const PDFUpload = ({ onPDFsChange, vehicleReg, existingFiles = [] }: PDFUploadProps) => {
+export const HrdPDFUpload = ({ onPDFsChange, vehicleReg, existingFiles = [],filetitle,filename }: PDFUploadProps) => {
   const [pdfs, setPdfs] = useState<PDFState[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -46,7 +48,7 @@ export const PDFUpload = ({ onPDFsChange, vehicleReg, existingFiles = [] }: PDFU
     if (!hasInitialized.current || existingFilesChanged) {
       if (existingFiles.length > 0) {
         const existingPDFs: PDFState[] = existingFiles.map((url, index) => {
-          const fileName = url.split('/').pop() || `Brake_Lux_Test_${index + 1}.pdf`;
+          const fileName = url.split('/').pop() || `${filename}_${index + 1}.pdf`;
           return {
             id: `existing-${index}`,
             file: new File([], fileName),
@@ -258,15 +260,15 @@ export const PDFUpload = ({ onPDFsChange, vehicleReg, existingFiles = [] }: PDFU
     <div className="space-y-4 mt-2">
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <FileText className="h-5 w-5" />
-            Brake and Lux Test Documents
+          <CardTitle className="text-base flex items-center gap-2">
+            <FileText className="h-4 w-4" />
+            {filetitle}
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-0">
           {/* Upload Zone */}
           <div
-            className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${isDragging
+            className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${isDragging
                 ? 'border-blue-500 bg-blue-50'
                 : 'border-gray-300 hover:border-gray-400'
               }`}

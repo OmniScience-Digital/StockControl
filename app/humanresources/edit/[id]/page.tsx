@@ -8,11 +8,10 @@ import {
   ArrowLeft,
   User,
   Loader2,
-  Upload,
   FileText,
   Plus,
   Trash2,
-  FileArchive
+  FileArchive, BriefcaseMedical
 } from "lucide-react";
 import Footer from "@/components/layout/footer";
 import Navbar from "@/components/layout/navbar";
@@ -29,6 +28,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { formatDateForAmplify } from "@/utils/helper/time";
 import { Textarea } from "@/components/ui/textarea";
+import { HrdPDFUpload } from "../../components/hrdimages";
 
 interface Employee {
   id: string;
@@ -64,7 +64,7 @@ const MEDICAL_CERTIFICATE_TYPES = [
   "LUYUYO_MEDICAL",
   "KRIEL_MEDICAL",
   "PRO_HEALTH_MEDICAL",
-  "LEGAL_LIABILITY"
+  "WILGE_VXR",
 ];
 
 const TRAINING_CERTIFICATE_TYPES = [
@@ -77,12 +77,12 @@ const TRAINING_CERTIFICATE_TYPES = [
   "SATS_CONVEYOR",
   "SATS_COP_SOP",
   "SATS_ILOT",
-  "WILGE_VXR",
   "OHS_ACT",
   "MHSA",
   "HIRA_TRAINING",
   "APPOINTMENT_2_9_2",
-  "OEM_CERT"
+  "OEM_CERT",
+  "LEGAL_LIABILITY"
 ];
 
 export default function EditEmployeePage() {
@@ -207,41 +207,6 @@ export default function EditEmployeePage() {
     setAdditionalCerts(updated);
   };
 
-  const handleFileUpload = (field: keyof typeof fileUploads, file: File | null, index?: number) => {
-    if (index !== undefined) {
-      // For certificate arrays
-      const updated = [...fileUploads[field] as (File | null)[]];
-      updated[index] = file;
-      setFileUploads(prev => ({ ...prev, [field]: updated }));
-
-      // Update the attachment field in the certificate data
-      if (field === 'medicalCerts') {
-        handleMedicalCertChange(index, 'attachment', file ? file.name : '');
-      } else if (field === 'trainingCerts') {
-        handleTrainingCertChange(index, 'attachment', file ? file.name : '');
-      } else if (field === 'additionalCerts') {
-        handleAdditionalCertChange(index, 'attachment', file ? file.name : '');
-      }
-    } else {
-      // For single files
-      setFileUploads(prev => ({ ...prev, [field]: file }));
-
-      // Update formData with filename
-      const attachmentFieldMap: Record<string, keyof Employee> = {
-        passport: 'passportAttachment',
-        driversLicense: 'driversLicenseAttachment',
-        pdp: 'pdpAttachment',
-        cv: 'cvAttachment',
-        ppeList: 'ppeListAttachment',
-        employeeId: 'employeeIdAttachment'
-      };
-
-      if (attachmentFieldMap[field]) {
-        handleInputChange(attachmentFieldMap[field], file ? file.name : '');
-      }
-    }
-  };
-
   const addMedicalCertificate = () => {
     setMedicalCerts(prev => [...prev, { certificateType: "", expiryDate: "", attachment: "" }]);
     setFileUploads(prev => ({
@@ -290,49 +255,6 @@ export default function EditEmployeePage() {
     }));
   };
 
-  const FileUploadButton = ({
-    onFileSelect,
-    currentFile,
-    accept = "*",
-    className = ""
-  }: {
-    onFileSelect: (file: File | null) => void;
-    currentFile: File | null;
-    accept?: string;
-    className?: string;
-  }) => {
-    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-      const file = event.target.files?.[0] || null;
-      onFileSelect(file);
-    };
-
-    return (
-      <div className={`flex flex-col gap-2 ${className}`}>
-        <Input
-          type="file"
-          accept={accept}
-          onChange={handleFileChange}
-          className="hidden"
-          id={`file-upload-${Math.random()}`}
-        />
-        <Button
-          variant="outline"
-          className="w-full border-slate-300 hover:bg-gray-300"
-          onClick={() => document.getElementById(`file-upload-${Math.random()}`)?.click()}
-          type="button"
-        >
-          <Upload className="h-4 w-4 mr-2" />
-          {currentFile ? `Change File (${currentFile.name})` : "Upload File"}
-        </Button>
-        {currentFile && (
-          <span className="text-xs text-green-600">
-            Selected: {currentFile.name}
-          </span>
-        )}
-      </div>
-    );
-  };
-
   const uploadFileToStorage = async (file: File, employeeId: string, fileType: string): Promise<string | null> => {
     try {
       // Implement your actual file upload logic here
@@ -348,6 +270,14 @@ export default function EditEmployeePage() {
       return null;
     }
   };
+
+  const handleChange = async (dbkey: string, urls: string[]) => {
+    try {
+
+    } catch (error) {
+
+    }
+  }
 
   const handleSave = async () => {
     if (!employee) return;
@@ -675,11 +605,10 @@ export default function EditEmployeePage() {
             {/* Main Form */}
             <div className="lg:col-span-3">
               <Tabs defaultValue="personal" className="space-y-6">
-                <TabsList className="grid w-full grid-cols-6">
-                  <TabsTrigger value="personal" className="cursor-pointer">Personal</TabsTrigger>
-                  <TabsTrigger value="documents" className="cursor-pointer">Documents</TabsTrigger>
-                  <TabsTrigger value="medical" className="cursor-pointer">Medical</TabsTrigger>
-                  <TabsTrigger value="training" className="cursor-pointer">Training</TabsTrigger>
+                <TabsList className="grid w-full grid-cols-5">
+                  <TabsTrigger value="personal" className="cursor-pointer">Basic</TabsTrigger>
+                  <TabsTrigger value="medical" className="cursor-pointer">Medical / Induction</TabsTrigger>
+                  <TabsTrigger value="training" className="cursor-pointer">Training / Certification</TabsTrigger>
                   <TabsTrigger value="additional" className="cursor-pointer">Additional</TabsTrigger>
                   <TabsTrigger value="history" className="cursor-pointer">History</TabsTrigger>
                 </TabsList>
@@ -690,7 +619,7 @@ export default function EditEmployeePage() {
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
                         <User className="h-5 w-5" />
-                        Personal Information
+                        Basic Information
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="p-6">
@@ -745,145 +674,192 @@ export default function EditEmployeePage() {
                           </div>
 
                           <div>
-                            <Label>Employee ID Attachment</Label>
-                            <FileUploadButton
-                              onFileSelect={(file) => handleFileUpload('employeeId', file)}
-                              currentFile={fileUploads.employeeId}
-                              accept=".pdf,.jpg,.jpeg,.png"
+                            <HrdPDFUpload
+                              vehicleReg={''}
+                              filetitle="Employee ID Attachment"
+                              filename="employeeId"
+                              existingFiles={[]}
+                              onPDFsChange={(pdfs) => {
+                                const pdfUrls = pdfs.map(pdf => pdf.s3Key);
+                                handleChange("employeeId", pdfUrls);
+                              }}
                             />
+
                           </div>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
 
-                {/* Core Documents Tab */}
-                <TabsContent value="documents">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <FileText className="h-5 w-5" />
-                        Core Documents
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-6">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         {/* Passport Section */}
-                        <div className="space-y-4">
-                          <h4 className="font-semibold border-b pb-2">Passport Details</h4>
-                          <div>
-                            <Label>Passport Number</Label>
-                            <Input
-                              value={formData.passportNumber || ''}
-                              onChange={(e) => handleInputChange('passportNumber', e.target.value)}
-                              placeholder="A12345678"
-                            />
+                        <div>
+                          <div className="space-y-4">
+                            <h4 className="font-semibold border-b ">Passport Details</h4>
+                            <div>
+                              <Label>Passport Number</Label>
+                              <Input
+                                value={formData.passportNumber || ''}
+                                onChange={(e) => handleInputChange('passportNumber', e.target.value)}
+                                placeholder="A12345678"
+                              />
+                            </div>
+
+                            <div>
+                              <Label>Passport Expiry</Label>
+                              <Input
+                                type="date"
+                                value={formData.passportExpiry || ''}
+                                onChange={(e) => handleInputChange('passportExpiry', e.target.value)}
+                              />
+                            </div>
+
                           </div>
 
-                          <div>
-                            <Label>Passport Expiry</Label>
-                            <Input
-                              type="date"
-                              value={formData.passportExpiry || ''}
-                              onChange={(e) => handleInputChange('passportExpiry', e.target.value)}
-                            />
+                          <div className="space-y-4">
+                            <div>
+                              <HrdPDFUpload
+                                vehicleReg={''}
+                                filetitle="Passport Attachment"
+                                filename="passport"
+                                existingFiles={[]}
+                                onPDFsChange={(pdfs) => {
+                                  const pdfUrls = pdfs.map(pdf => pdf.s3Key);
+                                  handleChange("passport", pdfUrls);
+                                }}
+                              />
+
+                            </div>
                           </div>
 
-                          <FileUploadButton
-                            onFileSelect={(file) => handleFileUpload('passport', file)}
-                            currentFile={fileUploads.passport}
-                            accept=".pdf,.jpg,.jpeg,.png"
-                          />
                         </div>
+
 
                         {/* Driver's License Section */}
-                        <div className="space-y-4">
-                          <h4 className="font-semibold border-b pb-2">Driver's License</h4>
-                          <div>
-                            <Label>License Code</Label>
-                            <Input
-                              value={formData.driversLicenseCode || ''}
-                              onChange={(e) => handleInputChange('driversLicenseCode', e.target.value)}
-                              placeholder="B, C1, etc."
-                            />
+                        <div>
+                          <div className="space-y-4">
+                            <h4 className="font-semibold border-b ">Driver's License</h4>
+                            <div>
+                              <Label>License Code</Label>
+                              <Input
+                                value={formData.driversLicenseCode || ''}
+                                onChange={(e) => handleInputChange('driversLicenseCode', e.target.value)}
+                                placeholder="Code 10, etc."
+                              />
+                            </div>
+
+                            <div>
+                              <Label>License Expiry</Label>
+                              <Input
+                                type="date"
+                                value={formData.driversLicenseExpiry || ''}
+                                onChange={(e) => handleInputChange('driversLicenseExpiry', e.target.value)}
+                              />
+                            </div>
+
+
                           </div>
 
-                          <div>
-                            <Label>License Expiry</Label>
-                            <Input
-                              type="date"
-                              value={formData.driversLicenseExpiry || ''}
-                              onChange={(e) => handleInputChange('driversLicenseExpiry', e.target.value)}
-                            />
+                          <div className="space-y-4">
+                            <div>
+                              <HrdPDFUpload
+                                vehicleReg={''}
+                                filetitle="Driver's License Attachment"
+                                filename="driversLicense"
+                                existingFiles={[]}
+                                onPDFsChange={(pdfs) => {
+                                  const pdfUrls = pdfs.map(pdf => pdf.s3Key);
+                                  handleChange("driversLicense", pdfUrls);
+                                }}
+                              />
+
+                            </div>
                           </div>
-
-                          <FileUploadButton
-                            onFileSelect={(file) => handleFileUpload('driversLicense', file)}
-                            currentFile={fileUploads.driversLicense}
-                            accept=".pdf,.jpg,.jpeg,.png"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Additional Core Documents */}
-                      <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-4">
-                          <h4 className="font-semibold border-b pb-2">Professional Documents</h4>
-
-                          <div>
-                            <Label>PDP Expiry</Label>
-                            <Input
-                              type="date"
-                              value={formData.pdpExpiry || ''}
-                              onChange={(e) => handleInputChange('pdpExpiry', e.target.value)}
-                            />
-                          </div>
-
-                          <FileUploadButton
-                            onFileSelect={(file) => handleFileUpload('pdp', file)}
-                            currentFile={fileUploads.pdp}
-                            accept=".pdf,.jpg,.jpeg,.png"
-                          />
-
-                          <FileUploadButton
-                            onFileSelect={(file) => handleFileUpload('cv', file)}
-                            currentFile={fileUploads.cv}
-                            accept=".pdf,.doc,.docx"
-                          />
                         </div>
 
-                        <div className="space-y-4">
-                          <h4 className="font-semibold border-b pb-2">Safety Documents</h4>
+                        {/* Pdp and PPE Documents */}
+                        <div>
+                          <div className="space-y-4">
+                            <h4 className="font-semibold border-b ">PDP</h4>
 
-                          <div>
-                            <Label>PPE Expiry</Label>
-                            <Input
-                              type="date"
-                              value={formData.ppeExpiry || ''}
-                              onChange={(e) => handleInputChange('ppeExpiry', e.target.value)}
+                            <div>
+                              <Label>PDP Expiry</Label>
+                              <Input
+                                type="date"
+                                value={formData.pdpExpiry || ''}
+                                onChange={(e) => handleInputChange('pdpExpiry', e.target.value)}
+                              />
+                            </div>
+                            <HrdPDFUpload
+                              vehicleReg={''}
+                              filetitle="Pdp  Attachment"
+                              filename="pdp"
+                              existingFiles={[]}
+                              onPDFsChange={(pdfs) => {
+                                const pdfUrls = pdfs.map(pdf => pdf.s3Key);
+                                handleChange("pdp", pdfUrls);
+                              }}
                             />
                           </div>
 
-                          <FileUploadButton
-                            onFileSelect={(file) => handleFileUpload('ppeList', file)}
-                            currentFile={fileUploads.ppeList}
-                            accept=".pdf,.jpg,.jpeg,.png"
-                          />
+                          <div className="space-y-4 mt-4">
+                            <h4 className="font-semibold border-b ">Curriculum Vitae</h4>
+
+                            <Label>CV Doc</Label>
+
+                            <HrdPDFUpload
+                              vehicleReg={''}
+                              filetitle="CV  Attachment"
+                              filename="cv"
+                              existingFiles={[]}
+                              onPDFsChange={(pdfs) => {
+                                const pdfUrls = pdfs.map(pdf => pdf.s3Key);
+                                handleChange("cv", pdfUrls);
+                              }}
+                            />
+
+                          </div>
                         </div>
+
+                        <div>
+                          <div className="space-y-4">
+                            <h4 className="font-semibold border-b ">PPE</h4>
+
+                            <div>
+                              <Label>PPE Expiry</Label>
+                              <Input
+                                type="date"
+                                value={formData.ppeExpiry || ''}
+                                onChange={(e) => handleInputChange('ppeExpiry', e.target.value)}
+                              />
+                            </div>
+
+                            <HrdPDFUpload
+                              vehicleReg={''}
+                              filetitle="PPE List  Attachment"
+                              filename="ppeList"
+                              existingFiles={[]}
+                              onPDFsChange={(pdfs) => {
+                                const pdfUrls = pdfs.map(pdf => pdf.s3Key);
+                                handleChange("ppeList", pdfUrls);
+                              }}
+                            />
+                          </div>
+                        </div>
+
+
+
+
                       </div>
                     </CardContent>
                   </Card>
                 </TabsContent>
 
-                {/* Medical Certificates Tab */}
+                {/* Medical Induction Tab */}
                 <TabsContent value="medical">
                   <Card>
                     <CardHeader>
                       <div className="flex justify-between items-center">
                         <CardTitle className="flex items-center gap-2">
-                          <FileText className="h-5 w-5" />
-                          Medical Certificates
+
+                          <BriefcaseMedical className="h-5 w-5" />
+                          Medical Documents
                         </CardTitle>
                         <Button onClick={addMedicalCertificate} size="sm">
                           <Plus className="h-4 w-4 mr-2" />
@@ -935,11 +911,17 @@ export default function EditEmployeePage() {
                               </div>
                               <div className="md:col-span-2">
                                 <Label>Attachment</Label>
-                                <FileUploadButton
-                                  onFileSelect={(file) => handleFileUpload('medicalCerts', file, index)}
-                                  currentFile={fileUploads.medicalCerts[index]}
-                                  accept=".pdf,.jpg,.jpeg,.png"
+                                <HrdPDFUpload
+                                  vehicleReg={''}
+                                  filetitle="Medical Certs  Attachment"
+                                  filename="medicalCerts"
+                                  existingFiles={[]}
+                                  onPDFsChange={(pdfs) => {
+                                    const pdfUrls = pdfs.map(pdf => pdf.s3Key);
+                                    handleChange("medicalCerts", pdfUrls);
+                                  }}
                                 />
+
                               </div>
                             </div>
                           </div>
@@ -1013,10 +995,16 @@ export default function EditEmployeePage() {
                               </div>
                               <div className="md:col-span-2">
                                 <Label>Attachment</Label>
-                                <FileUploadButton
-                                  onFileSelect={(file) => handleFileUpload('trainingCerts', file, index)}
-                                  currentFile={fileUploads.trainingCerts[index]}
-                                  accept=".pdf,.jpg,.jpeg,.png"
+
+                                <HrdPDFUpload
+                                  vehicleReg={''}
+                                  filetitle="Training Certs Attachment"
+                                  filename="trainingCerts"
+                                  existingFiles={[]}
+                                  onPDFsChange={(pdfs) => {
+                                    const pdfUrls = pdfs.map(pdf => pdf.s3Key);
+                                    handleChange("trainingCerts", pdfUrls);
+                                  }}
                                 />
                               </div>
                             </div>
@@ -1081,11 +1069,18 @@ export default function EditEmployeePage() {
                               </div>
                               <div className="md:col-span-2">
                                 <Label>Attachment</Label>
-                                <FileUploadButton
-                                  onFileSelect={(file) => handleFileUpload('additionalCerts', file, index)}
-                                  currentFile={fileUploads.additionalCerts[index]}
-                                  accept=".pdf,.jpg,.jpeg,.png"
+
+                                <HrdPDFUpload
+                                  vehicleReg={''}
+                                  filetitle="Additional Certs Attachment"
+                                  filename="additionalCerts"
+                                  existingFiles={[]}
+                                  onPDFsChange={(pdfs) => {
+                                    const pdfUrls = pdfs.map(pdf => pdf.s3Key);
+                                    handleChange("additionalCerts", pdfUrls);
+                                  }}
                                 />
+
                               </div>
                             </div>
                           </div>
@@ -1149,12 +1144,12 @@ export default function EditEmployeePage() {
                 >
                   Cancel
                 </Button>
-                   
+
                 <Button
                   className=" bg-[#165b8c] hover:bg-[#365b8c]"
                   onClick={() => router.push(`/humanresources/certificates/${employeeId}`)}
                 >
-                  <FileArchive/>
+                  <FileArchive />
                   View Certs
                 </Button>
 

@@ -1,5 +1,4 @@
 // amplify/storage.ts
-
 import { defineStorage } from '@aws-amplify/backend';
 
 export const storage = defineStorage({
@@ -12,10 +11,6 @@ export const storage = defineStorage({
     ],
     // For break and lux test PDFs
     "documents/*": [
-      allow.authenticated.to(['read', 'write', 'delete']),
-      allow.guest.to(['read', 'write'])
-    ],
-    "hr/employees/{employeeId}/documents/*": [
       allow.authenticated.to(['read', 'write', 'delete']),
       allow.guest.to(['read', 'write'])
     ],

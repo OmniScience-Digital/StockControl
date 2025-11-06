@@ -291,31 +291,6 @@ export default function Vehicle_Inspection_Form() {
         }
     };
 
-    //  const handleSubmit = async (e: React.FormEvent) => {
-    //     e.preventDefault();
-    //     try {
-
-    //         const inspectionNo = await getNextInspectionNumber(formState.selectedVehicleId);
-
-    //         console.log("inspectionNo ",inspectionNo);
-
-
-    //     } catch (err) {
-    //         console.error("Error submitting form:", err);
-    //         setMessage("Failed to submit inspection: " + (err instanceof Error ? err.message : 'Unknown error'));
-    //         setShow(true);
-    //         setSuccessful(false);
-    //     } finally {
-    //         setLoadingbtn(false);
-    //         setUploadProgress({
-    //             isUploading: false,
-    //             currentImage: 0,
-    //             totalImages: 0
-    //         });
-    //     }
-    // };
-
-
     useEffect(() => {
         const subscription = client.models.Fleet.observeQuery().subscribe({
             next: ({ items: allVehicles, isSynced }) => {

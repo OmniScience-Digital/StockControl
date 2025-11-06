@@ -741,6 +741,7 @@ export default function CreateEmployeePage() {
                                                         accept=".pdf,.jpg,.jpeg,.png"
                                                     />
 
+                                                    <Label>CV Doc</Label>
                                                     <FileUploadButton
                                                         onFileSelect={(file) => handleFileUpload('cv', file)}
                                                         currentFile={fileUploads.cv}
