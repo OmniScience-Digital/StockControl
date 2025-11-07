@@ -23,67 +23,14 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-
 import { Badge } from "@/components/ui/badge";
-import { toast } from "sonner";
+import ResponseModal from "@/components/widgets/response";
 import { formatDateForAmplify } from "@/utils/helper/time";
 import { Textarea } from "@/components/ui/textarea";
 import { HrdPDFUpload } from "../../components/hrdimages";
+import { Employee, MEDICAL_CERTIFICATE_TYPES, TRAINING_CERTIFICATE_TYPES } from "@/types/hrd.types";
 
-interface Employee {
-  id: string;
-  employeeId: string;
-  employeeNumber?: string;
-  firstName: string;
-  surname: string;
-  knownAs?: string;
-  passportNumber?: string;
-  passportExpiry?: string;
-  passportAttachment?: string;
-  driversLicenseCode?: string;
-  driversLicenseExpiry?: string;
-  driversLicenseAttachment?: string;
-  authorizedDriver: boolean;
-  pdpExpiry?: string;
-  pdpAttachment?: string;
-  cvAttachment?: string;
-  ppeListAttachment?: string;
-  ppeExpiry?: string;
-  employeeIdAttachment?: string;
-  history?: string;
-  medicalCertificates?: any[];
-  trainingCertificates?: any[];
-  additionalCertificates?: any[];
-}
 
-const MEDICAL_CERTIFICATE_TYPES = [
-  "CLINIC_PLUS",
-  "CLINIC_PLUS_INDUCTION",
-  "HEARTLY_HEALTH",
-  "KLIPSPRUIT_MEDICAL",
-  "LUYUYO_MEDICAL",
-  "KRIEL_MEDICAL",
-  "PRO_HEALTH_MEDICAL",
-  "WILGE_VXR",
-];
-
-const TRAINING_CERTIFICATE_TYPES = [
-  "FIREFIGHTING",
-  "FIRST_AID_LEVEL_1",
-  "FIRST_AID_LEVEL_2",
-  "WORKING_AT_HEIGHTS",
-  "WORKING_WITH_HAND_TOOLS",
-  "WORKING_WITH_POWER_TOOLS",
-  "SATS_CONVEYOR",
-  "SATS_COP_SOP",
-  "SATS_ILOT",
-  "OHS_ACT",
-  "MHSA",
-  "HIRA_TRAINING",
-  "APPOINTMENT_2_9_2",
-  "OEM_CERT",
-  "LEGAL_LIABILITY"
-];
 
 export default function EditEmployeePage() {
   const router = useRouter();
@@ -97,17 +44,11 @@ export default function EditEmployeePage() {
   const [medicalCerts, setMedicalCerts] = useState<any[]>([]);
   const [trainingCerts, setTrainingCerts] = useState<any[]>([]);
   const [additionalCerts, setAdditionalCerts] = useState<any[]>([]);
-  const [fileUploads, setFileUploads] = useState({
-    passport: null as File | null,
-    driversLicense: null as File | null,
-    pdp: null as File | null,
-    cv: null as File | null,
-    ppeList: null as File | null,
-    employeeId: null as File | null,
-    medicalCerts: [] as (File | null)[],
-    trainingCerts: [] as (File | null)[],
-    additionalCerts: [] as (File | null)[]
-  });
+
+  const [show, setShow] = useState(false);
+  const [successful, setSuccessful] = useState(false);
+  const [message, setMessage] = useState("");
+
 
   // Add state to track which certificate is being uploaded
   const [uploadingCertIndex, setUploadingCertIndex] = useState<{
@@ -193,13 +134,23 @@ export default function EditEmployeePage() {
             }
           );
 
+
+
           setMedicalCerts(allMedicalCerts);
           setTrainingCerts(alltrainingCerts);
-          setAdditionalCerts(employeeData.additionalCertificates || []);
+          const sortedAdditionalCerts = (employeeData.additionalCertificates || [])
+            .slice()
+            .sort((a, b) => a.certificateName.localeCompare(b.certificateName));
+
+          setAdditionalCerts(sortedAdditionalCerts);
+
         }
       } catch (error) {
         console.error("Error fetching employee:", error);
-        toast.error("Failed to load employee data");
+
+        setMessage("Failed to load employee data!");
+        setShow(true);
+        setSuccessful(false);
       } finally {
         setLoading(false);
       }
@@ -236,19 +187,12 @@ export default function EditEmployeePage() {
 
   const addAdditionalCertificate = () => {
     setAdditionalCerts(prev => [...prev, { certificateName: "", expiryDate: "", attachment: "" }]);
-    setFileUploads(prev => ({
-      ...prev,
-      additionalCerts: [...prev.additionalCerts, null]
-    }));
   };
 
 
   const removeAdditionalCertificate = (index: number) => {
     setAdditionalCerts(prev => prev.filter((_, i) => i !== index));
-    setFileUploads(prev => ({
-      ...prev,
-      additionalCerts: prev.additionalCerts.filter((_, i) => i !== index)
-    }));
+
   };
 
 
@@ -326,7 +270,10 @@ export default function EditEmployeePage() {
 
     } catch (error) {
       console.error('Error handling file change:', error);
-      toast.error('Failed to update file attachment');
+      setMessage("Failed to update file attachment!");
+      setShow(true);
+      setSuccessful(false);
+
       setUploadingCertIndex(null);
     }
   }
@@ -475,13 +422,16 @@ export default function EditEmployeePage() {
         }
       }
 
-
-      // router.push('/humanresources');
-
+      router.push('/humanresources');
 
     } catch (error) {
       console.error("Error saving employee:", error);
-      toast.error("Error saving employee data!");
+
+      setMessage("Error saving employee data!");
+      setShow(true);
+      setSuccessful(false);
+
+
     } finally {
       setSaving(false);
     }
@@ -1071,7 +1021,7 @@ export default function EditEmployeePage() {
                     </CardContent>
                   </Card>
                 </TabsContent>
-                <TabsContent value="history">
+                <TabsContent value="history" >
                   <Card className="bg-background border-slate-200 shadow-sm">
                     <CardHeader className="bg-background border-b border-slate-200">
                       <CardTitle className="flex items-center gap-2 text-foreground">
@@ -1148,6 +1098,14 @@ export default function EditEmployeePage() {
                   )}
                 </Button>
               </div>
+
+              {show && (
+                <ResponseModal
+                  successful={successful}
+                  message={message}
+                  setShow={setShow}
+                />
+              )}
             </div>
           </div>
         </div>

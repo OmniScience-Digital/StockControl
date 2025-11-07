@@ -3,15 +3,7 @@
 import { client } from "@/services/schema";
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import {
-    ArrowLeft,
-    Download,
-    Calendar,
-    FileText,
-    AlertTriangle,
-    CheckCircle,
-    XCircle
-} from "lucide-react";
+import { ArrowLeft, Eye, Calendar, FileText, AlertTriangle, CheckCircle, XCircle } from "lucide-react";
 import Footer from "@/components/layout/footer";
 import Navbar from "@/components/layout/navbar";
 import Loading from "@/components/widgets/loading";
@@ -19,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { getUrl } from 'aws-amplify/storage';
 import { toast } from "sonner";
 
 interface Employee {
@@ -38,6 +31,8 @@ interface CertificateStatus {
     status: 'valid' | 'expiring' | 'expired';
 }
 
+
+
 export default function ViewCertificatesPage() {
     const router = useRouter();
     const params = useParams();
@@ -48,40 +43,52 @@ export default function ViewCertificatesPage() {
 
     const fetchEmployeeWithRelations = async (): Promise<Employee | null> => {
         try {
-            // Use the GSI to query by employeeId
-            const { data: employees, errors } = await client.models.Employee.listEmployeeByEmployeeId(
-                { employeeId: employeeId },
-                {
-                    selectionSet: [
-                        'id',
-                        'employeeId',
-                        'firstName',
-                        'surname',
-                        'medicalCertificates.*',
-                        'trainingCertificates.*',
-                        'additionalCertificates.*'
-                    ]
-                }
+            // Fetch employee base record
+            const { data: employee, errors } = await client.models.Employee.get(
+                { id: employeeId }
             );
 
-            if (errors || !employees || employees.length === 0) {
-                console.error("Error fetching employee with relations:", errors);
+            if (errors || !employee) {
+                console.error("Error fetching employee:", errors);
                 return null;
             }
 
-            return employees[0] as unknown as Employee;
+            // Fetch all related certificates using GSIs
+            const [
+                { data: medicalCertificates },
+                { data: trainingCertificates },
+                { data: additionalCertificates }
+            ] = await Promise.all([
+                client.models.EmployeeMedicalCertificate.medicalCertsByEmployee({
+                    employeeId: employee.employeeId
+                }),
+                client.models.EmployeeTrainingCertificate.trainingCertsByEmployee({
+                    employeeId: employee.employeeId
+                }),
+                client.models.EmployeeAdditionalCertificate.additionalCertsByEmployee({
+                    employeeId: employee.employeeId
+                })
+            ]);
+
+
+            return {
+                ...employee,
+                medicalCertificates: medicalCertificates || [],
+                trainingCertificates: trainingCertificates || [],
+                additionalCertificates: additionalCertificates || []
+            } as unknown as Employee;
         } catch (error) {
             console.error("Error in fetchEmployeeWithRelations:", error);
             return null;
         }
     };
+
     useEffect(() => {
         const fetchEmployee = async () => {
             try {
-                console.log(employeeId);
                 const employeeData = await fetchEmployeeWithRelations();
                 setEmployee(employeeData);
-                console.log(employeeData);
+  
             } catch (error) {
                 console.error("Error fetching employee:", error);
                 toast.error("Failed to load employee certificates");
@@ -137,11 +144,23 @@ export default function ViewCertificatesPage() {
         });
     };
 
-    const downloadFile = (fileUrl: string, fileName: string) => {
-        // Implement your file download logic here
-        console.log("Downloading:", fileUrl);
-        toast.info("Download functionality to be implemented");
-    };
+
+
+const handlePreview = async (pdf: any) => {    
+    try {
+        if (pdf.attachment) {
+            
+            const { url: s3Url } = await getUrl({ 
+                path: pdf.attachment 
+            });
+            
+            const finalUrl = s3Url.toString();
+            window.open(finalUrl, '_blank');
+        }
+    } catch (error) {
+        console.error('Error details:', error);
+    }
+};
 
     if (loading) {
         return (
@@ -195,13 +214,13 @@ export default function ViewCertificatesPage() {
 
                     <Tabs defaultValue="medical" className="space-y-6">
                         <TabsList className="grid w-full grid-cols-3">
-                            <TabsTrigger value="medical">
+                            <TabsTrigger value="medical" className="cursor-pointer">
                                 Medical Certificates ({employee.medicalCertificates?.length || 0})
                             </TabsTrigger>
-                            <TabsTrigger value="training">
+                            <TabsTrigger value="training" className="cursor-pointer">
                                 Training Certificates ({employee.trainingCertificates?.length || 0})
                             </TabsTrigger>
-                            <TabsTrigger value="additional">
+                            <TabsTrigger value="additional" className="cursor-pointer">
                                 Additional Certificates ({employee.additionalCertificates?.length || 0})
                             </TabsTrigger>
                         </TabsList>
@@ -241,10 +260,10 @@ export default function ViewCertificatesPage() {
                                                             <Button
                                                                 variant="outline"
                                                                 size="sm"
-                                                                onClick={() => downloadFile(cert.attachment, `${cert.certificateType}.pdf`)}
+                                                                onClick={() => handlePreview(cert)}
                                                             >
-                                                                <Download className="h-4 w-4 mr-2" />
-                                                                Download
+                                                                <Eye className="h-4 w-4 mr-2" />
+                                                                View
                                                             </Button>
                                                         )}
                                                     </div>
@@ -316,10 +335,10 @@ export default function ViewCertificatesPage() {
                                                             <Button
                                                                 variant="outline"
                                                                 size="sm"
-                                                                onClick={() => downloadFile(cert.attachment, `${cert.certificateType}.pdf`)}
+                                                                onClick={() => handlePreview(cert)}
                                                             >
-                                                                <Download className="h-4 w-4 mr-2" />
-                                                                Download
+                                                                <Eye className="h-4 w-4 mr-2" />
+                                                                View
                                                             </Button>
                                                         )}
                                                     </div>
@@ -391,10 +410,10 @@ export default function ViewCertificatesPage() {
                                                             <Button
                                                                 variant="outline"
                                                                 size="sm"
-                                                                onClick={() => downloadFile(cert.attachment, `${cert.certificateName}.pdf`)}
+                                                                onClick={() => handlePreview(cert)}
                                                             >
-                                                                <Download className="h-4 w-4 mr-2" />
-                                                                Download
+                                                                <Eye className="h-4 w-4 mr-2" />
+                                                                View
                                                             </Button>
                                                         )}
                                                     </div>

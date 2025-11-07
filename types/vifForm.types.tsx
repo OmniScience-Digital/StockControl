@@ -34,7 +34,7 @@ export interface Fleet {
     currentkm: number | null;
     codeRequirement: string | null;
     pdpRequirement: boolean;
-    breakandLuxTest: string[] | [];
+    breakandLuxTest: string|null;
     serviceplankm: number | null;
     breakandLuxExpirey: string | null;
     liscenseDiscExpirey:string | null;

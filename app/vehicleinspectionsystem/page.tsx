@@ -19,6 +19,7 @@ import { ConfirmDialog } from "@/components/widgets/deletedialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Fleet } from "@/types/vifForm.types";
+import { formatDateForAmplify } from "@/utils/helper/time";
 
 
 export default function FleetPage() {
@@ -65,9 +66,7 @@ export default function FleetPage() {
                     currentkm: item.currentkm ?? null,
                     codeRequirement: item.codeRequirement ?? null,
                     pdpRequirement: item.pdpRequirement ?? false,
-                    breakandLuxTest: (item.breakandLuxTest ?? []).filter(
-                        (x): x is string => x !== null
-                    ),
+                    breakandLuxTest: item.breakandLuxTest ?? null,
                     serviceplankm: item.serviceplankm ?? null,
                     breakandLuxExpirey: item.breakandLuxExpirey ?? null,
                     liscenseDiscExpirey: item.liscenseDiscExpirey ?? null,
@@ -247,7 +246,7 @@ export default function FleetPage() {
             currentkm: null,
             codeRequirement: null,
             pdpRequirement: false,
-            breakandLuxTest: [],
+            breakandLuxTest: null,
             serviceplankm: null,
             breakandLuxExpirey: null,
             liscenseDiscExpirey: null,
@@ -292,35 +291,6 @@ export default function FleetPage() {
                 historyEntries = `${storedName} created new fleet vehicle at ${johannesburgTime}\n`;
             }
 
-            // Helper function to handle date fields for AWS Amplify
-            const formatDateForAmplify = (dateValue: string | null): string | null => {
-                if (!dateValue || dateValue.trim() === "") return null;
-
-                // If it's already in YYYY-MM-DD format, return as is
-                if (/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
-                    return dateValue;
-                }
-
-                // If it's in ISO format, extract just the date part
-                if (dateValue.includes('T')) {
-                    return dateValue.split('T')[0];
-                }
-
-                // Try to parse and format
-                try {
-                    const date = new Date(dateValue);
-                    if (isNaN(date.getTime())) return null;
-
-                    const year = date.getFullYear();
-                    const month = String(date.getMonth() + 1).padStart(2, '0');
-                    const day = String(date.getDate()).padStart(2, '0');
-
-                    return `${year}-${month}-${day}`;
-                } catch {
-                    return null;
-                }
-            };
-
             const fleetData = {
                 ...editingFleet,
                 ...editedFleet,
@@ -334,7 +304,7 @@ export default function FleetPage() {
             console.log("Saving fleet data:", fleetData);
 
             if (isCreating) {
-                // Create new fleet - remove the id field for creation
+
                 const { id, ...createData } = fleetData;
                 const result = await client.models.Fleet.create(createData);
                 console.log("Create result:", result);
@@ -350,9 +320,9 @@ export default function FleetPage() {
                     ownershipStatus: fleetData.ownershipStatus || null,
                     fleetIndex: fleetData.fleetIndex || null,
                     fleetNumber: fleetData.fleetNumber || null,
-                    lastServicedate: fleetData.lastServicedate, // Already formatted
+                    lastServicedate: fleetData.lastServicedate,
                     lastServicekm: fleetData.lastServicekm || null,
-                    lastRotationdate: fleetData.lastRotationdate, // Already formatted
+                    lastRotationdate: fleetData.lastRotationdate,
                     lastRotationkm: fleetData.lastRotationkm || null,
                     servicePlanStatus: fleetData.servicePlanStatus,
                     servicePlan: fleetData.servicePlan || null,

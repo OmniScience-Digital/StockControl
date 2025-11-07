@@ -68,7 +68,7 @@ const schema = a.schema({
     currentkm: a.float(),
     codeRequirement: a.string(),
     pdpRequirement: a.boolean(),
-    breakandLuxTest: a.string().array(),
+    breakandLuxTest: a.string(),
     serviceplankm: a.float(),
     breakandLuxExpirey: a.date(),
     liscenseDiscExpirey: a.date(),

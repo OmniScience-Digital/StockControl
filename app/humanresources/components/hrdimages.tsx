@@ -6,6 +6,7 @@ import { Upload, FileText, X, Eye, Loader2, CheckCircle, AlertCircle, Replace } 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { uploadData, remove, getUrl } from 'aws-amplify/storage';
+import { ConfirmDialog } from "@/components/widgets/deletedialog";
 
 export interface PDFState {
     id: string;
@@ -16,7 +17,6 @@ export interface PDFState {
     error?: string;
     previewUrl?: string;
     name: string;
-    size: string;
     uploadDate: string;
 }
 
@@ -35,6 +35,9 @@ export const HrdPDFUpload = ({ onPDFsChange, employeeID, folder, existingFiles =
     const [isDragging, setIsDragging] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const previewUrlsRef = useRef<Set<string>>(new Set());
+
+    const [pdfToDelete, setPdfToDelete] = useState<{ index: number; name: string } | null>(null);
+    const [opendelete, setOpendelete] = useState(false);
 
     // Use refs to track the last state to prevent loops
     const lastPdfsRef = useRef<PDFState[]>([]);
@@ -57,7 +60,6 @@ export const HrdPDFUpload = ({ onPDFsChange, employeeID, folder, existingFiles =
                         status: 'success',
                         url: existingFile,
                         name: fileName,
-                        size: "Unknown",
                         uploadDate: new Date().toLocaleDateString()
                     };
 
@@ -90,7 +92,7 @@ export const HrdPDFUpload = ({ onPDFsChange, employeeID, folder, existingFiles =
         );
 
         if (hasSuccessfulUpload && hasNewUpload) {
-            
+
             onPDFsChange(pdfs);
         }
 
@@ -107,7 +109,6 @@ export const HrdPDFUpload = ({ onPDFsChange, employeeID, folder, existingFiles =
 
     const generateS3Key = useCallback((file: File): string => {
         const cleanFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '-');
-        const timestamp = Date.now();
         return `hr/${employeeID}/${folder}/${cleanFileName}`;
     }, [employeeID, folder]);
 
@@ -208,7 +209,6 @@ export const HrdPDFUpload = ({ onPDFsChange, employeeID, folder, existingFiles =
             status: 'uploading',
             previewUrl: createPreviewUrl(newFile),
             name: newFile.name,
-            size: `${(newFile.size / (1024 * 1024)).toFixed(1)} MB`,
             uploadDate: new Date().toLocaleDateString()
         };
 
@@ -305,6 +305,20 @@ export const HrdPDFUpload = ({ onPDFsChange, employeeID, folder, existingFiles =
         fileInputRef.current?.click();
     };
 
+    // Create a wrapper function with NO parameters
+    const handleDeleteClick = (index: number, fileName: string) => {
+        setPdfToDelete({ index, name: fileName });
+        setOpendelete(true);
+    };
+
+    const handleConfirmDelete = () => {
+        if (pdfToDelete) {
+            removePDF(pdfToDelete.index);
+            setPdfToDelete(null);
+            setOpendelete(false)
+        }
+    };
+
     const allPDFsUploaded = pdfs.length > 0 && pdfs.every(pdf => pdf.status === 'success');
 
     return (
@@ -390,7 +404,7 @@ export const HrdPDFUpload = ({ onPDFsChange, employeeID, folder, existingFiles =
                                         <Button
                                             variant="ghost"
                                             size="sm"
-                                            onClick={() => removePDF(0)}
+                                            onClick={() => handleDeleteClick(0, pdfs[0].name)}
                                             className="h-6 w-6 p-0 text-gray-400 hover:text-red-500 flex-shrink-0"
                                         >
                                             <X className="h-3 w-3" />
@@ -399,9 +413,6 @@ export const HrdPDFUpload = ({ onPDFsChange, employeeID, folder, existingFiles =
                                 </div>
 
                                 <div className="flex justify-between items-center mb-3">
-                                    <span className="text-xs text-gray-500">
-                                        {pdfs[0].size}
-                                    </span>
                                     <span className="text-xs text-gray-500">
                                         {pdfs[0].uploadDate}
                                     </span>
@@ -451,6 +462,11 @@ export const HrdPDFUpload = ({ onPDFsChange, employeeID, folder, existingFiles =
                     )}
                 </CardContent>
             </Card>
+            <ConfirmDialog
+                open={opendelete}
+                setOpen={setOpendelete}
+                handleConfirm={handleConfirmDelete}
+            />
         </div>
     );
 };

@@ -30,30 +30,10 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Avatar, AvatarFallback} from "@/components/ui/avatar";
+import { Employee } from "@/types/hrd.types";
 
-interface Employee {
-  id: string;
-  employeeId: string;
-  employeeNumber?: string;
-  firstName: string;
-  surname: string;
-  knownAs?: string;
-  passportNumber?: string;
-  passportExpiry?: string;
-  passportAttachment?: string;
-  driversLicenseCode?: string;
-  driversLicenseExpiry?: string;
-  driversLicenseAttachment?: string;
-  authorizedDriver: boolean;
-  pdpExpiry?: string;
-  pdpAttachment?: string;
-  cvAttachment?: string;
-  ppeListAttachment?: string;
-  ppeExpiry?: string;
-  history?: string;
-}
 
 export default function HumanResourcesPage() {
   const router = useRouter();
@@ -65,12 +45,9 @@ export default function HumanResourcesPage() {
   const [activeTab, setActiveTab] = useState("all");
 
   useEffect(() => {
-    console.log("Setting up real-time subscription for employees...");
-
     const subscription = client.models.Employee.observeQuery().subscribe({
       next: ({ items, isSynced }) => {
-        console.log("Real-time employee update received:", items.length, "items, synced:", isSynced);
-
+ 
         const mappedEmployees: Employee[] = (items || []).map(item => ({
           id: item.id,
           employeeId: item.employeeId,
@@ -228,7 +205,7 @@ export default function HumanResourcesPage() {
               Edit Profile
             </DropdownMenuItem>
             <DropdownMenuItem 
-              onClick={() => router.push(`/humanresources/certificates/${row.original.employeeId}`)}
+              onClick={() => router.push(`/humanresources/certificates/${row.original.id}`)}
               className="cursor-pointer text-slate-700"
             >
               <BadgeCheck className="h-4 w-4 mr-2" />
@@ -307,7 +284,7 @@ export default function HumanResourcesPage() {
 
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-5">
-            <Card className="bg-background border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+            <Card className="bg-background border-slate-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
@@ -321,7 +298,7 @@ export default function HumanResourcesPage() {
               </CardContent>
             </Card>
 
-            <Card className="bg-background border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+            <Card className="bg-background border-slate-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
@@ -335,7 +312,7 @@ export default function HumanResourcesPage() {
               </CardContent>
             </Card>
 
-            <Card className=" border-slate-200 shadow-sm hover:shadow-md transition-shadow bg-background">
+            <Card className=" border-slate-200 shadow-sm hover:shadow-md transition-shadow bg-background cursor-pointer">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
@@ -400,19 +377,19 @@ export default function HumanResourcesPage() {
               {/* Tabs */}
               <Tabs value={activeTab} onValueChange={setActiveTab} className="px-6">
                 <TabsList className="grid w-full grid-cols-3 mb-6">
-                  <TabsTrigger value="all" className="data-[state=active]:bg-blue-100 data-[state=active]:text-blue-700">
+                  <TabsTrigger value="all" className="data-[state=active]:bg-blue-100 data-[state=active]:text-blue-700 cursor-pointer">
                     All Employees
                     <Badge variant="secondary" className="ml-2 bg-slate-200 text-slate-700">
                       {employees.length}
                     </Badge>
                   </TabsTrigger>
-                  <TabsTrigger value="drivers" className="data-[state=active]:bg-green-100 data-[state=active]:text-green-700">
+                  <TabsTrigger value="drivers" className="data-[state=active]:bg-green-100 data-[state=active]:text-green-700 cursor-pointer">
                     Drivers
                     <Badge variant="secondary" className="ml-2 bg-slate-200 text-slate-700">
                       {stats.drivers}
                     </Badge>
                   </TabsTrigger>
-                  <TabsTrigger value="expiring" className="data-[state=active]:bg-amber-100 data-[state=active]:text-amber-700">
+                  <TabsTrigger value="expiring" className="data-[state=active]:bg-amber-100 data-[state=active]:text-amber-700 cursor-pointer">
                     Expiring
                     <Badge variant="secondary" className="ml-2 bg-slate-200 text-slate-700">
                       {stats.expiring}
