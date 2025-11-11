@@ -126,6 +126,37 @@ const schema = a.schema({
       index("clickupTaskId")
     ])
     .authorization((allow) => [allow.publicApiKey()]),
+    EmployeeTaskTable: a
+  .model({
+    employeeId: a.string().required(),
+    employeeName: a.string().required(),
+    taskType: a.enum([
+      // Core Documents
+      "passport",
+      "drivers_license", 
+      "pdp",
+      "ppe",
+      
+      // Medical Certificates
+      "medical_certificate",
+      
+      // Training Certificates  
+      "training_certificate",
+      
+      // Additional Certificates
+      "additional_certificate"
+    ]),
+    documentType: a.string().required(), 
+    documentIdentifier: a.string().required(), 
+    clickupTaskId: a.string(), 
+  })
+  .secondaryIndexes((index) => [
+    index("employeeId").sortKeys(["documentIdentifier"]), 
+    index("taskType"), 
+    index("documentIdentifier"),
+    index("clickupTaskId")
+  ])
+  .authorization((allow) => [allow.publicApiKey()]),
 
 
   Employee: a
