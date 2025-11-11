@@ -126,26 +126,11 @@ const schema = a.schema({
       index("clickupTaskId")
     ])
     .authorization((allow) => [allow.publicApiKey()]),
-    EmployeeTaskTable: a
+EmployeeTaskTable: a
   .model({
     employeeId: a.string().required(),
     employeeName: a.string().required(),
-    taskType: a.enum([
-      // Core Documents
-      "passport",
-      "drivers_license", 
-      "pdp",
-      "ppe",
-      
-      // Medical Certificates
-      "medical_certificate",
-      
-      // Training Certificates  
-      "training_certificate",
-      
-      // Additional Certificates
-      "additional_certificate"
-    ]),
+    taskType: a.string().required(),
     documentType: a.string().required(), 
     documentIdentifier: a.string().required(), 
     clickupTaskId: a.string(), 
@@ -157,7 +142,6 @@ const schema = a.schema({
     index("clickupTaskId")
   ])
   .authorization((allow) => [allow.publicApiKey()]),
-
 
   Employee: a
     .model({
