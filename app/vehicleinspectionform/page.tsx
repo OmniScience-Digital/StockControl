@@ -56,14 +56,11 @@ export default function Vehicle_Inspection_Form() {
                 { sortDirection: 'DESC', limit: 1 }
             );
 
-            console.log("Latest inspection by number:", data);
-
             const lastInspection = data?.[0];
             const lastNo = lastInspection?.inspectionNo ?? 0;
 
             const nextNumber = lastNo + 1;
-            console.log("Next inspection number:", nextNumber);
-
+ 
             return nextNumber;
         } catch (error) {
             console.error("Error fetching existing inspections:", error);

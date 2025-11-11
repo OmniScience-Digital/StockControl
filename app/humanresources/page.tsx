@@ -4,15 +4,13 @@ import { client } from "@/services/schema";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { DataTable } from "@/components/table/datatable";
-import { 
-  Edit, 
-  User, 
-  Search, 
-  Plus, 
+import {
+  Edit,
+  User,
+  Search,
+  Plus,
   Calendar,
-  BadgeCheck,
   Shield,
-  MoreVertical,
   Filter,
 } from "lucide-react";
 import { ColumnDef } from "@tanstack/react-table";
@@ -23,15 +21,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Avatar, AvatarFallback} from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Employee } from "@/types/hrd.types";
 
 
@@ -44,10 +42,22 @@ export default function HumanResourcesPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("all");
 
+  const [taskCount, setTaskCount] = useState(0);
+
   useEffect(() => {
+    const fetchTaskCount = async () => {
+      try {
+        const { data: tasks } = await client.models.EmployeeTaskTable.list();
+        setTaskCount(tasks.length);
+      } catch (error) {
+        console.error("Error fetching task count:", error);
+      }
+    };
+
+    fetchTaskCount();
     const subscription = client.models.Employee.observeQuery().subscribe({
       next: ({ items, isSynced }) => {
- 
+
         const mappedEmployees: Employee[] = (items || []).map(item => ({
           id: item.id,
           employeeId: item.employeeId,
@@ -67,7 +77,7 @@ export default function HumanResourcesPage() {
           cvAttachment: item.cvAttachment ?? undefined,
           ppeListAttachment: item.ppeListAttachment ?? undefined,
           ppeExpiry: item.ppeExpiry ?? undefined,
-        //   history: item.history ?? undefined
+          //   history: item.history ?? undefined
         }));
 
         setEmployees(mappedEmployees);
@@ -105,7 +115,7 @@ export default function HumanResourcesPage() {
     } else if (activeTab === "expiring") {
       const thirtyDaysFromNow = new Date();
       thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
-      filtered = filtered.filter(employee => 
+      filtered = filtered.filter(employee =>
         employee.passportExpiry && new Date(employee.passportExpiry) <= thirtyDaysFromNow ||
         employee.driversLicenseExpiry && new Date(employee.driversLicenseExpiry) <= thirtyDaysFromNow
       );
@@ -143,8 +153,8 @@ export default function HumanResourcesPage() {
       cell: ({ row }: { row: any }) => (
         <div className="flex items-center gap-3">
           <Avatar className="h-10 w-10 border-2 border-slate-100">
-            
-              <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-sm font-bold">
+
+            <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-sm font-bold">
               {getInitials(row.original.firstName, row.original.surname)}
             </AvatarFallback>
           </Avatar>
@@ -178,8 +188,8 @@ export default function HumanResourcesPage() {
       ),
     },
     {
-      accessorKey: "status",
-      header: "Status",
+      accessorKey: "DocExpCnt",
+      header: "Doc Exp Count",
       cell: ({ row }: { row: any }) => (
         <div className="flex justify-start">
           {getStatusBadge(row.original)}
@@ -187,49 +197,32 @@ export default function HumanResourcesPage() {
       ),
     },
     {
-      id: "actions",
-      header: "Actions",
+      id: "edit",
+      header: "Edit",
       cell: ({ row }: { row: any }) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-slate-100">
-              <MoreVertical className="h-4 w-4 text-slate-600" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuItem 
-              onClick={() => router.push(`/humanresources/edit/${row.original.id}`)}
-              className="cursor-pointer text-slate-700"
-            >
-              <Edit className="h-4 w-4 mr-2" />
-              Edit Profile
-            </DropdownMenuItem>
-            <DropdownMenuItem 
-              onClick={() => router.push(`/humanresources/certificates/${row.original.id}`)}
-              className="cursor-pointer text-slate-700"
-            >
-              <BadgeCheck className="h-4 w-4 mr-2" />
-              View Certificates
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div
+          onClick={() => router.push(`/humanresources/edit/${row.original.id}`)}
+          className="cursor-pointer text-slate-700"
+        >
+          <Edit className="h-4 w-4 mr-2" />
+
+        </div>
       ),
     },
   ];
 
   const data = Array.isArray(filteredEmployees)
     ? filteredEmployees.map((employee) => ({
-        id: employee.id,
-        employeeId: employee.employeeId,
-        firstName: employee.firstName,
-        surname: employee.surname,
-        knownAs: employee.knownAs,
-        employeeNumber: employee.employeeNumber,
-        authorizedDriver: employee.authorizedDriver,
-        passportExpiry: employee.passportExpiry,
-        driversLicenseExpiry: employee.driversLicenseExpiry,
-      }))
+      id: employee.id,
+      employeeId: employee.employeeId,
+      firstName: employee.firstName,
+      surname: employee.surname,
+      knownAs: employee.knownAs,
+      employeeNumber: employee.employeeNumber,
+      authorizedDriver: employee.authorizedDriver,
+      passportExpiry: employee.passportExpiry,
+      driversLicenseExpiry: employee.driversLicenseExpiry,
+    }))
     : [];
 
   const stats = {
@@ -239,8 +232,9 @@ export default function HumanResourcesPage() {
       const thirtyDaysFromNow = new Date();
       thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
       return (e.passportExpiry && new Date(e.passportExpiry) <= thirtyDaysFromNow) ||
-             (e.driversLicenseExpiry && new Date(e.driversLicenseExpiry) <= thirtyDaysFromNow);
-    }).length
+        (e.driversLicenseExpiry && new Date(e.driversLicenseExpiry) <= thirtyDaysFromNow);
+    }).length,
+    tasks: taskCount
   };
 
   if (loading) {
@@ -271,7 +265,7 @@ export default function HumanResourcesPage() {
                 </p>
               </div>
               <div className="flex gap-3">
-                <Button 
+                <Button
                   onClick={() => router.push('/humanresources/create')}
                   className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg shadow-blue-500/25"
                 >
@@ -317,7 +311,7 @@ export default function HumanResourcesPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-slate-500">Expiring Soon</p>
-                    <p className="text-3xl font-bold text-shadow-slate-400 mt-2">{stats.expiring}</p>
+                    <p className="text-3xl font-bold text-shadow-slate-400 mt-2">{stats.tasks}</p>
                   </div>
                   <div className="h-12 w-12 bg-amber-100 rounded-full flex items-center justify-center">
                     <Calendar className="h-6 w-6 text-amber-600" />
@@ -337,7 +331,7 @@ export default function HumanResourcesPage() {
                     Manage all employees in your organization
                   </CardDescription>
                 </div>
-                
+
                 <div className="flex flex-col sm:flex-row gap-3 bg-background">
                   {/* Search */}
                   <div className="relative bg-background">
@@ -407,7 +401,7 @@ export default function HumanResourcesPage() {
                   pageSize={10}
                   storageKey="employeeTablePagination"
                   searchColumn="knownAs"
-                  
+
                 />
               </div>
             </CardContent>

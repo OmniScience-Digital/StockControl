@@ -11,7 +11,7 @@ import {
   FileText,
   Plus,
   Trash2,
-  FileArchive, BriefcaseMedical
+  BriefcaseMedical
 } from "lucide-react";
 import Footer from "@/components/layout/footer";
 import Navbar from "@/components/layout/navbar";
@@ -29,6 +29,7 @@ import { formatDateForAmplify } from "@/utils/helper/time";
 import { Textarea } from "@/components/ui/textarea";
 import { HrdPDFUpload } from "../../components/hrdimages";
 import { Employee, MEDICAL_CERTIFICATE_TYPES, TRAINING_CERTIFICATE_TYPES } from "@/types/hrd.types";
+import { handleEmployeeTasks } from "../../components/employeetasks";
 
 
 
@@ -48,6 +49,9 @@ export default function EditEmployeePage() {
   const [show, setShow] = useState(false);
   const [successful, setSuccessful] = useState(false);
   const [message, setMessage] = useState("");
+
+  const [totalDocuments, setTotalDocuments] = useState(0);
+  const [totalExpiringDocuments, setTotalExpiringDocuments] = useState(0);
 
 
   // Add state to track which certificate is being uploaded
@@ -102,8 +106,13 @@ export default function EditEmployeePage() {
     const fetchEmployee = async () => {
       try {
         const employeeData = await fetchEmployeeWithRelations();
+   
 
         if (employeeData) {
+        const expiringtask = await client.models.EmployeeTaskTable.listEmployeeTaskTableByEmployeeId({
+          employeeId: employeeId
+        });
+           console.log(employeeData?.employeeId);
           setEmployee(employeeData);
           setFormData(employeeData);
 
@@ -111,6 +120,12 @@ export default function EditEmployeePage() {
           const certsMap = new Map(
             employeeData.medicalCertificates?.map(cert => [cert.certificateType, cert])
           );
+
+          
+     
+          const totalDocs = countUploadedDocuments(employeeData);
+          setTotalDocuments(totalDocs);
+          setTotalExpiringDocuments(expiringtask.data.length);
 
           const allMedicalCerts = MEDICAL_CERTIFICATE_TYPES.map(type =>
             certsMap.get(type) || {
@@ -159,6 +174,32 @@ export default function EditEmployeePage() {
     fetchEmployee();
   }, [employeeId]);
 
+  const countUploadedDocuments = (employeeData: any) => {
+    let total = 0;
+
+    // Direct attachments
+    const directAttachments = [
+      employeeData.employeeIdAttachment,
+      employeeData.passportAttachment,
+      employeeData.driversLicenseAttachment,
+      employeeData.pdpAttachment,
+      employeeData.cvAttachment,
+      employeeData.ppeListAttachment
+    ];
+
+    directAttachments.forEach(att => {
+      if (att) total++;
+    });
+
+    // Certificate attachments
+    const medicalCount = employeeData.medicalCertificates?.length || 0;
+    const trainingCount = employeeData.trainingCertificates?.length || 0;
+    const additionalCount = employeeData.additionalCertificates?.length || 0;
+
+    total += medicalCount + trainingCount + additionalCount;
+
+    return total;
+  };
 
   const getInitials = (firstName: string, surname: string) => {
     return `${firstName.charAt(0)}${surname.charAt(0)}`.toUpperCase();
@@ -422,7 +463,19 @@ export default function EditEmployeePage() {
         }
       }
 
-      router.push('/humanresources');
+      // Call the task checking function after all updates are complete
+      await checkAndPrintTasks(
+        employee, // oldEmployee
+        {
+          ...employeeData,
+          medicalCertificates: medicalCerts,
+          trainingCertificates: trainingCerts,
+          additionalCertificates: additionalCerts
+        }, // newData
+        storedName // username
+      );
+
+      // router.push('/humanresources');
 
     } catch (error) {
       console.error("Error saving employee:", error);
@@ -434,6 +487,110 @@ export default function EditEmployeePage() {
 
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Helper function to check tasks using GSI for ALL document types - PRINT ONLY
+  const checkAndPrintTasks = async (oldEmployee: Employee, newData: any, username: string) => {
+    // Check main employee documents - USE LOWERCASE to match database
+    const mainDocumentTypes = [
+      { key: 'passportExpiry', type: 'passport', attachment: newData.passportAttachment },
+      { key: 'driversLicenseExpiry', type: 'drivers_license', attachment: newData.driversLicenseAttachment },
+      { key: 'pdpExpiry', type: 'pdp', attachment: newData.pdpAttachment },
+      { key: 'ppeExpiry', type: 'ppe', attachment: newData.ppeListAttachment }
+    ];
+
+    for (const doc of mainDocumentTypes) {
+      const oldExpiry = oldEmployee[doc.key as keyof Employee];
+      const newExpiry = newData[doc.key as keyof Employee];
+
+      if (newExpiry && newExpiry !== oldExpiry) {
+        const documentIdentifier = `${oldEmployee.employeeId}_${doc.type}`;
+
+        // Check if task exists using GSI
+        const { data: existingTasks } = await client.models.EmployeeTaskTable.listEmployeeTaskTableByDocumentIdentifier({
+          documentIdentifier: documentIdentifier
+        });
+        const existingTask = existingTasks?.[0];
+
+        if (existingTask) {
+          await handleEmployeeTasks(newExpiry, existingTask, doc);
+        } else {
+          console.log(`No task found for: ${documentIdentifier}`);
+        }
+      }
+    }
+
+    // Check medical certificates
+    const oldMedicalCerts = oldEmployee.medicalCertificates || [];
+    const newMedicalCerts = newData.medicalCertificates || [];
+    for (const newCert of newMedicalCerts) {
+      const oldCert = oldMedicalCerts.find(oc => oc.certificateType === newCert.certificateType);
+
+      if (newCert.expiryDate && newCert.expiryDate !== oldCert?.expiryDate) {
+        const documentIdentifier = `${oldEmployee.employeeId}_medical_${newCert.certificateType}`;
+
+        const { data: existingTasks } = await client.models.EmployeeTaskTable.listEmployeeTaskTableByDocumentIdentifier({
+          documentIdentifier: documentIdentifier
+        });
+        const existingTask = existingTasks?.[0];
+
+        if (existingTask) {
+          await handleEmployeeTasks(newCert.expiryDate, existingTask, {
+            key: 'expiryDate',
+            type: `medical_${newCert.certificateType}`,
+            attachment: newCert.attachment
+          });
+        }
+      }
+    }
+
+    // Check training certificates
+    const oldTrainingCerts = oldEmployee.trainingCertificates || [];
+    const newTrainingCerts = newData.trainingCertificates || [];
+    for (const newCert of newTrainingCerts) {
+      const oldCert = oldTrainingCerts.find(oc => oc.certificateType === newCert.certificateType);
+
+      if (newCert.expiryDate && newCert.expiryDate !== oldCert?.expiryDate) {
+        const documentIdentifier = `${oldEmployee.employeeId}_training_${newCert.certificateType}`;
+
+        const { data: existingTasks } = await client.models.EmployeeTaskTable.listEmployeeTaskTableByDocumentIdentifier({
+          documentIdentifier: documentIdentifier
+        });
+        const existingTask = existingTasks?.[0];
+
+        if (existingTask) {
+          await handleEmployeeTasks(newCert.expiryDate, existingTask, {
+            key: 'expiryDate',
+            type: `training_${newCert.certificateType}`,
+            attachment: newCert.attachment
+          });
+        }
+      }
+    }
+
+    // Check additional certificates
+    const oldAdditionalCerts = oldEmployee.additionalCertificates || [];
+    const newAdditionalCerts = newData.additionalCertificates || [];
+    for (const newCert of newAdditionalCerts) {
+      const oldCert = oldAdditionalCerts.find(oc => oc.id === newCert.id);
+
+      if (newCert.expiryDate && newCert.expiryDate !== oldCert?.expiryDate) {
+        const documentIdentifier = `${oldEmployee.employeeId}_additional_${newCert.certificateName}`;
+
+        const { data: existingTasks } = await client.models.EmployeeTaskTable.listEmployeeTaskTableByDocumentIdentifier({
+          documentIdentifier: documentIdentifier
+        });
+        const existingTask = existingTasks?.[0];
+
+        if (existingTask) {
+          await handleEmployeeTasks(newCert.expiryDate, existingTask, {
+            key: 'expiryDate',
+            type: `additional_${newCert.certificateName}`,
+            attachment: newCert.attachment
+          });
+        }
+      }
     }
   };
 
@@ -532,23 +689,18 @@ export default function EditEmployeePage() {
                       <Label className="mb-2 block">Document Summary</Label>
                       <div className="space-y-2 text-sm">
                         <div className="flex justify-between">
-                          <span>Medical Certs:</span>
-                          <Badge variant={medicalCerts.length > 0 ? "default" : "secondary"}>
-                            {medicalCerts.length}
+                          <span>Total Documents uploaded:</span>
+                          <Badge variant={totalDocuments > 0 ? "default" : "secondary"}>
+                            {totalDocuments}
                           </Badge>
                         </div>
                         <div className="flex justify-between">
-                          <span>Training Certs:</span>
-                          <Badge variant={trainingCerts.length > 0 ? "default" : "secondary"}>
-                            {trainingCerts.length}
+                          <span >Documents expiring:</span>
+                          <Badge variant={totalExpiringDocuments > 0 ? "destructive" : "secondary"}>
+                            {totalExpiringDocuments}
                           </Badge>
                         </div>
-                        <div className="flex justify-between">
-                          <span>Additional Certs:</span>
-                          <Badge variant={additionalCerts.length > 0 ? "default" : "secondary"}>
-                            {additionalCerts.length}
-                          </Badge>
-                        </div>
+
                       </div>
                     </div>
                   </div>
@@ -1072,13 +1224,7 @@ export default function EditEmployeePage() {
                   Cancel
                 </Button>
 
-                <Button
-                  className=" bg-[#165b8c] hover:bg-[#365b8c]"
-                  onClick={() => router.push(`/humanresources/certificates/${employeeId}`)}
-                >
-                  <FileArchive />
-                  View Certs
-                </Button>
+
 
                 <Button
                   onClick={handleSave}
