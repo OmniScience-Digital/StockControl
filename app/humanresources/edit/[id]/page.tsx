@@ -109,10 +109,13 @@ export default function EditEmployeePage() {
    
 
         if (employeeData) {
-        const expiringtask = await client.models.EmployeeTaskTable.listEmployeeTaskTableByEmployeeId({
-          employeeId: employeeId
-        });
-           console.log(employeeData?.employeeId);
+        // Option 1
+const expiringtask = await client.models.EmployeeTaskTable.listEmployeeTaskTableByEmployeeIdAndDocumentIdentifier({
+  employeeId: employeeId
+});
+
+
+           console.log(expiringtask);
           setEmployee(employeeData);
           setFormData(employeeData);
 
