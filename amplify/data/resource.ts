@@ -137,6 +137,7 @@ EmployeeTaskTable: a
   })
   .secondaryIndexes((index) => [
     index("employeeId").sortKeys(["documentIdentifier"]), 
+    index("employeeId"),
     index("taskType"), 
     index("documentIdentifier"),
     index("clickupTaskId")
