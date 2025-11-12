@@ -106,16 +106,13 @@ export default function EditEmployeePage() {
     const fetchEmployee = async () => {
       try {
         const employeeData = await fetchEmployeeWithRelations();
-   
 
         if (employeeData) {
-        // Option 1
-        const expiringtask = await client.models.EmployeeTaskTable.listEmployeeTaskTableByEmployeeIdAndDocumentIdentifier({
-          employeeId: employeeId
-        });
 
+          const expiringtask = await client.models.EmployeeTaskTable.listEmployeeTaskTableByEmployeeIdAndEmployeeName({
+            employeeId: employeeData.employeeId
+          });
 
-           console.log(expiringtask);
           setEmployee(employeeData);
           setFormData(employeeData);
 
@@ -124,8 +121,8 @@ export default function EditEmployeePage() {
             employeeData.medicalCertificates?.map(cert => [cert.certificateType, cert])
           );
 
-          
-     
+
+
           const totalDocs = countUploadedDocuments(employeeData);
           setTotalDocuments(totalDocs);
           setTotalExpiringDocuments(expiringtask.data.length);
