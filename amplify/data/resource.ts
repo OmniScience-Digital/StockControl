@@ -257,7 +257,7 @@ const schema = a.schema({
     timestamp: a.datetime().required(),
     details: a.string().required(), // Specific description of what changed
   }).secondaryIndexes((index) => [
-    index("entityType").sortKeys(["timestamp"]).queryField("getRecentHistoryByType"),
+      index("entityId").sortKeys(["timestamp"]).queryField("getHistoryByEntityId") 
   ]).authorization((allow) => [allow.publicApiKey()]),
 
 

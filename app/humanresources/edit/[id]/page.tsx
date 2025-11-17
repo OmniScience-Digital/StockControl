@@ -112,7 +112,7 @@ export default function EditEmployeePage() {
           const expiringtask = await client.models.EmployeeTaskTable.listEmployeeTaskTableByEmployeeIdAndEmployeeName({
             employeeId: employeeData.employeeId
           });
-
+          console.log(employeeData);
           setEmployee(employeeData);
           setFormData(employeeData);
 
@@ -337,6 +337,15 @@ export default function EditEmployeePage() {
         }
       });
 
+       // Track changed fields for History table
+    const changedFields: string[] = [];
+    Object.keys(formData).forEach(key => {
+      const typedKey = key as keyof Employee;
+      if (formData[typedKey] !== employee[typedKey]) {
+        changedFields.push(`${key}: ${employee[typedKey]} → ${formData[typedKey]}`);
+      }
+    });
+
       // Update main employee record
       const employeeData = {
         employeeId: formData.employeeId!,
@@ -364,6 +373,16 @@ export default function EditEmployeePage() {
         id: employee.id,
         ...employeeData
       });
+
+       if (changedFields.length > 0) {
+      await client.models.History.create({
+        entityType: "EMPLOYEE",
+        entityId: employee.employeeId,
+        action: "UPDATE",
+        timestamp: new Date().toISOString(),
+        details: `Employee ${formData.firstName} ${formData.surname} updated by ${storedName}. Changes: ${changedFields.join(', ')}`
+      });
+    }
 
       if (result.errors) {
         throw new Error("Failed to update employee");

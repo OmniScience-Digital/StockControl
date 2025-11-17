@@ -283,7 +283,15 @@ export default function CreateEmployeePage() {
                     }
                 }
 
-                router.push('/humanresources');
+                    // Add History table entry
+                  await client.models.History.create({
+                    entityType: "EMPLOYEE",
+                    entityId: employeeId,
+                    action: "CREATE",
+                    timestamp: new Date().toISOString(),
+                    details: `Employee ${formData.firstName} ${formData.surname} created by ${storedName}`
+                    });
+                  router.push('/humanresources');
 
             } else {
                 
