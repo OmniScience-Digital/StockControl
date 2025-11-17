@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useEffect, useMemo, } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,11 +14,12 @@ import { Trash2, PlusCircle, Plus, Search, X } from "lucide-react";
 import { Category, SubCategory, ComponentItemProps } from "@/types/form.types";
 import Loading from "./component_loading";
 import { mapApiComponentToComponent, mapApiSubCategoryToSubCategory } from "./map.categories.helper";
-import { client } from "@/services/schema";
 
 // Add loading props to the interface
 interface ExtendedComponentItemProps extends ComponentItemProps {
   categoriesLoading?: boolean;
+  subcategoriesLoading?: boolean;
+  componentsLoading?: boolean;
 }
 
 export default function ComponentItem({
@@ -30,7 +33,11 @@ export default function ComponentItem({
   onAddNewKey,
   categories = [],
   usedSubcategoryIds,
+  allSubcategories = [],
+  allComponents = [],
   categoriesLoading = false,
+  subcategoriesLoading = false,
+  componentsLoading = false,
 }: ExtendedComponentItemProps) {
 
   const [isAddingNewKey, setIsAddingNewKey] = useState<string | null>(null);
@@ -40,15 +47,7 @@ export default function ComponentItem({
   const [isAddingNewComponent, setIsAddingNewComponent] = useState(false);
   const [newComponentInput, setNewComponentInput] = useState("");
 
-  //subcategories state
-  const [allSubcategories, setAllSubcategories] = useState<any[]>([]);
-  const [SubcategoriesLoading, setSubcategoriesLoading] = useState(false);
-
-  //components state
-  const [allComponents, setallComponents] = useState<any[]>([]);
-  const [componentsLoading, setcomponentsLoading] = useState(false);
-
-  // New states for  categories
+  // New states for adding categories
   const [isAddingNewCategory, setIsAddingNewCategory] = useState(false);
   const [newCategoryInput, setNewCategoryInput] = useState("");
   const [categorySearchTerm, setCategorySearchTerm] = useState("");
@@ -62,6 +61,7 @@ export default function ComponentItem({
   const filteredSubcategories = useMemo(() => {
     const allSubs = [...(allSubcategories || []), ...temporarySubcategories];
     return allSubs
+      .filter((sub: any) => sub.categoryId === selectedCategoryId)
       .map(mapApiSubCategoryToSubCategory).sort((a, b) => a.subcategoryName?.localeCompare(b.subcategoryName));
   }, [allSubcategories, temporarySubcategories, selectedCategoryId]);
 
@@ -80,7 +80,7 @@ export default function ComponentItem({
     return allCategories.filter(cat =>
       cat.categoryName?.toLowerCase().includes(categorySearchTerm.toLowerCase())
     )
-      .sort((a, b) => a.categoryName?.localeCompare(b.categoryName));
+    .sort((a, b) => a.categoryName?.localeCompare(b.categoryName)); 
   }, [categories, temporaryCategories, categorySearchTerm]);
 
   // Get components ONLY for the currently selected subcategory
@@ -101,6 +101,12 @@ export default function ComponentItem({
       key.toLowerCase().includes(searchTerm.toLowerCase())
     ).sort((a, b) => a.localeCompare(b)),
     [availableComponentIds, searchTerm]
+  );
+
+  // Memoized unused keys - ONLY from current subcategory
+  const unusedKeys = useMemo(() =>
+    availableComponentIds.filter(key => !usedKeys.includes(key)),
+    [availableComponentIds, usedKeys]
   );
 
   // Memoized available subcategories
@@ -126,57 +132,33 @@ export default function ComponentItem({
     ),
     [allAvailableOptions, componentSearchTerm]
   );
-
+  // 1. Cleanup deleted subcategories - FIXED
   useEffect(() => {
-    setSubcategoriesLoading(true);
-    const checkSubcategoryExists = async () => {
-      // Skip if it's a temporary subcategory (just added)
-      if (component.subcategoryId && component.subcategoryId.startsWith("temp-sub-")) {
-        return;
-      }
+    // Skip if it's a temporary subcategory (just added)
+    if (component.subcategoryId && component.subcategoryId.startsWith("temp-sub-")) {
+      return;
+    }
 
-      if (selectedCategoryId) {
-        const result = await client.models.SubCategory.listSubCategoriesByCategoryIdAndName({
-          categoryId: selectedCategoryId
+    if (component.subcategoryId && filteredSubcategories.length > 0) {
+      const selectedSubExists = filteredSubcategories.some(
+        sub => sub.id === component.subcategoryId
+      );
+
+      if (!selectedSubExists) {
+        onUpdate({
+          ...component,
+          componentName: "",
+          subcategoryId: "",
+          subcategoryName: "",
         });
-
-        setAllSubcategories(result.data);
-
-        console.log("Changed category");
-
-        if (!result.data) {
-          onUpdate({
-            ...component,
-            componentName: "",
-            subcategoryId: "",
-            subcategoryName: "",
-          });
-        }
-        setSubcategoriesLoading(false);
       }
+    }
 
-    };
+    console.log(filteredSubcategories);
+    console.log("Changed Subcategory");
+  }, [filteredSubcategories, component.subcategoryId]);
 
-    checkSubcategoryExists();
-  }, [selectedCategoryId]);
-
-  useEffect(() => {
-    setcomponentsLoading(true);
-    const fetchComponents = async () => {
-      if (component.subcategoryId) {
-
-        const result = await client.models.Component.listComponentsBySubCategoryId({
-          subcategoryId: component.subcategoryId
-        });
-        setallComponents(result.data || []);
-      }
-      setcomponentsLoading(false);
-    };
-
-    fetchComponents();
-  }, [component.subcategoryId]);
-
-  // Cleanup deleted subcomponents - FIXED
+  // 2. Cleanup deleted subcomponents - FIXED
   useEffect(() => {
     if (component.subComponents.some(sub => sub.key) && availableComponentIds.length > 0) {
       let needsUpdate = false;
@@ -200,8 +182,8 @@ export default function ComponentItem({
         });
       }
     }
-  }, [availableComponentIds, isAddingNewKey]);
-
+  }, [availableComponentIds, isAddingNewKey]); 
+  
 
   const updateComponentSelection = async (subcategoryId: string) => {
     try {
@@ -267,7 +249,7 @@ export default function ComponentItem({
         id: component.id,
         componentName: newComponentInput.trim(),
         subcategoryId: newSubcategoryId,
-        categoryName: selectedCategory?.categoryName || "",
+        categoryName: selectedCategory?.categoryName || "", 
         subcategoryName: newComponentInput.trim(),
         subComponents: component.subComponents
       };
@@ -394,6 +376,7 @@ export default function ComponentItem({
     setSearchTerm("");
   };
 
+
   const confirmNewKey = (subComponentId: string) => {
     if (newKeyInput.trim()) {
       const trimmedKey = newKeyInput.trim();
@@ -472,7 +455,7 @@ export default function ComponentItem({
                   {selectedCategoryId ? filteredCategories.find(cat => cat.id === selectedCategoryId)?.categoryName : "Select category"}
                 </SelectValue>
               </SelectTrigger>
-              <SelectContent onCloseAutoFocus={(e) => e.preventDefault()}>
+              <SelectContent     onCloseAutoFocus={(e) => e.preventDefault()}>
                 <div className="sticky top-0 z-10 bg-background p-2 border-b">
                   <div className="relative">
                     <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
@@ -572,7 +555,7 @@ export default function ComponentItem({
           </div>
         ) : (
           <Select
-            // key={filteredSubcategories.length}
+            key={filteredSubcategories.length}
             value={component.subcategoryId && filteredSubcategories.some(sub => sub.id === component.subcategoryId)
               ? component.subcategoryId
               : ""
@@ -604,50 +587,42 @@ export default function ComponentItem({
                     )}
                   </div>
                 </div>
-                {/* Add loading for subcategories */}
-                {SubcategoriesLoading ? (
-                  <div className="p-4 text-center">
-                    <Loading />
-                  </div>
-                ) : (<>
-                  {filteredAvailableOptions.length > 0 ? (
-                    filteredAvailableOptions.map((comp) => (
-                      <SelectItem
-                        key={comp.id}
-                        value={comp.id}
-                        disabled={usedSubcategoryIds?.includes(comp.id) && component.subcategoryId !== comp.id}
-                        className="flex items-center justify-between cursor-pointer"
-                      >
-                        <span>{comp.componentName}</span>
-                        {usedSubcategoryIds?.includes(comp.id) && component.subcategoryId !== comp.id && (
-                          <span className="text-xs text-red-500 ml-2">(already used)</span>
-                        )}
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <div className="p-2 text-center text-gray-500 text-sm">
-                      {selectedCategoryId ? "No subcategories available for this category" : "Please select a category first"}
-                    </div>
-                  )}
-
-                  <div className="border-t mt-1 pt-1">
+                {filteredAvailableOptions.length > 0 ? (
+                  filteredAvailableOptions.map((comp) => (
                     <SelectItem
-                      value="__add_new_component__"
-                      className="text-blue-600 font-medium flex items-center gap-2 cursor-pointer"
+                      key={comp.id}
+                      value={comp.id}
+                      disabled={usedSubcategoryIds?.includes(comp.id) && component.subcategoryId !== comp.id}
+                      className="flex items-center justify-between cursor-pointer"
                     >
-                      <PlusCircle className="h-4 w-4 cursor-pointer" />
-                      Add New Subcategory...
+                      <span>{comp.componentName}</span>
+                      {usedSubcategoryIds?.includes(comp.id) && component.subcategoryId !== comp.id && (
+                        <span className="text-xs text-red-500 ml-2">(already used)</span>
+                      )}
                     </SelectItem>
+                  ))
+                ) : (
+                  <div className="p-2 text-center text-gray-500 text-sm">
+                    {selectedCategoryId ? "No subcategories available for this category" : "Please select a category first"}
                   </div>
-                </>
                 )}
+
+                <div className="border-t mt-1 pt-1">
+                  <SelectItem
+                    value="__add_new_component__"
+                    className="text-blue-600 font-medium flex items-center gap-2 cursor-pointer"
+                  >
+                    <PlusCircle className="h-4 w-4 cursor-pointer" />
+                    Add New Subcategory...
+                  </SelectItem>
+                </div>
               </>
             </SelectContent>
           </Select>
         )}
       </div>
-
       {/* Subcomponents Section */}
+
       <div className="space-y-4 pl-6 border-l-2 border-blue-200">
         <div className="flex items-center justify-between">
           <h4 className="font-medium text-gray-600">Subcomponents</h4>
@@ -692,7 +667,7 @@ export default function ComponentItem({
                       <Plus className="h-4 w-4 cursor-pointer" />
                     </Button>
                   </div>
-
+  
                 </div>
               ) : (
                 <Select

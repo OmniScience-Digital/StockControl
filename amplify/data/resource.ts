@@ -126,6 +126,7 @@ const schema = a.schema({
       index("clickupTaskId")
     ])
     .authorization((allow) => [allow.publicApiKey()]),
+<<<<<<< Updated upstream
     
     EmployeeTaskTable: a
       .model({
@@ -144,6 +145,25 @@ const schema = a.schema({
         index("clickupTaskId")
       ])
       .authorization((allow) => [allow.publicApiKey()]),
+=======
+
+  EmployeeTaskTable: a
+    .model({
+      employeeId: a.string().required(),
+      employeeName: a.string().required(),
+      taskType: a.string().required(),
+      documentType: a.string().required(),
+      documentIdentifier: a.string().required(),
+      clickupTaskId: a.string(),
+    })
+    .secondaryIndexes((index) => [
+      index("employeeId"),
+      index("taskType"),
+      index("documentIdentifier"),
+      index("clickupTaskId")
+    ])
+    .authorization((allow) => [allow.publicApiKey()]),
+>>>>>>> Stashed changes
 
   Employee: a
     .model({
@@ -249,6 +269,16 @@ const schema = a.schema({
       index("expiryDate").queryField("additionalCertsByExpiry")
     ])
     .authorization((allow) => [allow.publicApiKey()]),
+
+  History: a.model({
+    entityType: a.enum(["COMPONENT", "FLEET", "INSPECTION", "EMPLOYEE"]),
+    entityId: a.string().required(),
+    action: a.string().required(), // "STOCK_UPDATE", "SERVICE", "DOCUMENT_UPDATE"
+    timestamp: a.datetime().required(),
+    details: a.string().required(), // Specific description of what changed
+  }).secondaryIndexes((index) => [
+    index("entityType").sortKeys(["timestamp"]).queryField("getRecentHistoryByType"),
+  ]).authorization((allow) => [allow.publicApiKey()]),
 
 
 });

@@ -30,6 +30,8 @@ export default function ComponentForm() {
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<Record<string, string>>({});
 
 
+  const [allSubcategories, setAllSubcategories] = useState<any[]>([]);
+  const [allComponents, setAllComponents] = useState<any[]>([]);
 
   const addNewComponent = () => {
     const newComponent: Component = {
@@ -149,6 +151,8 @@ export default function ComponentForm() {
         return;
       }
 
+
+
       // API call
       const res = await fetch("/api/click-up", {
         method: "POST",
@@ -213,6 +217,55 @@ export default function ComponentForm() {
       .map(comp => comp.subcategoryId);
   };
 
+  // Update child subscriptions to store data
+  // useEffect(() => {
+  //   const subSubscription = client.models.SubCategory.observeQuery().subscribe({
+  //     next: ({ items: subcategoriesData, isSynced }) => {
+  //       if (isSynced) {
+  //         setAllSubcategories(subcategoriesData || []);
+  //       }
+  //     }
+  //   });
+
+  //   const compSubscription = client.models.Component.observeQuery().subscribe({
+  //     next: ({ items: componentsData, isSynced }) => {
+  //       if (isSynced) {
+  //         console.log(componentsData);
+  //         setAllComponents(componentsData || []);
+  //       }
+  //     }
+  //   });
+
+  //   return () => {
+  //     subSubscription.unsubscribe();
+  //     compSubscription.unsubscribe();
+  //   };
+  // }, [addNewComponent, displayedComponents.length]);
+
+  
+    useEffect(() => {
+    const subSubscription = client.models.SubCategory.observeQuery().subscribe({
+      next: ({ items: subcategoriesData, isSynced }) => {
+        if (isSynced) {
+          setAllSubcategories(subcategoriesData || []);
+        }
+      }
+    });
+
+    const compSubscription = client.models.Component.observeQuery().subscribe({
+      next: ({ items: componentsData, isSynced }) => {
+        if (isSynced) {
+          console.log(componentsData);
+          setAllComponents(componentsData || []);
+        }
+      }
+    });
+
+    return () => {
+      subSubscription.unsubscribe();
+      compSubscription.unsubscribe();
+    };
+  }, [addNewComponent, displayedComponents.length]);
 
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
@@ -286,7 +339,12 @@ export default function ComponentForm() {
                         isRemovable={true}
                         onAddNewKey={handleAddNewKey}
                         usedSubcategoryIds={getUsedSubcategoryIds(component.id)}
+                        allSubcategories={allSubcategories}
+                        allComponents={allComponents}
+                        // Add loading props
                         categoriesLoading={categoriesLoading}
+                        subcategoriesLoading={allSubcategories.length === 0} // You might want to track this separately
+                        componentsLoading={allComponents.length === 0} // You might want to track this separately
                       />
                     ))}
 

@@ -2,7 +2,6 @@ import * as React from "react";
 import { Amplify } from "aws-amplify";
 import { useState } from "react";
 import Image from 'next/image';
-import { FcGoogle } from "react-icons/fc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -203,20 +202,7 @@ export const SignUpCard = ({ setState }: SignUpCardProps) => {
                 </form>
 
                 <Separator />
-                <div className="flex flex-col gap-y-2">
-                    <Button
-                        // disabled={isSubmitting}
-                        disabled={true}
-                        onClick={() => { }}
-                        variant="outline"
-                        size="lg"
-                        className="w-full relative"
-                    >
-                        <FcGoogle className="size-5 absolute top-3 left-2.5" />
-                        Continue with Google
-                    </Button>
-                </div>
-  
+   
                 <p className="text-xs text-muted-foreground">
                     Already have an account?{' '}
                     <span 
