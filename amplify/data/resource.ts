@@ -137,6 +137,7 @@ const schema = a.schema({
       clickupTaskId: a.string(),
     })
     .secondaryIndexes((index) => [
+      index("employeeId").sortKeys(["employeeName"]).queryField("listEmployeeTaskTableByEmployeeIdAndEmployeeName"),
       index("employeeId"),
       index("taskType"),
       index("documentIdentifier"),
