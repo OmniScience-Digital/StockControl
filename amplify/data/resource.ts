@@ -126,26 +126,6 @@ const schema = a.schema({
       index("clickupTaskId")
     ])
     .authorization((allow) => [allow.publicApiKey()]),
-<<<<<<< Updated upstream
-    
-    EmployeeTaskTable: a
-      .model({
-        employeeId: a.string().required(),
-        employeeName: a.string().required(),
-        taskType: a.string().required(),
-        documentType: a.string().required(), 
-        documentIdentifier: a.string().required(), 
-        clickupTaskId: a.string(), 
-      })
-      .secondaryIndexes((index) => [
-        index("employeeId").sortKeys(["documentIdentifier"]), 
-       index("employeeId").sortKeys(["employeeName"]), 
-        index("taskType"), 
-        index("documentIdentifier"),
-        index("clickupTaskId")
-      ])
-      .authorization((allow) => [allow.publicApiKey()]),
-=======
 
   EmployeeTaskTable: a
     .model({
@@ -163,7 +143,6 @@ const schema = a.schema({
       index("clickupTaskId")
     ])
     .authorization((allow) => [allow.publicApiKey()]),
->>>>>>> Stashed changes
 
   Employee: a
     .model({
