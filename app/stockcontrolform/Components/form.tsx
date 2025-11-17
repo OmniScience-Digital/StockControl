@@ -142,8 +142,6 @@ export default function ComponentItem({
 
         setAllSubcategories(result.data);
 
-        console.log("Changed category");
-
         if (!result.data) {
           onUpdate({
             ...component,
