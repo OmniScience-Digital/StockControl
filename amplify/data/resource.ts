@@ -273,3 +273,22 @@ export const data = defineData({
 });
 
 
+
+// import { type ClientSchema, a } from "@aws-amplify/data-construct";
+
+// export const schema = a.schema({
+//   Post: a.model({
+//     title: a.string(),
+//     status: a.string(),
+//     authorId: a.id(),
+//   }),
+// });
+
+// // ... other schema definitions
+
+// // Custom subscription with a filter
+// export const customSubscriptions = {
+//   onNewPublishedPosts: a.subscription(a.ref("Post"))
+//     .filter({ status: { eq: "PUBLISHED" } }) // Filter for posts with status "PUBLISHED"
+//     .handler(() => {}), // Define your handler here
+// };

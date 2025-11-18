@@ -460,14 +460,14 @@ export function ComponentsList({
                           </div>
                         )}
 
-                        {history && (
+                        {/* {history && (
                           <div>
                             <p className="text-muted-foreground text-sm mb-1">History:</p>
                             <p className="bg-muted/50 p-2 rounded-md whitespace-pre-wrap text-xs">
                               {history.split('\n').filter(line => line.trim()).slice(-1)[0]}
                             </p>
                           </div>
-                        )}
+                        )} */}
                       </div>
                     </div>
                   </div>

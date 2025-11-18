@@ -80,7 +80,6 @@ export default function SubcategoriesPage() {
 
       try {
         setComponentsLoading(true);
-
         const subscription = client.models.Component.observeQuery({
           filter: { subcategoryId: { eq: selectedSubCategory.id } }
         }).subscribe({
