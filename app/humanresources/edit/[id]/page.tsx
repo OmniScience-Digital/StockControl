@@ -49,6 +49,7 @@ export default function EditEmployeePage() {
   const [show, setShow] = useState(false);
   const [successful, setSuccessful] = useState(false);
   const [message, setMessage] = useState("");
+  const [history, setHistory] = useState("");
 
   const [totalDocuments, setTotalDocuments] = useState(0);
   const [totalExpiringDocuments, setTotalExpiringDocuments] = useState(0);
@@ -112,7 +113,22 @@ export default function EditEmployeePage() {
           const expiringtask = await client.models.EmployeeTaskTable.listEmployeeTaskTableByEmployeeIdAndEmployeeName({
             employeeId: employeeData.employeeId
           });
-          console.log(employeeData);
+
+          // fetch latest 20 record
+          const employeeHistory = await client.models.History.getHistoryByEntityId({
+            entityId: employeeData.employeeId,
+
+          }, {
+            sortDirection: 'DESC', 
+            limit: 20
+          });
+            // Convert to string format
+            const historyString = employeeHistory.data
+              .map(entry => entry.details)
+              .join('');
+              setHistory(historyString);
+
+
           setEmployee(employeeData);
           setFormData(employeeData);
 
@@ -329,20 +345,12 @@ export default function EditEmployeePage() {
       const storedName = localStorage.getItem("user")?.replace(/^"|"$/g, '').trim() || "Unknown User";
       const johannesburgTime = new Date().toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg" });
 
-      let historyEntries = "";
-      Object.keys(formData).forEach(key => {
-        const typedKey = key as keyof Employee;
-        if (formData[typedKey] !== employee[typedKey]) {
-          historyEntries += `${storedName} updated ${typedKey} from ${employee[typedKey]} to ${formData[typedKey]} at ${johannesburgTime}\n`;
-        }
-      });
-
        // Track changed fields for History table
     const changedFields: string[] = [];
     Object.keys(formData).forEach(key => {
       const typedKey = key as keyof Employee;
       if (formData[typedKey] !== employee[typedKey]) {
-        changedFields.push(`${key}: ${employee[typedKey]} → ${formData[typedKey]}`);
+        changedFields.push(` ${storedName} updated ${typedKey} from ${employee[typedKey]} to ${formData[typedKey]} at ${johannesburgTime}.\n`);
       }
     });
 
@@ -366,7 +374,6 @@ export default function EditEmployeePage() {
         ppeListAttachment: formData.ppeListAttachment || null,
         ppeExpiry: formatDateForAmplify(formData.ppeExpiry),
         employeeIdAttachment: formData.employeeIdAttachment || null,
-        history: historyEntries + (employee.history || "")
       };
 
       const result = await client.models.Employee.update({
@@ -1211,8 +1218,7 @@ export default function EditEmployeePage() {
                           </Label>
                           <Textarea
                             id="history"
-                            value={formData.history || ''}
-                            onChange={(e) => handleInputChange('history', e.target.value)}
+                            value={history || ''}
                             className="min-h-[200px] text-sm resize-vertical border-slate-300 focus:border-blue-500"
                             placeholder="Add any relevant history or notes about the employee..."
                             readOnly

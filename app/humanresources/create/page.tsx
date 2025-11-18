@@ -217,7 +217,7 @@ export default function CreateEmployeePage() {
 
             const storedName = localStorage.getItem("user")?.replace(/^"|"$/g, '').trim() || "Unknown User";
             const johannesburgTime = new Date().toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg" });
-            const historyEntries = `${storedName} created new employee at ${johannesburgTime}\n`;
+            const historyEntries = `${storedName} created new employee at ${johannesburgTime}.\n`;
 
             // Upload files and get their paths
             const employeeId = formData.employeeId!;
@@ -241,7 +241,6 @@ export default function CreateEmployeePage() {
                 ppeListAttachment: formData.ppeListAttachment || null,
                 ppeExpiry: formatDateForAmplify(formData.ppeExpiry),
                 employeeIdAttachment: formData.employeeIdAttachment || null,
-                history: historyEntries || ""
             };
 
             const newEmployee = await client.models.Employee.create(employeeData);
@@ -289,7 +288,7 @@ export default function CreateEmployeePage() {
                     entityId: employeeId,
                     action: "CREATE",
                     timestamp: new Date().toISOString(),
-                    details: `Employee ${formData.firstName} ${formData.surname} created by ${storedName}`
+                    details:historyEntries
                     });
                   router.push('/humanresources');
 

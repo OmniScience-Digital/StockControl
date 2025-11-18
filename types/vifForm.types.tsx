@@ -38,7 +38,6 @@ export interface Fleet {
     serviceplankm: number | null;
     breakandLuxExpirey: string | null;
     liscenseDiscExpirey:string | null;
-    history: string | null;
 }
 
 export interface PrintMenuProps {

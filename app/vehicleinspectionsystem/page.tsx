@@ -9,11 +9,9 @@ import { ColumnDef } from "@tanstack/react-table";
 import Footer from "@/components/layout/footer";
 import Navbar from "@/components/layout/navbar";
 import Loading from "@/components/widgets/loading";
-import PropLoading from "@/components/widgets/prop_loading";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { ConfirmDialog } from "@/components/widgets/deletedialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -27,7 +25,6 @@ export default function FleetPage() {
 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [prop_loading, propsetLoading] = useState(false);
     const [fleets, setFleets] = useState<Fleet[]>([]);
     const [filteredFleets, setFilteredFleets] = useState<Fleet[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
@@ -39,12 +36,10 @@ export default function FleetPage() {
     const [fleetToDelete, setFleetToDelete] = useState<{ id: string, name: string } | null>(null);
 
     useEffect(() => {
-        console.log("Setting up real-time subscription..."); // Debug log
 
         // Subscribe to real-time updates
         const subscription = client.models.Fleet.observeQuery().subscribe({
             next: ({ items, isSynced }) => {
-                console.log("Real-time update received:", items.length, "items, synced:", isSynced); // Debug log
 
                 const mappedFleets: Fleet[] = (items || []).map(item => ({
                     id: item.id,
@@ -70,7 +65,6 @@ export default function FleetPage() {
                     serviceplankm: item.serviceplankm ?? null,
                     breakandLuxExpirey: item.breakandLuxExpirey ?? null,
                     liscenseDiscExpirey: item.liscenseDiscExpirey ?? null,
-                    history: item.history ?? null
                 }));
 
 
@@ -250,7 +244,6 @@ export default function FleetPage() {
             serviceplankm: null,
             breakandLuxExpirey: null,
             liscenseDiscExpirey: null,
-            history: null
         });
         setEditedFleet({});
         setIsCreating(true);
@@ -280,15 +273,8 @@ export default function FleetPage() {
             let historyEntries = "";
 
             // Create history for changes
-            if (editingFleet.id && !isCreating) {
-                Object.keys(editedFleet).forEach(key => {
-                    const typedKey = key as keyof Fleet;
-                    if (editedFleet[typedKey] !== editingFleet[typedKey]) {
-                        historyEntries += `${storedName} updated ${typedKey} from ${editingFleet[typedKey]} to ${editedFleet[typedKey]} at ${johannesburgTime}\n`;
-                    }
-                });
-            } else if (isCreating) {
-                historyEntries = `${storedName} created new fleet vehicle at ${johannesburgTime}\n`;
+            if (isCreating) {
+                historyEntries = `${storedName} created new fleet vehicle at ${johannesburgTime}.\n`;
             }
 
             const fleetData = {
@@ -298,17 +284,32 @@ export default function FleetPage() {
                 lastRotationdate: formatDateForAmplify(editedFleet.lastRotationdate || editingFleet.lastRotationdate),
                 breakandLuxExpirey: formatDateForAmplify(editedFleet.breakandLuxExpirey || editingFleet.breakandLuxExpirey),
                 liscenseDiscExpirey: formatDateForAmplify(editedFleet.liscenseDiscExpirey || editingFleet.liscenseDiscExpirey),
-                history: historyEntries ? (editingFleet.history || "") + historyEntries : editingFleet.history
             };
 
-            console.log("Saving fleet data:", fleetData);
+
+
 
             if (isCreating) {
-
                 const { id, ...createData } = fleetData;
                 const result = await client.models.Fleet.create(createData);
-                console.log("Create result:", result);
+
+                if (result.data) {
+                    try {
+                        await client.models.History.create({
+                            entityType: "FLEET",
+                            entityId: result.data.id,
+                            action: "CREATE",
+                            timestamp: new Date().toISOString(),
+                            details: historyEntries
+                        });
+                    } catch (error) {
+                        console.log('Creating history error', error);
+                    }
+                }
+
+
             } else {
+
                 // Update existing fleet
                 const result = await client.models.Fleet.update({
                     id: fleetData.id,
@@ -334,16 +335,12 @@ export default function FleetPage() {
                     serviceplankm: fleetData.serviceplankm || null,
                     breakandLuxExpirey: fleetData.breakandLuxExpirey,
                     liscenseDiscExpirey: fleetData.liscenseDiscExpirey,
-                    history: fleetData.history || null
                 });
             }
 
             setEditingFleet(null);
             setEditedFleet({});
             setIsCreating(false);
-
-            // Show success message
-            alert(isCreating ? "Vehicle created successfully!" : "Vehicle updated successfully!");
 
         } catch (error) {
             console.error("Error saving fleet:", error);
@@ -723,20 +720,6 @@ export default function FleetPage() {
                                         </div>
                                     </div>
 
-
-                                    {/* History */}
-                                    {!isCreating && (
-                                        <div className="mt-4 space-y-2">
-                                            <label className="text-sm font-medium">History</label>
-                                            <Textarea
-                                                value={editedFleet.history || editingFleet.history || ''}
-                                                onChange={(e) => handleChange("history", e.target.value)}
-                                                className="min-h-[80px] text-sm resize-vertical"
-                                                placeholder="Vehicle history and maintenance records..."
-                                                readOnly
-                                            />
-                                        </div>
-                                    )}
                                 </CardContent>
                             </Card>
                         )}
@@ -751,8 +734,6 @@ export default function FleetPage() {
                                 searchColumn="vehicleReg"
                             />
                         </div>
-
-                        {prop_loading && <PropLoading name="Downloading file" />}
                     </div>
 
                     <ConfirmDialog

@@ -30,6 +30,8 @@ export default function FleetEditPage() {
     const [saving, setSaving] = useState(false);
     const [opendelete, setOpendelete] = useState(false);
 
+    const [history, setHistory] = useState("");
+
     // function to convert S3 keys to URLs for PDFs
     const getS3DocumentUrls = async (s3Keys: string[]): Promise<string[]> => {
         if (!s3Keys || s3Keys.length === 0) return [];
@@ -87,8 +89,22 @@ export default function FleetEditPage() {
                         serviceplankm: fleetData.serviceplankm,
                         breakandLuxExpirey: fleetData.breakandLuxExpirey,
                         liscenseDiscExpirey: fleetData.liscenseDiscExpirey,
-                        history: fleetData.history
+
                     };
+
+                    // fetch latest 20 record
+                    const employeeHistory = await client.models.History.getHistoryByEntityId({
+                        entityId: fleetData.id,
+
+                    }, {
+                        sortDirection: 'DESC',
+                        limit: 20
+                    });
+                    // Convert to string format
+                    const historyString = employeeHistory.data
+                        .map(entry => entry.details)
+                        .join('');
+                    setHistory(historyString);
 
 
                     setFleet(mappedFleet);
@@ -133,7 +149,7 @@ export default function FleetEditPage() {
 
             let historyEntries = "";
 
-            // SIMPLE FIX: Clean function that works for both create and delete
+            // Clean function that works for both create and delete
             const cleanValueForHistory = (value: any): string => {
                 if (!value || value === "") return "empty";
 
@@ -172,7 +188,6 @@ export default function FleetEditPage() {
                 lastRotationdate: formatDateForAmplify(editedFleet.lastRotationdate || fleet.lastRotationdate),
                 breakandLuxExpirey: formatDateForAmplify(editedFleet.breakandLuxExpirey || fleet.breakandLuxExpirey),
                 liscenseDiscExpirey: formatDateForAmplify(editedFleet.liscenseDiscExpirey || fleet.liscenseDiscExpirey),
-                history: historyEntries ? (fleet.history || "") + historyEntries : fleet.history
             };
 
             // Update existing fleet
@@ -200,8 +215,20 @@ export default function FleetEditPage() {
                 serviceplankm: fleetData.serviceplankm || null,
                 breakandLuxExpirey: fleetData.breakandLuxExpirey,
                 liscenseDiscExpirey: fleetData.liscenseDiscExpirey,
-                history: fleetData.history || null
             });
+            try {
+
+                // Add History table entry
+                await client.models.History.create({
+                    entityType: "FLEET",
+                    entityId: fleetData.id,
+                    action: "UPDATE",
+                    timestamp: new Date().toISOString(),
+                    details: historyEntries
+                });
+            } catch (error) {
+                console.log('Updating fleet history error ', error);
+            }
 
             // Navigate back to list page
             router.push('/vehicleinspectionsystem');
@@ -561,7 +588,7 @@ export default function FleetEditPage() {
                             <div className="col-span-full">
                                 <PDFUpload
                                     vehicleReg={editedFleet.vehicleReg || fleet.vehicleReg || ''}
-                                     existingFiles={fleet.breakandLuxTest ? [fleet.breakandLuxTest] : []}
+                                    existingFiles={fleet.breakandLuxTest ? [fleet.breakandLuxTest] : []}
                                     onPDFsChange={(pdfs) => {
                                         const pdfUrls = pdfs.map(pdf => pdf.s3Key);
                                         handleChange("breakandLuxTest", pdfUrls[0] || '');
@@ -574,8 +601,7 @@ export default function FleetEditPage() {
                             <div className="mt-4 space-y-2">
                                 <label className="text-sm font-medium">History</label>
                                 <Textarea
-                                    value={editedFleet.history || fleet.history || ''}
-                                    onChange={(e) => handleChange("history", e.target.value)}
+                                    value={history || ''}
                                     className="min-h-[80px] text-sm resize-vertical"
                                     placeholder="Vehicle history and maintenance records..."
                                     readOnly

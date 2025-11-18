@@ -37,7 +37,6 @@ const schema = a.schema({
     minimumStock: a.integer(),
     currentStock: a.integer(),
     notes: a.string(),
-    history: a.string(),
     subcategoryId: a.string().required(),
     subcategory: a.belongsTo('SubCategory', 'subcategoryId'),
   }).secondaryIndexes((index) => [
@@ -72,7 +71,6 @@ const schema = a.schema({
     serviceplankm: a.float(),
     breakandLuxExpirey: a.date(),
     liscenseDiscExpirey: a.date(),
-    history: a.string(),
     inspection: a.hasMany('Inspection', 'fleetid'),
   }).authorization((allow) => [allow.publicApiKey()]),
 
@@ -162,7 +160,6 @@ const schema = a.schema({
       authorizedDriver: a.boolean(),
       pdpExpiry: a.date(),
       pdpAttachment: a.string(),
-      history: a.string(),
       // Core documents
       cvAttachment: a.string(),
       ppeListAttachment: a.string(),
@@ -257,7 +254,7 @@ const schema = a.schema({
     timestamp: a.datetime().required(),
     details: a.string().required(), // Specific description of what changed
   }).secondaryIndexes((index) => [
-      index("entityId").sortKeys(["timestamp"]).queryField("getHistoryByEntityId") 
+      index("entityId").sortKeys(["timestamp"]).queryField("getHistoryByEntityId"),
   ]).authorization((allow) => [allow.publicApiKey()]),
 
 

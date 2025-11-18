@@ -24,6 +24,5 @@ export interface Component {
   minimumStock: number;
   currentStock: number;
   notes: string;
-  history: string;
   subcategoryId: string;
 }

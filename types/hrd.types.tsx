@@ -18,7 +18,6 @@ export interface Employee {
   ppeListAttachment?: string;
   ppeExpiry?: string;
   employeeIdAttachment?: string;
-  history?: string;
   medicalCertificates?: any[];
   trainingCertificates?: any[];
   additionalCertificates?: any[];

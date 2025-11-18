@@ -3,22 +3,18 @@
 import Footer from "@/components/layout/footer";
 import Navbar from "@/components/layout/navbar";
 import Loading from "@/components/widgets/loading";
-
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Package, ArrowLeft, FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useRouter } from "next/navigation";
 import { Component, SubCategory } from "@/types/ims.types";
 import { client } from "@/services/schema";
 import { SubCategoriesList } from "@/app/inventorymanagementsystem/components/subcategorieslist";
 import { ComponentsList } from "@/app/inventorymanagementsystem/components/components.list";
 
 export default function SubcategoriesPage() {
-  const router = useRouter();
   const params = useParams();
   const [categoryName, setCategoryName] = useState("");
   const id = decodeURIComponent(params.id as string);
@@ -103,7 +99,6 @@ export default function SubcategoriesPage() {
               minimumStock: item.minimumStock || 0,
               currentStock: item.currentStock || 0,
               notes: item.notes || "",
-              history: item.history || "",
               subcategoryId: item.subcategoryId,
             }));
             setComponents(mappedComponents);
@@ -142,7 +137,6 @@ export default function SubcategoriesPage() {
         minimumStock: updatedComponent.minimumStock,
         currentStock: updatedComponent.currentStock,
         notes: updatedComponent.notes,
-        history: updatedComponent.history,
       });
     } catch (error) {
       console.error("Error updating component:", error);
@@ -160,7 +154,6 @@ export default function SubcategoriesPage() {
       await client.models.Component.delete({
         id: componentId
       });
-      // The real-time subscription will automatically update the components list
     } catch (error) {
       console.error("Error deleting component:", error);
     }

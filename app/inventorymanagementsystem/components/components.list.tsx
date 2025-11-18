@@ -13,9 +13,10 @@ import {
   Warehouse,
   Trash2,
 } from "lucide-react";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { ConfirmDialog } from "@/components/widgets/deletedialog";
 import { Component } from "@/types/ims.types";
+import { client } from "@/services/schema";
 
 interface ComponentsListProps {
   components: Component[];
@@ -36,6 +37,27 @@ export function ComponentsList({
   const itemsPerPage = 10;
 
   const [opendelete, setOpendelete] = useState(false); // Dialog visibility state for deleting dashboard
+  const [history, setHistory] = useState("");
+
+  useEffect(() => {
+    const getHistory = async () => {
+      if (!editedComponent?.id) return;
+
+      const employeeHistory = await client.models.History.getHistoryByEntityId(
+        { entityId: editedComponent.id },
+        { sortDirection: 'DESC', limit: 20 }
+      );
+
+      const historyString = employeeHistory.data
+        .map(entry => entry.details)
+        .join('');
+
+      setHistory(historyString);
+    };
+
+    getHistory();
+  }, [editedComponent?.id]);
+
 
   const filteredComponents = useMemo(() => {
     return components.filter(component => {
@@ -66,19 +88,10 @@ export function ComponentsList({
     setEditedComponent({ ...component });
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (editingComponent && editedComponent) {
       // Get user from localStorage - proper way to handle it
-      let storedName = "Unknown User";
-      try {
-        const userData = localStorage.getItem("user");
-        if (userData) {
-          // Remove any quotes and trim
-          storedName = userData.replace(/^"|"$/g, '').trim();
-        }
-      } catch (error) {
-        console.error("Error getting user from localStorage:", error);
-      }
+      const storedName = localStorage.getItem("user")?.replace(/^"|"$/g, '').trim() || "Unknown User";
 
       // Get Johannesburg time
       const johannesburgTime = new Date().toLocaleString("en-ZA", {
@@ -103,12 +116,31 @@ export function ComponentsList({
       const updatedComponent = {
         ...editingComponent,
         ...editedComponent,
-        history: historyEntries ? (editingComponent.history || "") + historyEntries : editingComponent.history
       };
 
       console.log("Saving component with history:", updatedComponent); // Debug log
 
       onComponentUpdate(updatedComponent);
+
+      console.log(historyEntries);
+      // Save to new History DB if there were changes
+      if (historyEntries.trim() !== "") {
+        try {
+          await client.models.History.create({
+            entityType: "COMPONENT",
+            entityId: editingComponent.id,
+            action: "UPDATE",
+            timestamp: new Date().toISOString(),
+            details: historyEntries,
+          });
+          setHistory(historyEntries);
+
+        } catch (error) {
+          console.log("Saving History ", error)
+        }
+
+      }
+
       setEditingComponent(null);
       setEditedComponent({});
     }
@@ -346,8 +378,7 @@ export function ComponentsList({
                   <div className="space-y-2">
                     <label className="text-sm font-medium">History</label>
                     <Textarea
-                      value={editedComponent.history || ""}
-                      onChange={(e) => handleChange("history", e.target.value)}
+                      value={history}
                       className="min-h-[80px] text-sm resize-vertical"
                       placeholder="Component history, changes, or maintenance records..."
                       readOnly
@@ -372,7 +403,7 @@ export function ComponentsList({
                         {component.description && (
                           <div className="mb-2">
                             <p className="text-sm text-muted-foreground mb-1 font-medium">Description:</p>
-                             <p className="text-sm bg-muted/50 p-2 rounded-md whitespace-nowrap overflow-hidden text-ellipsis">
+                            <p className="text-sm bg-muted/50 p-2 rounded-md whitespace-nowrap overflow-hidden text-ellipsis">
                               {component.description}
                             </p>
                           </div>
@@ -429,11 +460,11 @@ export function ComponentsList({
                           </div>
                         )}
 
-                        {component.history && (
+                        {history && (
                           <div>
                             <p className="text-muted-foreground text-sm mb-1">History:</p>
                             <p className="bg-muted/50 p-2 rounded-md whitespace-pre-wrap text-xs">
-                              {component.history.split('\n').filter(line => line.trim()).slice(-1)[0]}
+                              {history.split('\n').filter(line => line.trim()).slice(-1)[0]}
                             </p>
                           </div>
                         )}
