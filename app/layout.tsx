@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
-import ConfigureAmplify from "@/utils/configureAmplify";
-import { Inter ,Oswald } from "next/font/google";
+import { Inter, Oswald } from "next/font/google";
 import "./globals.css";
+import AmplifyProvider from "./amplify-provider";
 
 const inter = Inter({ subsets: ["latin"] });
 const oswald = Oswald({ subsets: ["latin"] });
-
 
 export const metadata: Metadata = {
   title: "Omni-Nexos",
@@ -20,9 +19,10 @@ export default function RootLayout({
   return (
     <html lang="en" className={oswald.className}>
       <body className={oswald.className}>
-      <ConfigureAmplify />
-        {children}
-        </body>
+        <AmplifyProvider>
+          {children}
+        </AmplifyProvider>
+      </body>
     </html>
   );
 }

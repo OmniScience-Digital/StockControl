@@ -15,6 +15,7 @@ import Loading from "@/components/widgets/loading";
 import { Dashboard } from "@/types/dashboard.types";
 import { ConfirmDialog } from "@/components/widgets/deletedialog";
 import React from "react";
+import Link from "next/link";
 
 export default function Home() {
     const router = useRouter();
@@ -27,18 +28,16 @@ export default function Home() {
     const [searchQuery, setSearchQuery] = useState("");
     const [dashboardToDelete, setDashboardToDelete] = useState<number | null>(null);
 
-
     // Fetch dashboards
     useEffect(() => {
         const subscription = client.models.Landing.observeQuery().subscribe({
             next: (data) => {
-
                 const dashboardData = data.items
-                    .filter(item => item.items) // Only include items with names
+                    .filter(item => item.items)
                     .sort((a, b) => (a.items || "").localeCompare(b.items || ""));
 
                 const cleanDashboardData: Dashboard[] = dashboardData
-                .filter(d => !/form$/i.test((d.items??"").trim())) // exclude items ending with 'Form'
+                .filter(d => !/form$/i.test((d.items??"").trim()))
                 .map(d => ({
                     ...d,
                     key: d.key ?? "",
@@ -58,7 +57,6 @@ export default function Home() {
         };
     }, []);
 
-
     // Filter dashboards based on search query
     const filteredDashboards = dashboards.filter(dashboard =>
         dashboard.items?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -67,8 +65,6 @@ export default function Home() {
     // Get category from dashboard key - SIMPLE VERSION
     const getCategory = (key: string | null) => {
         if (!key) return "General";
-
-        // Simple mapping - just use the key as the category
         return key;
     };
 
@@ -86,24 +82,21 @@ export default function Home() {
         return colors[category] || "bg-gray-50 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300";
     };
 
-
-    // Redirect to dashboard
+    // Redirect to dashboard (for non-forms items)
     const redirectToDashboard = (name: Dashboard) => {
-
         const path = (name.items.toLocaleLowerCase()).replace(/\s+/g, "");
         router.push(`/${path}`);
     };
+
     // Delete dashboard at a specific index
     const deleteDashboard = async (index: number) => {
-        const dashboardName = dashboards[index].items; // Get the name of the dashboard to delete
-
+        const dashboardName = dashboards[index].items;
         const foundItem = dataArray.find(
             (item) => item.items.toUpperCase() === dashboardName.toUpperCase(),
-        ); // Find the item in dataArray
+        );
         console.log(foundItem);
         setLoading(true);
         if (foundItem) {
-            // Delete from the database
             const { errors } = await client.models.Landing.delete({
                 id: foundItem.id,
             });
@@ -111,7 +104,6 @@ export default function Home() {
             if (errors) {
                 console.error("Error deleting dashboard:", errors);
             } else {
-                // Update local state
                 const updatedDashboards = dashboards.filter((_, i) => i !== index);
                 setDashboards(updatedDashboards);
                 console.log("Dashboard deleted:", foundItem);
@@ -147,7 +139,6 @@ export default function Home() {
             console.error("Error creating dashboard:", errors);
             setLoading(false);
         } else {
-            // The subscription will automatically update the list
             setLoading(false);
         }
     };
@@ -185,11 +176,9 @@ export default function Home() {
                     <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm">
                         <CardContent className="p-1 sm:p-2">
                             <div className="space-y-1">
-                                
                                 {filteredDashboards.map((dashboard, index) => (
                                     <React.Fragment key={dashboard.id}>
-                                        <div className="group p-2 sm:p-3 hover:bg-blue-50/50 dark:hover:bg-blue-950/20 transition-colors duration-200 cursor-pointer rounded-lg border border-transparent hover:border-blue-200 dark:hover:border-blue-800"
-                                        >
+                                        <div className="group p-2 sm:p-3 hover:bg-blue-50/50 dark:hover:bg-blue-950/20 transition-colors duration-200 cursor-pointer rounded-lg border border-transparent hover:border-blue-200 dark:hover:border-blue-800">
                                             <div className="flex items-center justify-between">
                                                 <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
                                                     {/* Icon */}
@@ -197,22 +186,38 @@ export default function Home() {
                                                         <LayoutDashboard className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-600 dark:text-blue-400" />
                                                     </div>
 
-
-                                                    {/* Content */}
-                                                    <div className="flex-1 min-w-0" onClick={() => redirectToDashboard(dashboard)}>
-                                                        <div className="flex items-center gap-1.5 sm:gap-2 mb-0.5 sm:mb-1">
-                                                            <h3 className="font-medium text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate text-xs sm:text-sm">
-                                                                {dashboard.items}
-                                                            </h3>
-                                                            {/* Badge - Now using the actual key */}
-                                                            <Badge
-                                                                variant="secondary"
-                                                                className={`${getCategoryColor(dashboard.key)} text-xs font-normal px-1.5 py-0 hidden sm:inline-flex`}
-                                                            >
-                                                                {getCategory(dashboard.key)}
-                                                            </Badge>
+                                                    {/* Content - USING LINK FOR FORMS */}
+                                                    {dashboard.items.toLowerCase().includes('forms') ? (
+                                                        <Link href="/forms" className="flex-1 min-w-0">
+                                                            <div onClick={() => console.log('🟢 LANDING CLICK TIME:', Date.now())}>
+                                                                <div className="flex items-center gap-1.5 sm:gap-2 mb-0.5 sm:mb-1">
+                                                                    <h3 className="font-medium text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate text-xs sm:text-sm">
+                                                                        {dashboard.items}
+                                                                    </h3>
+                                                                    <Badge
+                                                                        variant="secondary"
+                                                                        className={`${getCategoryColor(dashboard.key)} text-xs font-normal px-1.5 py-0 hidden sm:inline-flex`}
+                                                                    >
+                                                                        {getCategory(dashboard.key)}
+                                                                    </Badge>
+                                                                </div>
+                                                            </div>
+                                                        </Link>
+                                                    ) : (
+                                                        <div className="flex-1 min-w-0" onClick={() => redirectToDashboard(dashboard)}>
+                                                            <div className="flex items-center gap-1.5 sm:gap-2 mb-0.5 sm:mb-1">
+                                                                <h3 className="font-medium text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate text-xs sm:text-sm">
+                                                                    {dashboard.items}
+                                                                </h3>
+                                                                <Badge
+                                                                    variant="secondary"
+                                                                    className={`${getCategoryColor(dashboard.key)} text-xs font-normal px-1.5 py-0 hidden sm:inline-flex`}
+                                                                >
+                                                                    {getCategory(dashboard.key)}
+                                                                </Badge>
+                                                            </div>
                                                         </div>
-                                                    </div>
+                                                    )}
                                                 </div>
 
                                                 {/* Actions */}
@@ -251,7 +256,6 @@ export default function Home() {
                                             </div>
                                         </div>
                                         <div className="my-2 h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent dark:via-gray-600" />
-
                                     </React.Fragment>
                                 ))}
 
@@ -275,15 +279,7 @@ export default function Home() {
                                 )}
                             </div>
                         </CardContent>
-
                     </Card>
-
-                    {/* <Button
-                        className="fixed bottom-5 right-3 sm:bottom-4 sm:right-4 rounded-full w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-200 bg-blue-600 hover:bg-blue-700 border-0 cursor-pointer"
-                        onClick={() => setOpen(true)}
-                    >
-                        <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                    </Button> */}
 
                     <DialogDashboard
                         open={open}
@@ -292,7 +288,6 @@ export default function Home() {
                         setName={setName}
                         addDashboard={addDashboard}
                     />
-                    {/* Dialog to delete dashboard */}
                     <ConfirmDialog
                         open={opendelete}
                         setOpen={setOpendelete}
