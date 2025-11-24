@@ -114,6 +114,18 @@ export default function CustomerRelationsManagement() {
                 </div>
             ),
         },
+           {
+            id: "compliance",
+            header: "Compliance",
+            cell: ({ row }: { row: any }) => (
+                <div
+                    onClick={() => router.push(`/customerrelationsmanagement/compliance/${row.original.id}`)}
+                    className="cursor-pointer text-slate-700"
+                >
+                    <Edit className="h-4 w-4 mr-2" />
+                </div>
+            ),
+        },
     ];
 
     const data = Array.isArray(filteredCustomerSites)

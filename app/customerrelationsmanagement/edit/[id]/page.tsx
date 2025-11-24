@@ -108,21 +108,21 @@ export default function EditCustomerPage() {
           comment: customerSiteData.comment || '',
         });
 
-         // fetch latest 20 record
-          const employeeHistory = await client.models.History.getHistoryByEntityId({
-            entityId: customerSiteData.id,
+        // fetch latest 20 record
+        const employeeHistory = await client.models.History.getHistoryByEntityId({
+          entityId: customerSiteData.id,
 
-          }, {
-            sortDirection: 'DESC',
-            limit: 20
-          });
+        }, {
+          sortDirection: 'DESC',
+          limit: 20
+        });
 
-          // Convert to string format
-          const historyString = employeeHistory.data
-            .map(entry => entry.details)
-            .join('');
-          setHistory(historyString);
-        
+        // Convert to string format
+        const historyString = employeeHistory.data
+          .map(entry => entry.details)
+          .join('');
+        setHistory(historyString);
+
 
       } catch (error) {
         console.error("Error fetching customer site:", error);
@@ -294,12 +294,12 @@ export default function EditCustomerPage() {
 
           <div className="lg:col-span-3">
             <Tabs defaultValue="personal" className="space-y-4">
-              <TabsList className="grid w-full grid-cols-4">
+              <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="personal" className="cursor-pointer">Basic</TabsTrigger>
-                <TabsTrigger value="assets" className="cursor-pointer">ASSETS & EQUIPMENT</TabsTrigger>
-                <TabsTrigger value="compliance" className="cursor-pointer">COMPLIANCE </TabsTrigger>
+                <TabsTrigger value="assets" className="cursor-pointer">Assets & Equipment</TabsTrigger>
                 <TabsTrigger value="history" className="cursor-pointer">History</TabsTrigger>
               </TabsList>
+              {/* basic */}
               <TabsContent value="personal">
                 <div className="grid grid-cols-1 lg:grid-cols-1 gap-8">
                   {/* Site Information */}
@@ -579,12 +579,13 @@ export default function EditCustomerPage() {
 
 
               </TabsContent>
+
+              {/* Assets */}
               <TabsContent value="assets">
 
               </TabsContent>
-              <TabsContent value="compliance">
 
-              </TabsContent>
+              {/* History */}
               <TabsContent value="history">
                 <Card className="bg-background border-slate-200 shadow-sm">
                   <CardHeader className="bg-background border-b border-slate-200">
@@ -600,7 +601,7 @@ export default function EditCustomerPage() {
                     <div className="space-y-4">
                       <div>
                         <Label htmlFor="history" className="text-sm font-medium text-slate-700">
-                          Employee History
+                          Customer History
                         </Label>
                         <Textarea
                           id="history"
@@ -655,8 +656,6 @@ export default function EditCustomerPage() {
               )}
             </Button>
           </div>
-
-
 
           {show && (
             <ResponseModal

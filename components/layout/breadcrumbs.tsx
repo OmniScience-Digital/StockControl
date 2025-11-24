@@ -28,7 +28,8 @@ export default function Breadcrumbs() {
 
   pathSegments = removeSegmentIf(pathSegments, "vehicleinspectionsystem", "edit", "edit");
   pathSegments = removeSegmentIf(pathSegments, "humanresources", "edit", "edit");
-    pathSegments = removeSegmentIf(pathSegments, "customerrelationsmanagement", "edit", "edit");
+  pathSegments = removeSegmentIf(pathSegments, "customerrelationsmanagement", "edit", "edit");
+  pathSegments = removeSegmentIf(pathSegments, "customerrelationsmanagement", "compliance", "compliance");
   pathSegments = removeSegmentIf(pathSegments, "humanresources", "certificates", "certificates");
 
 
