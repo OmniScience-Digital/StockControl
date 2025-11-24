@@ -289,6 +289,7 @@ const schema = a.schema({
       siteCreditorsName: a.string(),
       siteCreditorsMail: a.string(),
       siteCreditorsNumber: a.string(),
+      assets: a.hasMany('Asset', 'customerSiteId'),
 
       comment: a.string(),
     })
