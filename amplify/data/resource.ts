@@ -248,23 +248,23 @@ const schema = a.schema({
     .authorization((allow) => [allow.publicApiKey()]),
 
   History: a.model({
-    entityType: a.enum(["COMPONENT", "FLEET", "INSPECTION", "EMPLOYEE"]),
+    entityType: a.enum(["COMPONENT", "FLEET", "INSPECTION", "EMPLOYEE", "CUSTOMER"]),
     entityId: a.string().required(),
     action: a.string().required(), // "STOCK_UPDATE", "SERVICE", "DOCUMENT_UPDATE"
     timestamp: a.datetime().required(),
-    details: a.string().required(), 
+    details: a.string().required(),
   }).secondaryIndexes((index) => [
-      index("entityId").sortKeys(["timestamp"]).queryField("getHistoryByEntityId"),
+    index("entityId").sortKeys(["timestamp"]).queryField("getHistoryByEntityId"),
   ]).authorization((allow) => [allow.publicApiKey()]),
 
-   CustomerSite: a
+  CustomerSite: a
     .model({
       // Site Information
       siteName: a.string().required(),
       siteLocation: a.string(),
       siteDistance: a.float(),
       siteTolls: a.float(),
-      
+
       // Customer Company Information
       customerName: a.string().required(),
       registrationNo: a.string(),
@@ -272,24 +272,24 @@ const schema = a.schema({
       vendorNumber: a.string(),
       postalAddress: a.string(),
       physicalAddress: a.string(),
-      
+
       // Contact Information - all embedded
       siteContactName: a.string(),
       siteContactMail: a.string(),
       siteContactNumber: a.string(),
-      
+
       siteManagerName: a.string(),
       siteManagerMail: a.string(),
       siteManagerNumber: a.string(),
-      
+
       siteProcurementName: a.string(),
       siteProcurementMail: a.string(),
       siteProcurementNumber: a.string(),
-      
+
       siteCreditorsName: a.string(),
       siteCreditorsMail: a.string(),
       siteCreditorsNumber: a.string(),
-      
+
       comment: a.string(),
     })
     .secondaryIndexes((index) => [
@@ -300,7 +300,38 @@ const schema = a.schema({
     ])
     .authorization((allow) => [allow.publicApiKey()]),
 
-
+  Asset: a
+    .model({
+      assetName: a.string().required(),
+      assetPlant: a.string(),
+      scaleTag: a.string(),
+      scaleOEM: a.string(),
+      beltwidth: a.string(),
+      troughAngle: a.string(),
+      scaleModel: a.string(),
+      weighIdlerQTY: a.string(),
+      approachIdlerQTY: a.string(),
+      retreatIdlerQTY: a.string(),
+      centerRollSize: a.string(),
+      wingRollSize: a.string(),
+      loadcellType: a.string(),
+      loadcellQTY: a.string(),
+      loadcellSize: a.string(),
+      integratorOEM: a.string(),
+      integratorModel: a.string(),
+      ssrOEM: a.string(),
+      ssrModel: a.string(),
+      scaledatasheetAttach: a.string(),
+      submittedmaintplanAttach: a.string(),
+      notes: a.string(),
+      customerSiteId: a.id().required(),
+      customerSite: a.belongsTo('CustomerSite', 'customerSiteId'),
+    })
+    .secondaryIndexes((index) => [
+      index("customerSiteId"),
+      index("scaleTag")
+    ])
+    .authorization((allow) => [allow.publicApiKey()]),
 
 });
 

@@ -23,11 +23,11 @@ export default async function middleware(request: NextRequest) {
   const isPublicRoute = publicRoutes.includes(path);
 
   let authenticated = false;
-
+  // Use the response object as required by Amplify
+  const response = NextResponse.next();
   try {
-    // Use the response object as required by Amplify
-    const response = NextResponse.next();
-    
+
+
     authenticated = await runWithAmplifyServerContext({
       nextServerContext: { request, response },
       operation: async (context) => {
@@ -53,7 +53,7 @@ export default async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/landing", request.nextUrl));
   }
 
-  return NextResponse.next();
+  return response;
 }
 
 export const config = {

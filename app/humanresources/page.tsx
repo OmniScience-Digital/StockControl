@@ -25,8 +25,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator
+  DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -207,7 +206,7 @@ export default function HumanResourcesPage() {
     },
     {
       accessorKey: "knownAs", 
-      header: "Known As",
+      header: () => <div className="hidden lg:block">Known As</div>,
       cell: ({ row }: { row: any }) => (
         <div className="text-sm font-medium text-slate-700 hidden lg:block">
           {row.original.knownAs || "-"}
@@ -216,7 +215,7 @@ export default function HumanResourcesPage() {
     },
     {
       accessorKey: "employeeNumber",
-      header: "Employee No",
+      header: () => <div className="hidden lg:block">Employee No</div>,
       cell: ({ row }: { row: any }) => (
         <div className="text-sm font-medium text-slate-700 hidden lg:block">
           {row.original.employeeNumber || "-"}
@@ -350,7 +349,7 @@ export default function HumanResourcesPage() {
           <div className="mb-8">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
               <div>
-                <h1 className="text-3xl font-bold text-foreground mb-2">
+                <h1 className="text-2xl font-bold text-foreground mb-2">
                   Employee Management
                 </h1>
                 <p className="text-slate-600 max-w-2xl">

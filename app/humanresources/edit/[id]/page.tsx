@@ -567,10 +567,7 @@ export default function EditEmployeePage() {
         storedName // username
       );
       // console.log(`\nEmployee ${formData.firstName} ${formData.surname} updated by ${storedName}. Changes:\n${changedFields.join('')}`);
-
-
-      // router.push('/humanresources');
-
+       router.push('/humanresources');
     } catch (error) {
       console.error("Error saving employee:", error);
 
@@ -1290,7 +1287,7 @@ export default function EditEmployeePage() {
                             readOnly
                           />
                           <p className="text-xs text-slate-500 mt-1">
-                            This field will automatically record creation and updates. You can add additional notes here.
+                            This field will automatically record creation and updates.
                           </p>
                         </div>
 
