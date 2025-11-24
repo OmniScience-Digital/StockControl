@@ -1,5 +1,4 @@
 import * as React from "react";
-import { Amplify } from "aws-amplify";
 import { useState } from "react";
 import Image from 'next/image';
 import { Button } from "@/components/ui/button";
@@ -10,10 +9,8 @@ import { SignInFlow } from "@/types/schema";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import { signUp, resendSignUpCode } from "aws-amplify/auth";
-import outputs from "../../amplify_outputs.json";
 import { VerifyEmailCard } from "./VerifyEmailCard";
 
-Amplify.configure(outputs);
 
 interface SignUpCardProps {
     setState: (state: SignInFlow) => void;

@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { SignInFlow } from "@/types/schema";
-import { getCurrentUser, signIn } from "aws-amplify/auth";
+import { fetchAuthSession, getCurrentUser, signIn, signInWithRedirect } from "aws-amplify/auth";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 
@@ -31,18 +31,20 @@ export const SignInCard = ({ setState }: SignInCardProps) => {
     const [isSuccess, setIsSuccess] = useState(false);
 
     //check if user is logged in
-    useEffect(() => {
-
-
-        getCurrentUser()
-            .then((user) => {
-
+useEffect(() => {
+    const checkAuth = async () => {
+        try {
+            const session = await fetchAuthSession();
+            if (session.tokens) {
                 router.push("/landing");
-            })
-            .catch((error) => {
-                console.log("User is NOT authenticated:", error);
-            });
-    }, [router]);
+            }
+        } catch (error) {
+            console.log("User is NOT authenticated:", error);
+        }
+    };
+
+    checkAuth();
+}, [router]); 
 
     const formik = useFormik({
         initialValues: {
@@ -62,8 +64,7 @@ export const SignInCard = ({ setState }: SignInCardProps) => {
 
                 if (isSignedIn) {
                     setIsSuccess(true);
-                    await new Promise(resolve => setTimeout(resolve, 1500));
-                    await router.push('/landing');
+                     router.push('/landing');
                 } else {
                     console.log('Sign in requires additional steps:', nextStep);
                     setIsSubmitting(false);
@@ -78,6 +79,9 @@ export const SignInCard = ({ setState }: SignInCardProps) => {
 
     const handleGoogleSignIn = async () => {
         console.log('Google sign-in clicked');
+
+     const googlesignin=  await  signInWithRedirect({"provider":"Google"});
+     console.log(googlesignin);
     };
 
 
@@ -166,7 +170,7 @@ export const SignInCard = ({ setState }: SignInCardProps) => {
                     <Button
                         id='googleSignInButton'
                         // disabled={isSubmitting || isSuccess}
-                        disabled={true}
+                         disabled={true}
                         onClick={handleGoogleSignIn}
                         variant="outline"
                         size="lg"
@@ -198,6 +202,7 @@ export const SignInCard = ({ setState }: SignInCardProps) => {
                         </span>
                     </p>
                 </div>
+                
             </CardContent>
         </Card>
     );

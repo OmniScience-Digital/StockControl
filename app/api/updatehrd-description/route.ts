@@ -7,6 +7,7 @@ export async function POST(req: NextRequest) {
     const file = formData.get("photo") as File; // Use "photo" like your working API
     const taskId = formData.get("taskId") as string;
     const newExpiry = formData.get("newExpiry") as string;
+    const username=formData.get("savedUser") as string;
 
     if (!file || !taskId) {
       return NextResponse.json({ 
@@ -26,7 +27,7 @@ export async function POST(req: NextRequest) {
 
       const existingTask = await getTaskResponse.json();
       const currentDescription = existingTask.description || '';
-      const updatedDescription = `${currentDescription}\nUpdated Expiry: ${newExpiry}`;
+      const updatedDescription = `${currentDescription}\nUpdated Expiry: ${newExpiry}\nUpdated by ${username}`;
 
       const updateBody = {
         name: existingTask.name,

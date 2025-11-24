@@ -195,7 +195,7 @@ export default function HumanResourcesPage() {
             </AvatarFallback>
           </Avatar>
           <div className="flex flex-col">
-            <span className="font-semibold text-slate-900">
+            <span className="font-semibold text-slate-600">
               {row.original.firstName} {row.original.surname}
             </span>
             <span className="text-sm text-slate-500">
@@ -273,10 +273,10 @@ export default function HumanResourcesPage() {
             </AvatarFallback>
           </Avatar>
           <div className="flex flex-col">
-            <span className="font-semibold text-slate-900">
+            <span className="font-semibold text-slate-600">
               {row.original.firstName} {row.original.surname}
             </span>
-            <span className="text-sm text-slate-500">
+            <span className="text-sm text-foreground">
               {row.original.employeeId}
             </span>
           </div>
@@ -297,7 +297,7 @@ export default function HumanResourcesPage() {
       accessorKey: "documentType",
       header: "Document Type",
       cell: ({ row }: { row: any }) => (
-        <Badge variant="destructive" className="text-xs text-foreground "> {row.original.documentType}</Badge>
+        <Badge variant="destructive" className="text-xs text-white "> {row.original.documentType}</Badge>
       ),
     },
   ];

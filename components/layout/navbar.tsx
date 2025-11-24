@@ -59,22 +59,19 @@ export default function Navbar() {
     }
   };
 
-  const handleSignOut = async () => {
-
+const handleSignOut = async () => {
     setIsSigningOut(true);
     try {
-      localStorage.removeItem("user");
-      await signOut();
-      router.push('/');
-
-      // Clear any local state
-      setUser('');
-      
+        localStorage.removeItem("user");
+        await signOut();
+        setUser('');    
+        
+        window.location.href = '/';
     } catch (error) {
-      console.error("Sign out error:", error);
+        console.error("Sign out error:", error);
+        setIsSigningOut(false);
     }
-
-  };
+};
 
   if (isDarkMode === null) return null;
 

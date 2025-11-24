@@ -252,10 +252,54 @@ const schema = a.schema({
     entityId: a.string().required(),
     action: a.string().required(), // "STOCK_UPDATE", "SERVICE", "DOCUMENT_UPDATE"
     timestamp: a.datetime().required(),
-    details: a.string().required(), // Specific description of what changed
+    details: a.string().required(), 
   }).secondaryIndexes((index) => [
       index("entityId").sortKeys(["timestamp"]).queryField("getHistoryByEntityId"),
   ]).authorization((allow) => [allow.publicApiKey()]),
+
+   CustomerSite: a
+    .model({
+      // Site Information
+      siteName: a.string().required(),
+      siteLocation: a.string(),
+      siteDistance: a.float(),
+      siteTolls: a.float(),
+      
+      // Customer Company Information
+      customerName: a.string().required(),
+      registrationNo: a.string(),
+      vatNo: a.string(),
+      vendorNumber: a.string(),
+      postalAddress: a.string(),
+      physicalAddress: a.string(),
+      
+      // Contact Information - all embedded
+      siteContactName: a.string(),
+      siteContactMail: a.string(),
+      siteContactNumber: a.string(),
+      
+      siteManagerName: a.string(),
+      siteManagerMail: a.string(),
+      siteManagerNumber: a.string(),
+      
+      siteProcurementName: a.string(),
+      siteProcurementMail: a.string(),
+      siteProcurementNumber: a.string(),
+      
+      siteCreditorsName: a.string(),
+      siteCreditorsMail: a.string(),
+      siteCreditorsNumber: a.string(),
+      
+      comment: a.string(),
+    })
+    .secondaryIndexes((index) => [
+      index("customerName"),
+      index("siteName"),
+      index("vendorNumber"),
+      index("registrationNo")
+    ])
+    .authorization((allow) => [allow.publicApiKey()]),
+
 
 
 });
@@ -286,7 +330,7 @@ export const data = defineData({
 
 // // ... other schema definitions
 
-// // Custom subscription with a filter
+// Custom subscription with a filter
 // export const customSubscriptions = {
 //   onNewPublishedPosts: a.subscription(a.ref("Post"))
 //     .filter({ status: { eq: "PUBLISHED" } }) // Filter for posts with status "PUBLISHED"

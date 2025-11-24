@@ -119,14 +119,15 @@ export default function EditEmployeePage() {
             entityId: employeeData.employeeId,
 
           }, {
-            sortDirection: 'DESC', 
+            sortDirection: 'DESC',
             limit: 20
           });
-            // Convert to string format
-            const historyString = employeeHistory.data
-              .map(entry => entry.details)
-              .join('');
-              setHistory(historyString);
+
+          // Convert to string format
+          const historyString = employeeHistory.data
+            .map(entry => entry.details)
+            .join('');
+          setHistory(historyString);
 
 
           setEmployee(employeeData);
@@ -335,7 +336,6 @@ export default function EditEmployeePage() {
     }
   }
 
-
   const handleSave = async () => {
     if (!employee) return;
 
@@ -345,14 +345,75 @@ export default function EditEmployeePage() {
       const storedName = localStorage.getItem("user")?.replace(/^"|"$/g, '').trim() || "Unknown User";
       const johannesburgTime = new Date().toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg" });
 
-       // Track changed fields for History table
-    const changedFields: string[] = [];
-    Object.keys(formData).forEach(key => {
-      const typedKey = key as keyof Employee;
-      if (formData[typedKey] !== employee[typedKey]) {
-        changedFields.push(` ${storedName} updated ${typedKey} from ${employee[typedKey]} to ${formData[typedKey]} at ${johannesburgTime}.\n`);
-      }
-    });
+      // Track changed fields for History table
+      const changedFields: string[] = [];
+      Object.keys(formData).forEach(key => {
+        const typedKey = key as keyof Employee;
+        if (formData[typedKey] !== employee[typedKey]) {
+          changedFields.push(` ${storedName} updated ${typedKey} from ${employee[typedKey]} to ${formData[typedKey]} at ${johannesburgTime}.\n`);
+        }
+      });
+
+      // Track certificate changes
+      const existingMedicalCerts = employee.medicalCertificates || [];
+      const existingTrainingCerts = employee.trainingCertificates || [];
+      const existingAdditionalCerts = employee.additionalCertificates || [];
+
+      // Track medical certificate changes
+      medicalCerts.forEach(cert => {
+        const existingCert = existingMedicalCerts.find(ec => ec.certificateType === cert.certificateType);
+        if (existingCert) {
+          if (cert.expiryDate !== existingCert.expiryDate) {
+            changedFields.push(`${storedName} updated Medical ${cert.certificateType} expiry from ${existingCert.expiryDate} to ${cert.expiryDate} at ${johannesburgTime}.\n`);
+          }
+          if (cert.attachment !== existingCert.attachment) {
+            changedFields.push(`${storedName} updated Medical ${cert.certificateType} attachment at ${johannesburgTime}.\n`);
+          }
+        } else if (cert.expiryDate || cert.attachment) {
+          changedFields.push(`${storedName} added Medical ${cert.certificateType} certificate at ${johannesburgTime}.\n`);
+        }
+      });
+
+      // Track training certificate changes
+      trainingCerts.forEach(cert => {
+        const existingCert = existingTrainingCerts.find(ec => ec.certificateType === cert.certificateType);
+        if (existingCert) {
+          if (cert.expiryDate !== existingCert.expiryDate) {
+            changedFields.push(`${storedName} updated Training ${cert.certificateType} expiry from ${existingCert.expiryDate} to ${cert.expiryDate} at ${johannesburgTime}.\n`);
+          }
+          if (cert.attachment !== existingCert.attachment) {
+            changedFields.push(`${storedName} updated Training ${cert.certificateType} attachment at ${johannesburgTime}.\n`);
+          }
+        } else if (cert.expiryDate || cert.attachment) {
+          changedFields.push(`${storedName} added Training ${cert.certificateType} certificate at ${johannesburgTime}.\n`);
+        }
+      });
+
+      // Track additional certificate changes
+      additionalCerts.forEach(cert => {
+        const existingCert = existingAdditionalCerts.find(ec => ec.id === cert.id);
+        if (existingCert) {
+          if (cert.certificateName !== existingCert.certificateName) {
+            changedFields.push(`${storedName} updated Additional Certificate name from "${existingCert.certificateName}" to "${cert.certificateName}" at ${johannesburgTime}.\n`);
+          }
+          if (cert.expiryDate !== existingCert.expiryDate) {
+            changedFields.push(`${storedName} updated Additional Certificate "${cert.certificateName}" expiry from ${existingCert.expiryDate} to ${cert.expiryDate} at ${johannesburgTime}.\n`);
+          }
+          if (cert.attachment !== existingCert.attachment) {
+            changedFields.push(`${storedName} updated Additional Certificate "${cert.certificateName}" attachment at ${johannesburgTime}.\n`);
+          }
+        } else if (cert.certificateName || cert.expiryDate || cert.attachment) {
+          changedFields.push(`${storedName} added Additional Certificate "${cert.certificateName}" at ${johannesburgTime}.\n`);
+        }
+      });
+
+      // Track removed additional certificates
+      existingAdditionalCerts.forEach(existingCert => {
+        const stillExists = additionalCerts.find(ac => ac.id === existingCert.id);
+        if (!stillExists) {
+          changedFields.push(`${storedName} removed Additional Certificate "${existingCert.certificateName}" at ${johannesburgTime}.\n`);
+        }
+      });
 
       // Update main employee record
       const employeeData = {
@@ -381,22 +442,25 @@ export default function EditEmployeePage() {
         ...employeeData
       });
 
-       if (changedFields.length > 0) {
-      await client.models.History.create({
-        entityType: "EMPLOYEE",
-        entityId: employee.employeeId,
-        action: "UPDATE",
-        timestamp: new Date().toISOString(),
-        details: `Employee ${formData.firstName} ${formData.surname} updated by ${storedName}. Changes: ${changedFields.join(', ')}`
-      });
-    }
+      if (changedFields.length > 0) {
+        await client.models.History.create({
+          entityType: "EMPLOYEE",
+          entityId: employee.employeeId,
+          action: "UPDATE",
+          timestamp: new Date().toISOString(),
+          details: `\nEmployee ${formData.firstName} ${formData.surname} updated by ${storedName}. Changes:\n${changedFields.join('')}`
+        });
+
+        // Update history state immediately
+        setHistory(prev => `\nEmployee ${formData.firstName} ${formData.surname} updated by ${storedName}. Changes:\n${changedFields.join('')}\n${prev}`);
+      }
+
 
       if (result.errors) {
         throw new Error("Failed to update employee");
       }
 
       // Update medical certificates - only if changed
-      const existingMedicalCerts = employee.medicalCertificates || [];
       for (const cert of medicalCerts) {
         const existingCert = existingMedicalCerts.find(ec => ec.certificateType === cert.certificateType);
 
@@ -407,7 +471,6 @@ export default function EditEmployeePage() {
 
         if ((expiryChanged || attachmentChanged || !existingCert) && hasNewData) {
           if (existingCert) {
-
             await client.models.EmployeeMedicalCertificate.update({
               id: existingCert.id,
               certificateType: cert.certificateType,
@@ -415,7 +478,6 @@ export default function EditEmployeePage() {
               attachment: cert.attachment || null
             });
           } else {
-
             await client.models.EmployeeMedicalCertificate.create({
               employeeId: employee.employeeId,
               certificateType: cert.certificateType,
@@ -427,7 +489,6 @@ export default function EditEmployeePage() {
       }
 
       // Update training certificates - only if changed
-      const existingTrainingCerts = employee.trainingCertificates || [];
       for (const cert of trainingCerts) {
         const existingCert = existingTrainingCerts.find(ec => ec.certificateType === cert.certificateType);
 
@@ -438,7 +499,6 @@ export default function EditEmployeePage() {
 
         if ((expiryChanged || attachmentChanged || !existingCert) && hasNewData) {
           if (existingCert) {
-
             await client.models.EmployeeTrainingCertificate.update({
               id: existingCert.id,
               certificateType: cert.certificateType,
@@ -446,7 +506,6 @@ export default function EditEmployeePage() {
               attachment: cert.attachment || null
             });
           } else {
-
             await client.models.EmployeeTrainingCertificate.create({
               employeeId: employee.employeeId,
               certificateType: cert.certificateType,
@@ -458,7 +517,6 @@ export default function EditEmployeePage() {
       }
 
       // Update additional certificates - only if changed
-      const existingAdditionalCerts = employee.additionalCertificates || [];
       for (const cert of additionalCerts) {
         const existingCert = existingAdditionalCerts.find(ec => ec.id === cert.id);
 
@@ -470,7 +528,6 @@ export default function EditEmployeePage() {
 
         if ((nameChanged || expiryChanged || attachmentChanged || !existingCert) && hasNewData) {
           if (existingCert) {
-
             await client.models.EmployeeAdditionalCertificate.update({
               id: existingCert.id,
               certificateName: cert.certificateName,
@@ -478,7 +535,6 @@ export default function EditEmployeePage() {
               attachment: cert.attachment || null
             });
           } else if (cert.certificateName) {
-
             await client.models.EmployeeAdditionalCertificate.create({
               employeeId: employee.employeeId,
               certificateName: cert.certificateName,
@@ -486,6 +542,16 @@ export default function EditEmployeePage() {
               attachment: cert.attachment || null
             });
           }
+        }
+      }
+
+      // Remove additional certificates that were deleted
+      for (const existingCert of existingAdditionalCerts) {
+        const stillExists = additionalCerts.find(ac => ac.id === existingCert.id);
+        if (!stillExists) {
+          await client.models.EmployeeAdditionalCertificate.delete({
+            id: existingCert.id
+          });
         }
       }
 
@@ -497,9 +563,11 @@ export default function EditEmployeePage() {
           medicalCertificates: medicalCerts,
           trainingCertificates: trainingCerts,
           additionalCertificates: additionalCerts
-        }, // newData
+        },
         storedName // username
       );
+      // console.log(`\nEmployee ${formData.firstName} ${formData.surname} updated by ${storedName}. Changes:\n${changedFields.join('')}`);
+
 
       // router.push('/humanresources');
 
@@ -510,13 +578,11 @@ export default function EditEmployeePage() {
       setShow(true);
       setSuccessful(false);
 
-
     } finally {
       setSaving(false);
     }
   };
 
-  // Helper function to check tasks using GSI for ALL document types - PRINT ONLY
   const checkAndPrintTasks = async (oldEmployee: Employee, newData: any, username: string) => {
     // Check main employee documents - USE LOWERCASE to match database
     const mainDocumentTypes = [

@@ -18,7 +18,7 @@ import { ConfirmDialog } from "@/components/widgets/deletedialog";
 export default function formsLanding() {
 
     const router = useRouter();
-
+  console.log('🔴 FormsLanding component RENDERED at:', new Date().toISOString());
     const [dashboards, setDashboards] = useState<Dashboard[]>([]);
     const [loading, setLoading] = useState(true);
     const [open, setOpen] = useState(false);
@@ -34,6 +34,7 @@ export default function formsLanding() {
 
     // Fetch dashboards
     useEffect(() => {
+         console.log('🟡 FormsLanding useEffect FIRED at:', new Date().toISOString());
         const subscription = client.models.Landing.observeQuery().subscribe({
             next: (data) => {
 

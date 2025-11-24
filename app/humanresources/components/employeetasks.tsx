@@ -20,7 +20,7 @@ export const handleEmployeeTasks = async (
         attachment: any;
     }
 ) => {
-    const savedUser = localStorage.getItem("user");
+    const savedUser = localStorage.getItem("user")||"";
 
     try {
 
@@ -41,6 +41,7 @@ export const handleEmployeeTasks = async (
         formData.append("photo", fileBlob, filename); // Use "photo" field
         formData.append("taskId", existingTask.clickupTaskId);
         formData.append("newExpiry", newExpiry);
+        formData.append("savedUser", savedUser);
 
         // Call the API with FormData
         await fetch("/api/updatehrd-description", {
