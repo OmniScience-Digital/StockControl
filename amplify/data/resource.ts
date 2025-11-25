@@ -248,7 +248,7 @@ const schema = a.schema({
     .authorization((allow) => [allow.publicApiKey()]),
 
   History: a.model({
-    entityType: a.enum(["COMPONENT", "FLEET", "INSPECTION", "EMPLOYEE", "CUSTOMER"]),
+    entityType: a.enum(["COMPONENT", "FLEET", "INSPECTION", "EMPLOYEE", "CUSTOMER","ASSET"]),
     entityId: a.string().required(),
     action: a.string().required(), // "STOCK_UPDATE", "SERVICE", "DOCUMENT_UPDATE"
     timestamp: a.datetime().required(),

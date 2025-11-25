@@ -24,14 +24,14 @@ import { Label } from "@/components/ui/label";
 import ResponseModal from "@/components/widgets/response";
 import { CustomerSiteState } from "@/types/crm.types";
 import { Textarea } from "@/components/ui/textarea";
+import AssetCreate from "../../Components/asset";
+import AssetsList from "../../Components/assetsList";
 
 
 export default function EditCustomerPage() {
   const router = useRouter();
   const params = useParams();
   const customerSiteId = decodeURIComponent(params.id as string);
-
-  const [history, setHistory] = useState("");
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -107,22 +107,6 @@ export default function EditCustomerPage() {
           siteCreditorsNumber: customerSiteData.siteCreditorsNumber || '',
           comment: customerSiteData.comment || '',
         });
-
-        // fetch latest 20 record
-        const employeeHistory = await client.models.History.getHistoryByEntityId({
-          entityId: customerSiteData.id,
-
-        }, {
-          sortDirection: 'DESC',
-          limit: 20
-        });
-
-        // Convert to string format
-        const historyString = employeeHistory.data
-          .map(entry => entry.details)
-          .join('');
-        setHistory(historyString);
-
 
       } catch (error) {
         console.error("Error fetching customer site:", error);
@@ -292,12 +276,11 @@ export default function EditCustomerPage() {
             </div>
           </div>
 
-          <div className="lg:col-span-3">
+          <div className="lg:col-span-2">
             <Tabs defaultValue="personal" className="space-y-4">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="personal" className="cursor-pointer">Basic</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="personal" className="cursor-pointer">Site</TabsTrigger>
                 <TabsTrigger value="assets" className="cursor-pointer">Assets & Equipment</TabsTrigger>
-                <TabsTrigger value="history" className="cursor-pointer">History</TabsTrigger>
               </TabsList>
               {/* basic */}
               <TabsContent value="personal">
@@ -576,86 +559,45 @@ export default function EditCustomerPage() {
                     </CardContent>
                   </Card>
                 </div>
+                {/* Action Buttons */}
+                <div className="flex justify-end gap-4 mt-8">
+                  <Button
+                    variant="outline"
+                    onClick={() => router.push('/customerrelationsmanagement')}
+                    disabled={saving}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleSave}
+                    disabled={saving || !formData.siteName || !formData.customerName}
+                  >
+                    {saving ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Updating...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="h-4 w-4 mr-2" />
+                        Update Customer Site
+                      </>
+                    )}
+                  </Button>
+                </div>
 
 
               </TabsContent>
 
               {/* Assets */}
               <TabsContent value="assets">
-
+                <AssetCreate customerSiteId={customerSiteId} folder={customerSite.siteName}/>
+                <AssetsList customerSiteId={customerSiteId} />
               </TabsContent>
-
-              {/* History */}
-              <TabsContent value="history">
-                <Card className="bg-background border-slate-200 shadow-sm">
-                  <CardHeader className="bg-background border-b border-slate-200">
-                    <CardTitle className="flex items-center gap-2 text-foreground">
-                      <FileText className="h-5 w-5" />
-                      History & Notes
-                    </CardTitle>
-                    <CardDescription>
-                      CRM history and additional notes
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="p-6">
-                    <div className="space-y-4">
-                      <div>
-                        <Label htmlFor="history" className="text-sm font-medium text-slate-700">
-                          Customer History
-                        </Label>
-                        <Textarea
-                          id="history"
-                          value={history || ''}
-                          className="min-h-[200px] text-sm resize-vertical border-slate-300 focus:border-blue-500"
-                          placeholder="Add any relevant history or notes about the employee..."
-                          readOnly
-                        />
-                        <p className="text-xs text-slate-500 mt-1">
-                          This field will automatically record creation and updates.
-                        </p>
-                      </div>
-
-                      <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
-                        <p className="text-sm text-blue-800">
-                          <strong>Note:</strong> System-generated history entries will be automatically
-                          added when creating or updating this customer record.
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-              </TabsContent>
-
             </Tabs>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex justify-end gap-4 mt-8">
-            <Button
-              variant="outline"
-              onClick={() => router.push('/customerrelationsmanagement')}
-              disabled={saving}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSave}
-              disabled={saving || !formData.siteName || !formData.customerName}
-            >
-              {saving ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Updating...
-                </>
-              ) : (
-                <>
-                  <Save className="h-4 w-4 mr-2" />
-                  Update Customer Site
-                </>
-              )}
-            </Button>
-          </div>
+
 
           {show && (
             <ResponseModal
