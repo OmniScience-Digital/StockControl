@@ -406,7 +406,7 @@ export default function AssetCreate({ customerSiteId, folder }: ASSETPROPS) {
                                 <FileUpload
                                     assetName={assetData.assetName}
                                     title={"Scale Datasheet Attachment"}
-                                    folder={folder}
+                                    folder="scale-datasheets"
                                     onFilesChange={setScaleDatasheetFiles}
                                 />
                             </div>
@@ -415,7 +415,7 @@ export default function AssetCreate({ customerSiteId, folder }: ASSETPROPS) {
                                 <FileUpload
                                     assetName={assetData.assetName}
                                     title={"Submitted Maintenance Plan Attachment"}
-                                    folder={folder}
+                                    folder="maintenance-plans"
                                     onFilesChange={setMaintPlanFiles}
                                 />
                             </div>

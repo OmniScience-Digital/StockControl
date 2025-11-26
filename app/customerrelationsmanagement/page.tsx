@@ -95,7 +95,7 @@ export default function CustomerRelationsManagement() {
         },
         {
             accessorKey: "vendorNumber",
-             header: () => <div className="hidden lg:block">Vendor Number</div>,
+            header: () => <div className="hidden lg:block">Vendor Number</div>,
             cell: ({ row }: { row: any }) => (
                 <div className="text-sm font-medium text-slate-700 hidden lg:block">
                     {row.original.vendorNumber || "-"}
@@ -108,22 +108,44 @@ export default function CustomerRelationsManagement() {
             cell: ({ row }: { row: any }) => (
                 <div
                     onClick={() => router.push(`/customerrelationsmanagement/edit/${row.original.id}`)}
-                    className="cursor-pointer text-slate-700"
+
                 >
-                    <Edit className="h-4 w-4 mr-2" />
+                    <Edit className="
+    h-4 w-4 mr-2
+    cursor-pointer
+    hover:bg-slate-100
+    active:bg-slate-200
+    active:scale-95
+    rounded
+    transition
+    inline-block
+  "/>
                 </div>
             ),
         },
-           {
+        {
             id: "compliance",
             header: "Compliance",
             cell: ({ row }: { row: any }) => (
-                <div
-                    onClick={() => router.push(`/customerrelationsmanagement/compliance/${row.original.id}`)}
-                    className="cursor-pointer text-slate-700"
-                >
-                    <Edit className="h-4 w-4 mr-2" />
+                <div>
+                    <Edit
+                        onClick={() =>
+                            router.push(`/customerrelationsmanagement/compliance/${row.original.id}`)
+                        }
+                        className="
+    h-4 w-4 mr-2
+    cursor-pointer
+    hover:bg-slate-100
+    active:bg-slate-200
+    active:scale-95
+    rounded
+    transition
+    inline-block
+  "
+                    />
                 </div>
+
+
             ),
         },
     ];

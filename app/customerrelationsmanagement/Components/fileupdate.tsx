@@ -42,38 +42,29 @@ export const FileUploadUpdate = ({ onFilesChange, assetName, title, folder, exis
   const hasInitialized = useRef(false);
 
   // Initialize with existing files
-  useEffect(() => {
-    if (!hasInitialized.current && existingFiles.length > 0) {
-      const existingFile = existingFiles[0];
-      if (existingFile) {
-        const fileName = existingFile.split('/').pop() || `${title.replace(/\s+/g, '_')}.pdf`;
+useEffect(() => {
+  if (!hasInitialized.current && existingFiles.length > 0) {
+    const existingFile = existingFiles[0];
+    if (existingFile) {
+      const fileName = existingFile.split('/').pop() || `${title.replace(/\s+/g, '_')}.pdf`;
 
-        // Extract S3 key from URL for getUrl
-        let s3Key = existingFile;
-        if (existingFile.includes('amazonaws.com/')) {
-          const urlParts = existingFile.split('amazonaws.com/');
-          if (urlParts.length > 1) {
-            s3Key = urlParts[1].split('?')[0];
-            s3Key = decodeURIComponent(s3Key);
-          }
-        }
+      const s3Key = existingFile; 
 
-        const existingPDF: PDFState = {
-          id: `existing-0`,
-          file: new File([], fileName),
-          s3Key: s3Key,
-          status: 'pending',
-          name: fileName,
-          size: "Unknown",
-          uploadDate: new Date().toLocaleDateString(),
-          url: existingFile // Store the existing URL
-        };
+      const existingPDF: PDFState = {
+        id: `existing-0`,
+        file: new File([], fileName),
+        s3Key: s3Key, 
+        status: 'pending',
+        name: fileName,
+        size: "Unknown",
+        uploadDate: new Date().toLocaleDateString()
+      };
 
-        setPdfs([existingPDF]);
-        hasInitialized.current = true;
-      }
+      setPdfs([existingPDF]);
+      hasInitialized.current = true;
     }
-  }, [existingFiles, title]);
+  }
+}, [existingFiles, title]);
 
   // Clean up object URLs on unmount
   useEffect(() => {
@@ -205,19 +196,23 @@ export const FileUploadUpdate = ({ onFilesChange, assetName, title, folder, exis
   }, [pdfs, handleFiles]);
 
   const handlePreview = async (pdf: PDFState) => {
+
     // For new files with preview URLs
     if (pdf.previewUrl) {
       window.open(pdf.previewUrl, '_blank');
     }
     else if (pdf.s3Key) {
+       
       try {
         const result = await getUrl({ path: pdf.s3Key });
-        window.open(result.url.href, '_blank');
+         console.log(result)
+        // window.open(result.url.href, '_blank');
       } catch (error) {
         console.error('Error generating URL:', error);
       }
     }
   };
+
 
   const triggerFileInput = () => fileInputRef.current?.click();
 

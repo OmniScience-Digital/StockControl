@@ -556,11 +556,11 @@ export default function AssetsList({ customerSiteId }: AssetsListProps) {
                                                 folder="scale-datasheets"
                                                 existingFiles={editedAsset.scaledatasheetAttach ? [editedAsset.scaledatasheetAttach] : []}
                                                 onFilesChange={setScaleDatasheetFiles}
-                                               onFileRemove={() => {
-  if (editedAsset.scaledatasheetAttach) {
-    setFilesToDelete(prev => [...prev, editedAsset.scaledatasheetAttach!]);
-  }
-}}
+                                                onFileRemove={() => {
+                                                    if (editedAsset.scaledatasheetAttach) {
+                                                        setFilesToDelete(prev => [...prev, editedAsset.scaledatasheetAttach!]);
+                                                    }
+                                                }}
                                             />
 
 
@@ -574,11 +574,11 @@ export default function AssetsList({ customerSiteId }: AssetsListProps) {
                                                 folder="maintenance-plans"
                                                 existingFiles={editedAsset.submittedmaintplanAttach ? [editedAsset.submittedmaintplanAttach] : []}
                                                 onFilesChange={setMaintPlanFiles}
-                                               onFileRemove={() => {
-  if (editedAsset.submittedmaintplanAttach) {
-    setFilesToDelete(prev => [...prev, editedAsset.submittedmaintplanAttach!]);
-  }
-}}
+                                                onFileRemove={() => {
+                                                    if (editedAsset.submittedmaintplanAttach) {
+                                                        setFilesToDelete(prev => [...prev, editedAsset.submittedmaintplanAttach!]);
+                                                    }
+                                                }}
                                             />
                                         </div>
                                     </div>

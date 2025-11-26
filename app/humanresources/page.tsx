@@ -91,7 +91,7 @@ export default function HumanResourcesPage() {
           ppeExpiry: item.ppeExpiry ?? undefined,
           //   history: item.history ?? undefined
         }));
-                console.log(tasks);
+        console.log(tasks);
         setEmployees(mappedEmployees);
         setFilteredEmployees(mappedEmployees);
 
@@ -205,7 +205,7 @@ export default function HumanResourcesPage() {
       ),
     },
     {
-      accessorKey: "knownAs", 
+      accessorKey: "knownAs",
       header: () => <div className="hidden lg:block">Known As</div>,
       cell: ({ row }: { row: any }) => (
         <div className="text-sm font-medium text-slate-700 hidden lg:block">
@@ -252,8 +252,18 @@ export default function HumanResourcesPage() {
         <div
           onClick={() => router.push(`/humanresources/edit/${row.original.id}`)}
           className="cursor-pointer text-slate-700"
+
         >
-          <Edit className="h-4 w-4 mr-2" />
+          <Edit className="
+    h-4 w-4 mr-2
+    cursor-pointer
+    hover:bg-slate-100
+    active:bg-slate-200
+    active:scale-95
+    rounded
+    transition
+    inline-block
+  " />
 
         </div>
       ),
@@ -307,7 +317,7 @@ export default function HumanResourcesPage() {
       employeeId: employee.employeeId,
       firstName: employee.firstName,
       surname: employee.surname,
-      knownAs:employee.knownAs,
+      knownAs: employee.knownAs,
       employeeNumber: employee.employeeNumber,
       authorizedDriver: employee.authorizedDriver,
       passportExpiry: employee.passportExpiry,

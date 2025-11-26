@@ -263,7 +263,16 @@ export default function EditCustomerPage() {
                 onClick={() => router.push('/customerrelationsmanagement')}
                 className="h-9 w-9 p-0"
               >
-                <ArrowLeft className="h-5 w-5" />
+                <ArrowLeft className="
+    h-5 w-5 mr-2
+    cursor-pointer
+    hover:bg-slate-100
+    active:bg-slate-200
+    active:scale-95
+    rounded
+    transition
+    inline-block
+  " />
               </Button>
               <div>
                 <h2 className="text-2xl font-bold">
@@ -591,7 +600,7 @@ export default function EditCustomerPage() {
 
               {/* Assets */}
               <TabsContent value="assets">
-                <AssetCreate customerSiteId={customerSiteId} folder={customerSite.siteName}/>
+                <AssetCreate customerSiteId={customerSiteId} folder={customerSite.siteName} />
                 <AssetsList customerSiteId={customerSiteId} />
               </TabsContent>
             </Tabs>
