@@ -248,9 +248,9 @@ const schema = a.schema({
     .authorization((allow) => [allow.publicApiKey()]),
 
   History: a.model({
-    entityType: a.enum(["COMPONENT", "FLEET", "INSPECTION", "EMPLOYEE", "CUSTOMER","ASSET","COMPLIANCE"]),
+    entityType: a.enum(["COMPONENT", "FLEET", "INSPECTION", "EMPLOYEE", "CUSTOMER", "ASSET", "COMPLIANCE"]),
     entityId: a.string().required(),
-    action: a.string().required(), 
+    action: a.string().required(),
     timestamp: a.datetime().required(),
     details: a.string().required(),
   }).secondaryIndexes((index) => [
@@ -290,7 +290,7 @@ const schema = a.schema({
       siteCreditorsMail: a.string(),
       siteCreditorsNumber: a.string(),
       assets: a.hasMany('Asset', 'customerSiteId'),
-      compliance:a.hasMany('Compliance','customerSiteId'),
+      compliance: a.hasMany('Compliance', 'customerSiteId'),
       comment: a.string(),
     })
     .secondaryIndexes((index) => [
@@ -333,61 +333,74 @@ const schema = a.schema({
       index("scaleTag")
     ])
     .authorization((allow) => [allow.publicApiKey()]),
-Compliance: a
-  .model({
-    complianceRating: a.string(),
-    complianceRating30Days: a.string(),
-    linkedEmployees:a.string().array(),
-    digitalContractorsPack: a.string().array(),
-    notes: a.string(),
-     // Requirement arrays - Employee IDs who need these documents
-    clinicPlusRqd: a.string().array(),
-    clinicPlusInductionRqd: a.string().array(),
-    driversLicenseRqd: a.string().array(),
-    firefightingRqd: a.string().array(),
-    firstAidLevel1Rqd: a.string().array(),
-    firstAidLevel2Rqd: a.string().array(),
-    heartlyHealthRqd: a.string().array(),
-    klipspruitMedicalRqd: a.string().array(),
-    legalLiabilityRqd: a.string().array(),
-    luvuyoMedicalRqd: a.string().array(),
-    oemCertRqd: a.string().array(),
-    passportRqd: a.string().array(),
-    pdpRqd: a.string().array(),
-    satsConveyorRqd: a.string().array(),
-    satsCopSopRqd: a.string().array(),
-    wilgeVxrRqd: a.string().array(),
-    workingAtHeightsRqd: a.string().array(),
-    workingWithHandToolsRqd:a.string().array(),
-    workingWithPowerToolsRqd: a.string().array(),
-    appointment292Rqd:a.string().array(),
-    curriculumVitaeRqd: a.string().array(),
-    ppeListRqd: a.string().array(),
-    ohsActRqd: a.string().array(),
-    mhsaRqd: a.string().array(),
-    krielMedicalRqd:a.string().array(),
-    proHealthMedicalRqd: a.string().array(),
-    satsIlotRqd: a.string().array(),
-    hiraTrainingRqd: a.string().array(),
-    
-    // Linked vehicles section
-    linkedVehicles: a.string().array(),
-    breakAndLuxRqd: a.string().array(),
-    licenseDiscExpiry:a.string().array(),
-    
 
-    customerSiteId: a.id().required(),
-    customerSite: a.belongsTo('CustomerSite', 'customerSiteId'),
- 
-     // CHANGE TO STRING:
-    employeeLookup: a.string(), // Store as JSON string: '{"employeeId": ["req1", "req2"]}'
-  })
-  .secondaryIndexes((index) => [
-    index("customerSiteId"),
-    index("complianceRating"),
-    index("employeeLookup")
-  ])
-  .authorization((allow) => [allow.publicApiKey()]),
+  Compliance: a
+    .model({
+      complianceRating: a.string(),
+      complianceRating30Days: a.string(),
+      linkedEmployees: a.string().array(),
+      digitalContractorsPack: a.string().array(),
+      notes: a.string(),
+      // Requirement arrays - Employee IDs who need these documents
+      clinicPlusRqd: a.string().array(),
+      clinicPlusInductionRqd: a.string().array(),
+      driversLicenseRqd: a.string().array(),
+      firefightingRqd: a.string().array(),
+      firstAidLevel1Rqd: a.string().array(),
+      firstAidLevel2Rqd: a.string().array(),
+      heartlyHealthRqd: a.string().array(),
+      klipspruitMedicalRqd: a.string().array(),
+      legalLiabilityRqd: a.string().array(),
+      luvuyoMedicalRqd: a.string().array(),
+      oemCertRqd: a.string().array(),
+      passportRqd: a.string().array(),
+      pdpRqd: a.string().array(),
+      satsConveyorRqd: a.string().array(),
+      satsCopSopRqd: a.string().array(),
+      wilgeVxrRqd: a.string().array(),
+      workingAtHeightsRqd: a.string().array(),
+      workingWithHandToolsRqd: a.string().array(),
+      workingWithPowerToolsRqd: a.string().array(),
+      appointment292Rqd: a.string().array(),
+      curriculumVitaeRqd: a.string().array(),
+      ppeListRqd: a.string().array(),
+      ohsActRqd: a.string().array(),
+      mhsaRqd: a.string().array(),
+      krielMedicalRqd: a.string().array(),
+      proHealthMedicalRqd: a.string().array(),
+      satsIlotRqd: a.string().array(),
+      hiraTrainingRqd: a.string().array(),
+
+      // Linked vehicles section
+      linkedVehicles: a.string().array(),
+      breakAndLuxRqd: a.string().array(),
+      licenseDiscExpiry: a.string().array(),
+
+
+      customerSiteId: a.id().required(),
+      customerSite: a.belongsTo('CustomerSite', 'customerSiteId'),
+
+      // CHANGE TO STRING:
+      employeeLookup: a.string(), // Store as JSON string: '{"employeeId": ["req1", "req2"]}'
+      ComplianceAdditionals: a.hasMany('ComplianceAdditionals', 'complianceid'),
+    })
+    .secondaryIndexes((index) => [
+      index("customerSiteId"),
+      index("complianceRating"),
+      index("employeeLookup")
+    ])
+    .authorization((allow) => [allow.publicApiKey()]),
+
+  ComplianceAdditionals: a.model({
+    complianceid: a.id().required(),
+    name: a.string(),
+    expirey: a.string(),
+    requirementDoc: a.string(),
+    requirementRqd: a.string().array(),
+    Compliance: a.belongsTo('Compliance', 'complianceid'),
+  }).secondaryIndexes((index) => [
+    index("name"),
+  ]).authorization((allow) => [allow.publicApiKey()]),
 
 });
 

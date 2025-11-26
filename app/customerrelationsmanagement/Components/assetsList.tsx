@@ -405,7 +405,7 @@ export default function AssetsList({ customerSiteId }: AssetsListProps) {
                         <div key={asset.id} className="border rounded-lg p-4 text-sm">
                             {editingAsset?.id === asset.id ? (
                                 // Edit Mode - Enhanced Form with Textareas
-                                <div className="space-y-4">
+                                <div className="space-y-2">
                                     <div className="flex justify-between items-start">
                                         <h4 className="font-semibold text-base">Editing Asset</h4>
                                         <div className="flex gap-2">

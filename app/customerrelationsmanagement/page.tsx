@@ -110,7 +110,7 @@ export default function CustomerRelationsManagement() {
                     onClick={() => router.push(`/customerrelationsmanagement/edit/${row.original.id}`)}
 
                 >
-                    <Edit className="
+                    <Edit     className="
     h-4 w-4 mr-2
     cursor-pointer
     hover:bg-slate-100
@@ -132,7 +132,7 @@ export default function CustomerRelationsManagement() {
                         onClick={() =>
                             router.push(`/customerrelationsmanagement/compliance/${row.original.id}`)
                         }
-                        className="
+    className="
     h-4 w-4 mr-2
     cursor-pointer
     hover:bg-slate-100

@@ -30,6 +30,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { HrdPDFUpload } from "../../components/hrdimages";
 import { Employee, MEDICAL_CERTIFICATE_TYPES, TRAINING_CERTIFICATE_TYPES } from "@/types/hrd.types";
 import { handleEmployeeTasks } from "../../components/employeetasks";
+import { getInitials } from "@/utils/helper/helper";
 
 
 
@@ -218,9 +219,7 @@ export default function EditEmployeePage() {
     return total;
   };
 
-  const getInitials = (firstName: string, surname: string) => {
-    return `${firstName.charAt(0)}${surname.charAt(0)}`.toUpperCase();
-  };
+
   const handleInputChange = (field: keyof Employee, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
@@ -710,7 +709,8 @@ export default function EditEmployeePage() {
       <Navbar />
 
       <main className="flex-1 px-4 sm:px-6 mt-20 pb-20">
-        <div className="container mx-auto max-w-6xl mt-8">
+        <div className="container mx-auto max-w-6xl  mt-4">
+
           {/* Header */}
           <div className="mb-8">
             <div className="flex items-center gap-4 mb-6">

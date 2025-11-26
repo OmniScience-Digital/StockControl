@@ -188,9 +188,9 @@ export default function Home() {
                                 
                                 {filteredDashboards.map((dashboard, index) => (
                                     <React.Fragment key={dashboard.id}>
-                                        <div className="group p-2 sm:p-3 hover:bg-blue-50/50 dark:hover:bg-blue-950/20 transition-colors duration-200 cursor-pointer rounded-lg border border-transparent hover:border-blue-200 dark:hover:border-blue-800"
-                                        >
-                                            <div className="flex items-center justify-between">
+                                        <div className="group p-2 sm:p-3 hover:bg-blue-50/50 dark:hover:bg-blue-950/20 transition-colors duration-200 cursor-pointer rounded-lg border border-transparent hover:border-blue-200 dark:hover:border-blue-800 "
+                                        >  
+                                            <div className="flex items-center justify-between">  
                                                 <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
                                                     {/* Icon */}
                                                     <div className="hidden xs:block p-1.5 sm:p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
@@ -200,6 +200,7 @@ export default function Home() {
 
                                                     {/* Content */}
                                                     <div className="flex-1 min-w-0" onClick={() => redirectToDashboard(dashboard)}>
+                                                     
                                                         <div className="flex items-center gap-1.5 sm:gap-2 mb-0.5 sm:mb-1">
                                                             <h3 className="font-medium text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate text-xs sm:text-sm">
                                                                 {dashboard.items}

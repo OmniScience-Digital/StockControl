@@ -10,15 +10,14 @@ import {
   MapPin,
   User,
   Mail,
-  Loader2,
-  FileText
+  Loader2
 } from "lucide-react";
 import Footer from "@/components/layout/footer";
 import Navbar from "@/components/layout/navbar";
 import Loading from "@/components/widgets/loading";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import ResponseModal from "@/components/widgets/response";
@@ -252,7 +251,7 @@ export default function EditCustomerPage() {
     <div className="flex flex-col min-h-screen bg-background from-slate-50 to-blue-50/30">
       <Navbar />
       <main className="flex-1 px-4 sm:px-6 mt-20 pb-20">
-        <div className="container mx-auto max-w-6xl mt-8">
+
 
           {/* Header */}
           <div className="mb-8">
@@ -275,7 +274,7 @@ export default function EditCustomerPage() {
   " />
               </Button>
               <div>
-                <h2 className="text-2xl font-bold">
+                <h2 className="text-2xl font-bold mt-4">
                   Edit {customerSite.siteName}
                 </h2>
                 <p className="text-muted-foreground mt-1 text-base">
@@ -285,7 +284,7 @@ export default function EditCustomerPage() {
             </div>
           </div>
 
-          <div className="lg:col-span-2">
+           <div className="flex flex-col py-3 px-2">
             <Tabs defaultValue="personal" className="space-y-4">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="personal" className="cursor-pointer">Site</TabsTrigger>
@@ -615,7 +614,7 @@ export default function EditCustomerPage() {
               setShow={setShow}
             />
           )}
-        </div>
+
       </main>
       <Footer />
     </div>

@@ -89,9 +89,7 @@ export default function HumanResourcesPage() {
           cvAttachment: item.cvAttachment ?? undefined,
           ppeListAttachment: item.ppeListAttachment ?? undefined,
           ppeExpiry: item.ppeExpiry ?? undefined,
-          //   history: item.history ?? undefined
         }));
-        console.log(tasks);
         setEmployees(mappedEmployees);
         setFilteredEmployees(mappedEmployees);
 
