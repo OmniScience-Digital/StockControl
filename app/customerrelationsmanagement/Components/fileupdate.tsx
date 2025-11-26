@@ -205,8 +205,8 @@ useEffect(() => {
        
       try {
         const result = await getUrl({ path: pdf.s3Key });
-         console.log(result)
-        // window.open(result.url.href, '_blank');
+        //  console.log(result.url)
+        window.open(result.url.href, '_blank');
       } catch (error) {
         console.error('Error generating URL:', error);
       }
