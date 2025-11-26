@@ -60,6 +60,7 @@ export default function EditCustomerPage() {
     siteCreditorsNumber: '',
     comment: '',
   });
+  
 
   const [show, setShow] = useState(false);
   const [successful, setSuccessful] = useState(false);

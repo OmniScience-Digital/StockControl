@@ -242,13 +242,14 @@ export default function AssetsList({ customerSiteId }: AssetsListProps) {
                 if (editedAsset.scaleOEM !== undefined && editedAsset.scaleOEM !== editingAsset.scaleOEM) {
                     historyEntries += `${storedName} updated scaleOEM from ${editingAsset.scaleOEM} to ${editedAsset.scaleOEM} at ${johannesburgTime}\n`;
                 }
+                console.log(scaleDatasheetFiles[0]);
 
                 // Create the updated asset with uploaded file URLs
                 const updatedAsset = {
                     ...editingAsset,
                     ...editedAsset,
-                    scaledatasheetAttach: finalScaleDatasheet,
-                    submittedmaintplanAttach: finalMaintPlan,
+                    scaledatasheetAttach: scaleDatasheetFiles[0]?.s3Key || "",
+                    submittedmaintplanAttach: maintPlanFiles[0]?.s3Key || ""
                 };
 
                 // USE INTERNAL HANDLER

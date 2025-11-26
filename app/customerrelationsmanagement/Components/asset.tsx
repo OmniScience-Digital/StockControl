@@ -87,8 +87,8 @@ export default function AssetCreate({ customerSiteId, folder }: ASSETPROPS) {
 
             const result = await client.models.Asset.create({
                 ...assetData,
-                scaledatasheetAttach: scaledatasheetUrl,
-                submittedmaintplanAttach: submittedmaintplanUrl,
+                scaledatasheetAttach: scaleDatasheetFiles[0]?.s3Key || "",
+                submittedmaintplanAttach: maintPlanFiles[0]?.s3Key || "",
                 customerSiteId: customerSiteId
             });
 
