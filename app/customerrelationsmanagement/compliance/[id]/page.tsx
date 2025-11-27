@@ -17,7 +17,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Label } from "@/components/ui/label";
 import { getInitials } from "@/utils/helper/helper";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import PrimaryDoc from "../../Components/primaryDocs";
+import PrimaryDoc from "../../Components/employeeDocs";
 
 
 const requirementTypes = [
@@ -484,9 +484,9 @@ export default function Compliance() {
                         <div className="lg:col-span-3">
                             <Tabs defaultValue="basic" className="w-[100%]">
                                 <TabsList className="grid w-full grid-cols-4">
-                                    <TabsTrigger value="basic" className="cursor-pointer">Basic</TabsTrigger>
-                                    <TabsTrigger value="viewdocs" className="cursor-pointer">Primary Docs</TabsTrigger>
-                                    <TabsTrigger value="additionaldocs" className="cursor-pointer">Additional Docs</TabsTrigger>
+                                    <TabsTrigger value="basic" className="cursor-pointer">Config</TabsTrigger>
+                                    <TabsTrigger value="viewdocs" className="cursor-pointer">Employees Docs</TabsTrigger>
+                                    <TabsTrigger value="additionaldocs" className="cursor-pointer">Vehicle Docs</TabsTrigger>
                                     <TabsTrigger value="history" className="cursor-pointer">History</TabsTrigger>
                                 </TabsList>
                                 <TabsContent value="basic">
@@ -649,8 +649,19 @@ export default function Compliance() {
                                                     </Button>
                                                 </div>
                                             </div>
+                                        
                                         </CardContent>
+                                  
                                     </Card>
+                                              additipnal docs panel , select that visa applies to employees not site then it appears under ppe List
+                                              but if allocated to customer we add the doc , set an expiry ,and does not appear under ppe list
+
+
+                                              employee requirement are created in the crm section then it apppears ,in hrd where we upload .
+
+                                              Additional require sites specific add [ critical requirement  ] 10% ech critical doc hold 10% ,if they are not expired they are worth the same as other docs
+
+                                              in a set of 90 docs - work permit holds 10% and employee requirements make 1 %
                                 </TabsContent>
 
                                 <TabsContent value="viewdocs">
@@ -672,3 +683,5 @@ export default function Compliance() {
         </div>
     );
 }
+
+

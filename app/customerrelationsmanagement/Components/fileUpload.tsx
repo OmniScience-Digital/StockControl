@@ -5,7 +5,6 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { Upload, FileText, X, Eye, Replace } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { uploadData } from 'aws-amplify/storage';
 import { ConfirmDialog } from "@/components/widgets/deletedialog";
 
 export interface PDFState {

@@ -396,7 +396,7 @@ const schema = a.schema({
     name: a.string(),
     expirey: a.string(),
     requirementDoc: a.string(),
-    requirementRqd: a.string().array(),
+    critical: a.string(),
     Compliance: a.belongsTo('Compliance', 'complianceid'),
   }).secondaryIndexes((index) => [
     index("name"),
