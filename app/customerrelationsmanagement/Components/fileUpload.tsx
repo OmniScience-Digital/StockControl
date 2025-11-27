@@ -6,17 +6,7 @@ import { Upload, FileText, X, Eye, Replace } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/widgets/deletedialog";
-
-export interface PDFState {
-  id: string;
-  file: File;
-  s3Key: string;
-  status: 'pending'; 
-  previewUrl?: string;
-  name: string;
-  size: string;
-  uploadDate: string;
-}
+import { PDFState } from "@/types/schema";
 
 interface PDFUploadProps {
   onFilesChange: (files: PDFState[]) => void; 
@@ -281,8 +271,6 @@ export const FileUpload = ({ onFilesChange, assetName, title,folder }: PDFUpload
   );
 };
 
-
-
 export const FileUploadMany = ({ onFilesChange, assetName, title, folder }: PDFUploadProps) => {
   const [pdfs, setPdfs] = useState<PDFState[]>([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -304,7 +292,7 @@ export const FileUploadMany = ({ onFilesChange, assetName, title, folder }: PDFU
     const cleanassetName = assetName.replace(/[^a-zA-Z0-9]/g, '-');
     const cleanFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '-');
     const timestamp = Date.now();
-    return `documents/${folder}/${cleanassetName}/${cleanFileName}-${timestamp}`;
+    return `documents/${folder}/${cleanFileName}-${timestamp}`;
   }, [assetName, folder]);
 
   const createPreviewUrl = useCallback((file: File): string => {

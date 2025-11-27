@@ -1,17 +1,23 @@
+import { PDFState } from "@/types/schema";
 import { uploadData } from "aws-amplify/storage"
 
-export const handleUpload = async (pdfFile: any) => {
-    if (!pdfFile) return null;
 
+export const handleUpload = async (fileState: PDFState): Promise<string> => {
     try {
-        await uploadData({
-            path: pdfFile.s3Key,
-            data: pdfFile.file
+        console.log('Uploading file to:', fileState.s3Key);
+        
+        const result = await uploadData({
+            path: fileState.s3Key,
+            data: fileState.file,
+            options: {
+                contentType: 'application/pdf'
+            }
         }).result;
-
-        return pdfFile.s3Key;
+        
+        console.log('File uploaded successfully:', fileState.s3Key);
+        return fileState.s3Key;
     } catch (error) {
-        console.error('Upload failed:', error);
-        throw error;
+        console.error('Error uploading file to S3:', error);
+        throw new Error(`Failed to upload file: ${error}`);
     }
 };

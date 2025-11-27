@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getUrl } from 'aws-amplify/storage';
 import { ConfirmDialog } from "@/components/widgets/deletedialog";
+import ResponseModal from "@/components/widgets/response";
 
 export interface PDFState {
   id: string;
@@ -38,33 +39,38 @@ export const FileUploadUpdate = ({ onFilesChange, assetName, title, folder, exis
   const [pdfToDelete, setPdfToDelete] = useState<{ index: number; name: string } | null>(null);
   const [opendelete, setOpendelete] = useState(false);
 
+  const [show, setShow] = useState(false);
+  const [successful, setSuccessful] = useState(false);
+  const [message, setMessage] = useState("");
+
+
   // Use refs to track initialization
   const hasInitialized = useRef(false);
 
   // Initialize with existing files
-useEffect(() => {
-  if (!hasInitialized.current && existingFiles.length > 0) {
-    const existingFile = existingFiles[0];
-    if (existingFile) {
-      const fileName = existingFile.split('/').pop() || `${title.replace(/\s+/g, '_')}.pdf`;
+  useEffect(() => {
+    if (!hasInitialized.current && existingFiles.length > 0) {
+      const existingFile = existingFiles[0];
+      if (existingFile) {
+        const fileName = existingFile.split('/').pop() || `${title.replace(/\s+/g, '_')}.pdf`;
 
-      const s3Key = existingFile; 
+        const s3Key = existingFile;
 
-      const existingPDF: PDFState = {
-        id: `existing-0`,
-        file: new File([], fileName),
-        s3Key: s3Key, 
-        status: 'pending',
-        name: fileName,
-        size: "Unknown",
-        uploadDate: new Date().toLocaleDateString()
-      };
+        const existingPDF: PDFState = {
+          id: `existing-0`,
+          file: new File([], fileName),
+          s3Key: s3Key,
+          status: 'pending',
+          name: fileName,
+          size: "Unknown",
+          uploadDate: new Date().toLocaleDateString()
+        };
 
-      setPdfs([existingPDF]);
-      hasInitialized.current = true;
+        setPdfs([existingPDF]);
+        hasInitialized.current = true;
+      }
     }
-  }
-}, [existingFiles, title]);
+  }, [existingFiles, title]);
 
   // Clean up object URLs on unmount
   useEffect(() => {
@@ -78,7 +84,7 @@ useEffect(() => {
     const cleanassetName = assetName.replace(/[^a-zA-Z0-9]/g, '-');
     const cleanFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '-');
     const timestamp = Date.now();
-    return `documents/${folder}/${cleanassetName}/${cleanFileName}-${timestamp}`;
+    return `documents/${folder}/${cleanFileName}-${timestamp}`;
   }, [assetName, folder]);
 
   const createPreviewUrl = useCallback((file: File): string => {
@@ -86,11 +92,6 @@ useEffect(() => {
     previewUrlsRef.current.add(url);
     return url;
   }, []);
-
-  // Sync files with parent
-  useEffect(() => {
-    onFilesChange(pdfs);
-  }, [pdfs, onFilesChange]);
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -115,6 +116,7 @@ useEffect(() => {
     handleFiles(files);
   };
 
+
   const handleFiles = (files: FileList) => {
     const pdfFiles = Array.from(files).filter(file => file.type === 'application/pdf');
     if (pdfFiles.length === 0) return;
@@ -138,81 +140,97 @@ useEffect(() => {
       uploadDate: new Date().toLocaleDateString()
     };
 
-    setPdfs([newPDF]);
-
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+    const newPdfs = [newPDF];
+    setPdfs(newPdfs);
+    onFilesChange(newPdfs); // Call directly here instead of in useEffect
   };
-
 
   const removePDF = useCallback((index: number) => {
     const pdfToRemove = pdfs[index];
 
-    // If it's an existing file (has s3Key), notify parent to delete it
-    if (pdfToRemove.s3Key && pdfToRemove.id.startsWith('existing-')) {
-      onFileRemove?.(pdfToRemove.s3Key);
-    }
-
-    // Clean up and remove from state
+    // Clean up preview URL
     if (pdfToRemove.previewUrl) {
       URL.revokeObjectURL(pdfToRemove.previewUrl);
       previewUrlsRef.current.delete(pdfToRemove.previewUrl);
     }
 
+    // If it's an existing file with s3Key, notify parent for deletion
+    if (pdfToRemove.s3Key && pdfToRemove.id.startsWith('existing-')) {
+      onFileRemove?.(pdfToRemove.s3Key);
+    }
+
+    // Clear the files array and notify parent with empty array
     setPdfs([]);
-  }, [pdfs, onFileRemove]);
+    onFilesChange([]); // Important: notify parent that files are cleared
+
+    // Also clear the file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  }, [pdfs, onFileRemove, onFilesChange]);
+
 
   const replacePDF = useCallback((index: number) => {
-    // Store reference to current file
-    const currentPdf = pdfs[index];
-
-    // Create a temporary file input to detect selection
     const tempFileInput = document.createElement('input');
     tempFileInput.type = 'file';
     tempFileInput.accept = '.pdf';
     tempFileInput.multiple = false;
 
-    tempFileInput.onchange = (event) => {
+    tempFileInput.onchange = async (event) => {
       const files = (event.target as HTMLInputElement).files;
       if (files && files.length > 0) {
-        // User selected a new file - now remove the old one and process new file
-        const pdfToRemove = pdfs[index];
+        const newFile = files[0];
 
-        // Clean up preview URL of old file
-        if (pdfToRemove.previewUrl) {
-          URL.revokeObjectURL(pdfToRemove.previewUrl);
-          previewUrlsRef.current.delete(pdfToRemove.previewUrl);
+        // Clean up existing file preview URL
+        if (pdfs.length > 0 && pdfs[0].previewUrl) {
+          URL.revokeObjectURL(pdfs[0].previewUrl);
+          previewUrlsRef.current.delete(pdfs[0].previewUrl);
         }
 
-        // Remove old file and process new one
-        setPdfs([]);
-        handleFiles(files);
-      }
+        const newPDF: PDFState = {
+          id: Math.random().toString(36).substring(2, 9),
+          file: newFile,
+          s3Key: generateS3Key(newFile),
+          status: 'pending',
+          previewUrl: createPreviewUrl(newFile),
+          name: newFile.name,
+          size: `${(newFile.size / (1024 * 1024)).toFixed(1)} MB`,
+          uploadDate: new Date().toLocaleDateString()
+        };
 
+        const newPdfs = [newPDF];
+        setPdfs(newPdfs);
+
+        onFilesChange(newPdfs);
+      }
     };
 
     tempFileInput.click();
-  }, [pdfs, handleFiles]);
+  }, [pdfs, generateS3Key, createPreviewUrl, onFilesChange]);
+
 
   const handlePreview = async (pdf: PDFState) => {
-
-    // For new files with preview URLs
-    if (pdf.previewUrl) {
-      window.open(pdf.previewUrl, '_blank');
-    }
-    else if (pdf.s3Key) {
-       
-      try {
-        const result = await getUrl({ path: pdf.s3Key });
-        //  console.log(result.url)
+    try {
+      if (pdf.previewUrl) {
+        window.open(pdf.previewUrl, '_blank');
+      } else if (pdf.s3Key) {
+        const result = await getUrl({
+          path: pdf.s3Key,
+          options: {
+            validateObjectExistence: true
+          }
+        });
         window.open(result.url.href, '_blank');
-      } catch (error) {
-        console.error('Error generating URL:', error);
+      }
+    } catch (error: any) {
+      console.error('Error generating URL:', error);
+      if (error?.message?.includes('NoSuchKey') || error?.message?.includes('not exist')) {
+        setMessage("File not found in storage. It may have been deleted.");
+        setSuccessful(false);
+        setShow(true);
       }
     }
   };
-
 
   const triggerFileInput = () => fileInputRef.current?.click();
 
@@ -231,7 +249,6 @@ useEffect(() => {
 
   const hasPDF = pdfs.length > 0;
   const isExistingFile = hasPDF && pdfs[0].id.startsWith('existing-');
-
 
 
   return (
@@ -293,7 +310,7 @@ useEffect(() => {
                   <div className="flex items-center gap-2 flex-1 min-w-0">
                     <FileText className="h-5 w-5 text-red-500 flex-shrink-0" />
                     <span className="text-sm font-medium truncate flex-1" title={pdfs[0].name}>
-                    {pdfs[0].name}
+                      {pdfs[0].name}
                     </span>
                   </div>
                   <div className="flex items-center gap-1">
@@ -341,6 +358,14 @@ useEffect(() => {
                 }
               </div>
             </div>
+          )}
+
+          {show && (
+            <ResponseModal
+              successful={successful}
+              message={message}
+              setShow={setShow}
+            />
           )}
         </CardContent>
       </Card>

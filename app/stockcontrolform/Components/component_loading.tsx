@@ -8,7 +8,7 @@ export default function Loading() {
           <span className="w-2 h-2 bg-gray-400 rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></span>
           <span className="w-2 h-2 bg-gray-400 rounded-full animate-pulse" style={{animationDelay: '0.4s'}}></span>
         </div>
-        <span className="text-gray-500 text-sm">Loading components</span>
+        <span className="text-gray-500 text-sm">Loading </span>
       </div>
     </div>
   );
