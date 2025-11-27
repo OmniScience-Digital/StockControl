@@ -245,11 +245,7 @@ export default function EmployeeSelect({ employees, complianceData }: EmployeeSe
                                         Requirements for {selectedEmployee.firstName} {selectedEmployee.surname}
                                     </span>
                                 </div>
-                                <div className="flex items-center">
-                                    <Button>
-                                        <Plus className="h-4 w-4 mr-1" /> Add Additional Docs
-                                    </Button>
-                                </div>
+                      
                             </CardTitle>
 
 

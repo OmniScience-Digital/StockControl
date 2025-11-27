@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label";
 import { getInitials } from "@/utils/helper/helper";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import PrimaryDoc from "../../Components/employeeDocs";
+import SiteAdditional from "../../Components/siteadditionalDoc";
 
 
 const requirementTypes = [
@@ -51,40 +52,40 @@ export default function Compliance() {
 
     // Fetch employees from your Employee model with relations
     useEffect(() => {
-        const fetchSite = async () => {
-            const { data: customerSites } = await client.models.CustomerSite.list({
-                filter: { id: { eq: customerSiteId } }
-            });
+      const fetchSite = async () => {
+  try {
+    const { data: customerSites } = await client.models.CustomerSite.list({
+      filter: { id: { eq: customerSiteId } }
+    });
 
-            if (customerSites.length > 0) {
-                const site = customerSites[0];
-                setSiteName(site.siteName);
-                setSiteLocation(site.siteLocation || "");
+    if (customerSites.length > 0) {
+      const site = customerSites[0];
+      setSiteName(site.siteName);
+      setSiteLocation(site.siteLocation || "");
 
-                // Fetch related compliance records for this site using the GSI
-                const { data: complianceRecords } = await client.models.Compliance.list({
-                    filter: { customerSiteId: { eq: customerSiteId } }
-                });
+      // Fetch compliance records and their relations in parallel
+      const { data: complianceRecords } = await client.models.Compliance.list({
+        filter: { customerSiteId: { eq: customerSiteId } }
+      });
 
-                if (complianceRecords.length > 0) {
-                    const compliance = complianceRecords[0];
-                    setComplianceData(compliance);
+      if (complianceRecords.length > 0) {
+        const compliance = complianceRecords[0];
+   
+        setComplianceData({
+          ...compliance
+        });
 
-                    // Pre-select employees and requirements based on existing data
-                    if (compliance.linkedEmployees) {
-                        // Filter out null values and convert to Set<string>
-                        const validEmployeeIds = compliance.linkedEmployees.filter((id): id is string => id !== null);
-                        setSelectedEmployees(new Set(validEmployeeIds));
-                    }
-
-                    // Parse employeeLookup to see what requirements each employee has
-                    if (compliance.employeeLookup) {
-                        const lookup = JSON.parse(compliance.employeeLookup);
-                        console.log("Existing employee requirements:", lookup);
-                    }
-                }
-            }
-        };
+        // Pre-select employees based on existing data
+        if (compliance.linkedEmployees) {
+          const validEmployeeIds = compliance.linkedEmployees.filter((id): id is string => id !== null);
+          setSelectedEmployees(new Set(validEmployeeIds));
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Error fetching site:", error);
+  }
+};
 
         const fetchEmployeesWithRelations = async () => {
             try {
@@ -196,112 +197,112 @@ export default function Compliance() {
     };
 
     const handleLinkRequirements = async () => {
-  if (selectedEmployees.size === 0 || selectedRequirements.size === 0) return;
-  setLinkingLoading(true);
-  try {
-    // Check if compliance record already exists for this customerSiteId
-    const { data: existingCompliance } = await client.models.Compliance.list({
-      filter: { customerSiteId: { eq: customerSiteId } }
-    });
+        if (selectedEmployees.size === 0 || selectedRequirements.size === 0) return;
+        setLinkingLoading(true);
+        try {
+            // Check if compliance record already exists for this customerSiteId
+            const { data: existingCompliance } = await client.models.Compliance.list({
+                filter: { customerSiteId: { eq: customerSiteId } }
+            });
 
-    // Start with existing employeeLookup or create new one
-    let employeeLookup: Record<string, string[]> = {};
-    if (existingCompliance?.[0]?.employeeLookup) {
-      try {
-        employeeLookup = JSON.parse(existingCompliance[0].employeeLookup);
-      } catch (error) {
-        console.error("Error parsing existing employee lookup:", error);
-      }
-    }
+            // Start with existing employeeLookup or create new one
+            let employeeLookup: Record<string, string[]> = {};
+            if (existingCompliance?.[0]?.employeeLookup) {
+                try {
+                    employeeLookup = JSON.parse(existingCompliance[0].employeeLookup);
+                } catch (error) {
+                    console.error("Error parsing existing employee lookup:", error);
+                }
+            }
 
-    // Merge new requirements with existing ones for each employee
-    Array.from(selectedEmployees).forEach(employeeId => {
-      const existingReqs = employeeLookup[employeeId] || [];
-      const newReqs = Array.from(selectedRequirements);
-      // Combine and remove duplicates
-      employeeLookup[employeeId] = Array.from(new Set([...existingReqs, ...newReqs]));
-    });
+            // Merge new requirements with existing ones for each employee
+            Array.from(selectedEmployees).forEach(employeeId => {
+                const existingReqs = employeeLookup[employeeId] || [];
+                const newReqs = Array.from(selectedRequirements);
+                // Combine and remove duplicates
+                employeeLookup[employeeId] = Array.from(new Set([...existingReqs, ...newReqs]));
+            });
 
-    // Map requirement types to exact field names in your schema
-    const requirementFieldMap: Record<string, string> = {
-      "CLINIC_PLUS": "clinicPlusRqd",
-      "CLINIC_PLUS_INDUCTION": "clinicPlusInductionRqd",
-      "DRIVERS_LICENSE": "driversLicenseRqd",
-      "FIREFIGHTING": "firefightingRqd",
-      "FIRST_AID_LEVEL_1": "firstAidLevel1Rqd",
-      "FIRST_AID_LEVEL_2": "firstAidLevel2Rqd",
-      "HEARTLY_HEALTH": "heartlyHealthRqd",
-      "KLIPSPRUIT_MEDICAL": "klipspruitMedicalRqd",
-      "LEGAL_LIABILITY": "legalLiabilityRqd",
-      "LUYUYO_MEDICAL": "luvuyoMedicalRqd",
-      "OEM_CERT": "oemCertRqd",
-      "PASSPORT": "passportRqd",
-      "PDP": "pdpRqd",
-      "SATS_CONVEYOR": "satsConveyorRqd",
-      "SATS_COP_SOP": "satsCopSopRqd",
-      "WILGE_VXR": "wilgeVxrRqd",
-      "WORKING_AT_HEIGHTS": "workingAtHeightsRqd",
-      "WORKING_WITH_HAND_TOOLS": "workingWithHandToolsRqd",
-      "WORKING_WITH_POWER_TOOLS": "workingWithPowerToolsRqd",
-      "APPOINTMENT_2_9_2": "appointment292Rqd",
-      "CURRICULUM_VITAE": "curriculumVitaeRqd",
-      "PPE_LIST": "ppeListRqd",
-      "OHS_ACT": "ohsActRqd",
-      "MHSA": "mhsaRqd",
-      "KRIEL_MEDICAL": "krielMedicalRqd",
-      "PRO_HEALTH_MEDICAL": "proHealthMedicalRqd",
-      "SATS_ILOT": "satsIlotRqd",
-      "HIRA_TRAINING": "hiraTrainingRqd"
+            // Map requirement types to exact field names in your schema
+            const requirementFieldMap: Record<string, string> = {
+                "CLINIC_PLUS": "clinicPlusRqd",
+                "CLINIC_PLUS_INDUCTION": "clinicPlusInductionRqd",
+                "DRIVERS_LICENSE": "driversLicenseRqd",
+                "FIREFIGHTING": "firefightingRqd",
+                "FIRST_AID_LEVEL_1": "firstAidLevel1Rqd",
+                "FIRST_AID_LEVEL_2": "firstAidLevel2Rqd",
+                "HEARTLY_HEALTH": "heartlyHealthRqd",
+                "KLIPSPRUIT_MEDICAL": "klipspruitMedicalRqd",
+                "LEGAL_LIABILITY": "legalLiabilityRqd",
+                "LUYUYO_MEDICAL": "luvuyoMedicalRqd",
+                "OEM_CERT": "oemCertRqd",
+                "PASSPORT": "passportRqd",
+                "PDP": "pdpRqd",
+                "SATS_CONVEYOR": "satsConveyorRqd",
+                "SATS_COP_SOP": "satsCopSopRqd",
+                "WILGE_VXR": "wilgeVxrRqd",
+                "WORKING_AT_HEIGHTS": "workingAtHeightsRqd",
+                "WORKING_WITH_HAND_TOOLS": "workingWithHandToolsRqd",
+                "WORKING_WITH_POWER_TOOLS": "workingWithPowerToolsRqd",
+                "APPOINTMENT_2_9_2": "appointment292Rqd",
+                "CURRICULUM_VITAE": "curriculumVitaeRqd",
+                "PPE_LIST": "ppeListRqd",
+                "OHS_ACT": "ohsActRqd",
+                "MHSA": "mhsaRqd",
+                "KRIEL_MEDICAL": "krielMedicalRqd",
+                "PRO_HEALTH_MEDICAL": "proHealthMedicalRqd",
+                "SATS_ILOT": "satsIlotRqd",
+                "HIRA_TRAINING": "hiraTrainingRqd"
+            };
+
+            // Prepare the compliance data
+            const complianceData: any = {
+                customerSiteId: customerSiteId,
+                employeeLookup: JSON.stringify(employeeLookup)
+            };
+
+            // Add/merge employee IDs to linkedEmployees array
+            const existingLinkedEmployees = (existingCompliance?.[0] as any)?.linkedEmployees || [];
+            complianceData.linkedEmployees = Array.from(new Set([...existingLinkedEmployees, ...Array.from(selectedEmployees)]));
+
+            // Add/merge employee IDs to each requirement array using correct field names
+            Array.from(selectedRequirements).forEach(requirement => {
+                const fieldName = requirementFieldMap[requirement];
+                if (fieldName) {
+                    const existingEmployees = (existingCompliance?.[0] as any)?.[fieldName] || [];
+                    complianceData[fieldName] = Array.from(new Set([...existingEmployees, ...Array.from(selectedEmployees)]));
+                }
+            });
+
+            // Update existing record or create new one
+            let result;
+            if (existingCompliance?.[0]?.id) {
+                result = await client.models.Compliance.update({
+                    id: existingCompliance[0].id,
+                    ...complianceData
+                });
+            } else {
+                result = await client.models.Compliance.create(complianceData);
+            }
+
+            // Reset selection
+            setSelectedEmployees(new Set());
+            setSelectedRequirements(new Set());
+
+            // Refresh compliance data
+            const { data: updatedCompliance } = await client.models.Compliance.list({
+                filter: { customerSiteId: { eq: customerSiteId } }
+            });
+            if (updatedCompliance.length > 0) {
+                setComplianceData(updatedCompliance[0]);
+            }
+
+        } catch (error) {
+            console.error("Error linking requirements:", error);
+        } finally {
+            setLinkingLoading(false);
+        }
     };
-
-    // Prepare the compliance data
-    const complianceData: any = {
-      customerSiteId: customerSiteId,
-      employeeLookup: JSON.stringify(employeeLookup)
-    };
-
-    // Add/merge employee IDs to linkedEmployees array
-    const existingLinkedEmployees = (existingCompliance?.[0] as any)?.linkedEmployees || [];
-    complianceData.linkedEmployees = Array.from(new Set([...existingLinkedEmployees, ...Array.from(selectedEmployees)]));
-
-    // Add/merge employee IDs to each requirement array using correct field names
-    Array.from(selectedRequirements).forEach(requirement => {
-      const fieldName = requirementFieldMap[requirement];
-      if (fieldName) {
-        const existingEmployees = (existingCompliance?.[0] as any)?.[fieldName] || [];
-        complianceData[fieldName] = Array.from(new Set([...existingEmployees, ...Array.from(selectedEmployees)]));
-      }
-    });
-
-    // Update existing record or create new one
-    let result;
-    if (existingCompliance?.[0]?.id) {
-      result = await client.models.Compliance.update({
-        id: existingCompliance[0].id,
-        ...complianceData
-      });
-    } else {
-      result = await client.models.Compliance.create(complianceData);
-    }
-
-    // Reset selection
-    setSelectedEmployees(new Set());
-    setSelectedRequirements(new Set());
-
-    // Refresh compliance data
-    const { data: updatedCompliance } = await client.models.Compliance.list({
-      filter: { customerSiteId: { eq: customerSiteId } }
-    });
-    if (updatedCompliance.length > 0) {
-      setComplianceData(updatedCompliance[0]);
-    }
-
-  } catch (error) {
-    console.error("Error linking requirements:", error);
-  } finally {
-    setLinkingLoading(false);
-  }
-};
 
     const handleUnlinkRequirements = async () => {
         if (selectedEmployees.size === 0 || selectedRequirements.size === 0) return;
@@ -649,19 +650,11 @@ export default function Compliance() {
                                                     </Button>
                                                 </div>
                                             </div>
-                                        
+
                                         </CardContent>
-                                  
+
                                     </Card>
-                                              additipnal docs panel , select that visa applies to employees not site then it appears under ppe List
-                                              but if allocated to customer we add the doc , set an expiry ,and does not appear under ppe list
-
-
-                                              employee requirement are created in the crm section then it apppears ,in hrd where we upload .
-
-                                              Additional require sites specific add [ critical requirement  ] 10% ech critical doc hold 10% ,if they are not expired they are worth the same as other docs
-
-                                              in a set of 90 docs - work permit holds 10% and employee requirements make 1 %
+                                    <SiteAdditional complianceData={complianceData} />
                                 </TabsContent>
 
                                 <TabsContent value="viewdocs">

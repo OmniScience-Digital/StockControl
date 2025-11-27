@@ -1262,6 +1262,8 @@ export default function EditEmployeePage() {
                     </CardContent>
                   </Card>
                 </TabsContent>
+
+                {/* History  Tab */}
                 <TabsContent value="history" >
                   <Card className="bg-background border-slate-200 shadow-sm">
                     <CardHeader className="bg-background border-b border-slate-200">

@@ -400,6 +400,7 @@ const schema = a.schema({
     Compliance: a.belongsTo('Compliance', 'complianceid'),
   }).secondaryIndexes((index) => [
     index("name"),
+     index("complianceid"),
   ]).authorization((allow) => [allow.publicApiKey()]),
 
 });
