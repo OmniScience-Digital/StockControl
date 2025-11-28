@@ -247,6 +247,13 @@ const schema = a.schema({
     ])
     .authorization((allow) => [allow.publicApiKey()]),
 
+  EmployeeAdditionalList: a
+    .model({
+      certificateName: a.string().required(),
+      employee: a.belongsTo('Employee', 'employeeId'),
+    })
+    .authorization((allow) => [allow.publicApiKey()]),
+
   History: a.model({
     entityType: a.enum(["COMPONENT", "FLEET", "INSPECTION", "EMPLOYEE", "CUSTOMER", "ASSET", "COMPLIANCE"]),
     entityId: a.string().required(),
@@ -400,7 +407,7 @@ const schema = a.schema({
     Compliance: a.belongsTo('Compliance', 'complianceid'),
   }).secondaryIndexes((index) => [
     index("name"),
-     index("complianceid"),
+    index("complianceid"),
   ]).authorization((allow) => [allow.publicApiKey()]),
 
 });
