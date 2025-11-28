@@ -250,7 +250,6 @@ const schema = a.schema({
   EmployeeAdditionalList: a
     .model({
       certificateName: a.string().required(),
-      employee: a.belongsTo('Employee', 'employeeId'),
     })
     .authorization((allow) => [allow.publicApiKey()]),
 
