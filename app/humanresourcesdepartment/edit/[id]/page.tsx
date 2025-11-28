@@ -78,7 +78,7 @@ export default function EditEmployeePage() {
       const [
         { data: medicalCertificates },
         { data: trainingCertificates },
-        { data: additionalCertificates }
+        { data: additionalCertificates },
       ] = await Promise.all([
         client.models.EmployeeMedicalCertificate.medicalCertsByEmployee({
           employeeId: employee.employeeId
@@ -88,7 +88,7 @@ export default function EditEmployeePage() {
         }),
         client.models.EmployeeAdditionalCertificate.additionalCertsByEmployee({
           employeeId: employee.employeeId
-        })
+        }),
       ]);
 
 
@@ -107,22 +107,28 @@ export default function EditEmployeePage() {
   useEffect(() => {
     const fetchEmployee = async () => {
       try {
-        const employeeData = await fetchEmployeeWithRelations();
+        setLoading(true);
+
+        // Fetch all data concurrently
+        const [employeeData, additionList] = await Promise.all([
+          fetchEmployeeWithRelations(),
+          client.models.EmployeeAdditionalList.list()
+        ]);
+
 
         if (employeeData) {
-
-          const expiringtask = await client.models.EmployeeTaskTable.listEmployeeTaskTableByEmployeeIdAndEmployeeName({
-            employeeId: employeeData.employeeId
-          });
-
-          // fetch latest 20 record
-          const employeeHistory = await client.models.History.getHistoryByEntityId({
-            entityId: employeeData.employeeId,
-
-          }, {
-            sortDirection: 'DESC',
-            limit: 20
-          });
+          // Fetch employee-specific data concurrently
+          const [expiringtask, employeeHistory] = await Promise.all([
+            client.models.EmployeeTaskTable.listEmployeeTaskTableByEmployeeIdAndEmployeeName({
+              employeeId: employeeData.employeeId
+            }),
+            client.models.History.getHistoryByEntityId({
+              entityId: employeeData.employeeId,
+            }, {
+              sortDirection: 'DESC',
+              limit: 20
+            })
+          ]);
 
           // Convert to string format
           const historyString = employeeHistory.data
@@ -130,21 +136,18 @@ export default function EditEmployeePage() {
             .join('');
           setHistory(historyString);
 
-
           setEmployee(employeeData);
           setFormData(employeeData);
 
-          // Create array with ALL 8 certificate types, fill with existing data
-          const certsMap = new Map(
-            employeeData.medicalCertificates?.map(cert => [cert.certificateType, cert])
-          );
-
-
-
+          // Process certificates in parallel
           const totalDocs = countUploadedDocuments(employeeData);
           setTotalDocuments(totalDocs);
           setTotalExpiringDocuments(expiringtask.data.length);
 
+          // MEDICAL CERTIFICATES
+          const certsMap = new Map(
+            employeeData.medicalCertificates?.map(cert => [cert.certificateType, cert])
+          );
           const allMedicalCerts = MEDICAL_CERTIFICATE_TYPES.map(type =>
             certsMap.get(type) || {
               certificateType: type,
@@ -153,12 +156,10 @@ export default function EditEmployeePage() {
             }
           );
 
-          // Create array with ALL 15 certificate types, fill with existing data
+          // TRAINING CERTIFICATES
           const trainingcertsMap = new Map(
             employeeData.trainingCertificates?.map(cert => [cert.certificateType, cert])
           );
-
-
           const alltrainingCerts = TRAINING_CERTIFICATE_TYPES.map(type =>
             trainingcertsMap.get(type) || {
               certificateType: type,
@@ -167,20 +168,31 @@ export default function EditEmployeePage() {
             }
           );
 
+          // ADDITIONAL CERTIFICATES
+          const additionalCertsMap = new Map(
+            employeeData.additionalCertificates?.map(cert => [cert.certificateName, cert])
+          );
+          const allAdditionalCertTypes = additionList.data?.map(item => item.certificateName) || [];
+          const allAdditionalCerts = allAdditionalCertTypes.map(certificateName =>
+            additionalCertsMap.get(certificateName) || {
+              id: "",
+              certificateName: certificateName,
+              expiryDate: "",
+              attachment: ""
+            }
+          );
 
-
-          setMedicalCerts(allMedicalCerts);
-          setTrainingCerts(alltrainingCerts);
-          const sortedAdditionalCerts = (employeeData.additionalCertificates || [])
+          const sortedAdditionalCerts = allAdditionalCerts
             .slice()
             .sort((a, b) => a.certificateName.localeCompare(b.certificateName));
 
+          // Set all state at once
+          setMedicalCerts(allMedicalCerts);
+          setTrainingCerts(alltrainingCerts);
           setAdditionalCerts(sortedAdditionalCerts);
-
         }
       } catch (error) {
         console.error("Error fetching employee:", error);
-
         setMessage("Failed to load employee data!");
         setShow(true);
         setSuccessful(false);
@@ -515,6 +527,12 @@ export default function EditEmployeePage() {
         }
       }
 
+      // First, get all existing certificate names from EmployeeAdditionalList once
+      const existingListItems = await client.models.EmployeeAdditionalList.list();
+      const existingCertificateNames = new Set(
+        existingListItems.data?.map(item => item.certificateName.toLowerCase()) || []
+      );
+
       // Update additional certificates - only if changed
       for (const cert of additionalCerts) {
         const existingCert = existingAdditionalCerts.find(ec => ec.id === cert.id);
@@ -526,6 +544,16 @@ export default function EditEmployeePage() {
         const hasNewData = cert.expiryDate || cert.attachment || cert.certificateName;
 
         if ((nameChanged || expiryChanged || attachmentChanged || !existingCert) && hasNewData) {
+          // Save certificate name to EmployeeAdditionalList if it doesn't exist
+          if (cert.certificateName && cert.certificateName.trim() !== '' &&
+            !existingCertificateNames.has(cert.certificateName.toLowerCase())) {
+            await client.models.EmployeeAdditionalList.create({
+              certificateName: cert.certificateName.trim()
+            });
+            existingCertificateNames.add(cert.certificateName.toLowerCase());
+          }
+
+          // Update or create the employee certificate
           if (existingCert) {
             await client.models.EmployeeAdditionalCertificate.update({
               id: existingCert.id,
@@ -548,6 +576,17 @@ export default function EditEmployeePage() {
       for (const existingCert of existingAdditionalCerts) {
         const stillExists = additionalCerts.find(ac => ac.id === existingCert.id);
         if (!stillExists) {
+          // Find the correct EmployeeAdditionalList ID by certificate name
+          const listItemToDelete = existingListItems.data?.find(
+            item => item.certificateName.toLowerCase() === existingCert.certificateName.toLowerCase()
+          );
+
+          // Delete from EmployeeAdditionalList using the correct ID
+          if (listItemToDelete) {
+            await client.models.EmployeeAdditionalList.delete({
+              id: listItemToDelete.id
+            });
+          }
           await client.models.EmployeeAdditionalCertificate.delete({
             id: existingCert.id
           });
@@ -565,8 +604,9 @@ export default function EditEmployeePage() {
         },
         storedName // username
       );
+
       // console.log(`\nEmployee ${formData.firstName} ${formData.surname} updated by ${storedName}. Changes:\n${changedFields.join('')}`);
-       router.push('/humanresources');
+      router.push('/humanresourcesdepartment');
     } catch (error) {
       console.error("Error saving employee:", error);
 
@@ -717,9 +757,8 @@ export default function EditEmployeePage() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => router.push('/humanresources')}
-                className="h-9 w-9 p-0"
-              >
+                onClick={() => router.push('/humanresourcesdepartment')}
+                className="h-9 w-9 p-0 relative hover:scale-105 active:scale-95 transition-transform duration-150">
                 <ArrowLeft className="h-5 w-5" />
               </Button>
               <div>
@@ -1309,7 +1348,7 @@ export default function EditEmployeePage() {
               <div className="flex justify-end gap-3 mt-8">
                 <Button
                   variant="outline"
-                  onClick={() => router.push('/humanresources')}
+                  onClick={() => router.push('/humanresourcesdepartment')}
                 >
                   Cancel
                 </Button>

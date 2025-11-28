@@ -14,35 +14,20 @@ import Loading from "@/app/stockcontrolform/Components/component_loading";
 import { remove } from "aws-amplify/storage";
 import { ConfirmDialog } from "@/components/widgets/deletedialog";
 import { PDFState } from "@/types/schema";
+import { ComplianceAdditionals } from "@/types/crm.types";
 
-//    additipnal docs panel , select that visa applies to employees not site then it appears under ppe List
-// but if allocated to customer we add the doc , set an expiry ,and does not appear under ppe list
-
-
-// employee requirement are created in the crm section then it apppears ,in hrd where we upload .
-
-// Additional require sites specific add [ critical requirement  ] 10% ech critical doc hold 10% ,if they are not expired they are worth the same as other docs
-
-// in a set of 90 docs - work permit holds 10% and employee requirements make 1 %
 
 interface SiteAdditionalProps {
     complianceData: any;
-}
-interface ComplianceAdditionals {
-    id?: string;
-    complianceid?: string;
-    name?: string;
-    expirey?: string;
-    requirementDoc?: string;
-    critical?: string;
-    createdAt?: string;
-    updatedAt?: string;
+    complianceexistingdocs: ComplianceAdditionals[];
+    loading: boolean;
 }
 
 
-export default function SiteAdditional({ complianceData }: SiteAdditionalProps) {
+
+export default function SiteAdditional({ complianceData, complianceexistingdocs, loading }: SiteAdditionalProps) {
     const [additionalCerts, setAdditionalCerts] = useState<any[]>([]);
-    const [existingdocs, setAdditionalDocs] = useState<ComplianceAdditionals[]>([]);
+    const [existingdocs, setAdditionalDocs] = useState<ComplianceAdditionals[]>(complianceexistingdocs);
 
     const [certificateFiles, setCertificateFiles] = useState<{ [key: number]: PDFState[] }>({});
     const [show, setShow] = useState(false);
@@ -51,50 +36,19 @@ export default function SiteAdditional({ complianceData }: SiteAdditionalProps) 
     const [saving, setSaving] = useState(false);
     const [updating, setUpdating] = useState(false);
 
-
-    const [loadingcompliance, setloadingcompliance] = useState(false);
     const [hasChanges, setHasChanges] = useState(false);
+
+    useEffect(() => {
+
+        setAdditionalDocs(complianceexistingdocs)
+    }, [complianceexistingdocs]);
+
+
 
 
     //handle delete site file 
     const [opendelete, setOpendelete] = useState(false);
     const [docToDelete, setDocToDelete] = useState<{ id: string, name: string } | null>(null);
-
-
-
-    useEffect(() => {
-        setloadingcompliance(true);
-        const fetchAdditionalDoc = async () => {
-            try {
-                // Check if complianceData and id are available
-                if (!complianceData?.id) {
-                    console.log("Waiting for compliance data...");
-                    return;
-                }
-
-                const result = await client.models.ComplianceAdditionals.listComplianceAdditionalsByComplianceid({
-                    complianceid: complianceData.id
-                });
-
-
-                if (result.data) {
-                    setAdditionalDocs(result.data as ComplianceAdditionals[]);
-                }
-
-
-            } catch (error) {
-                console.error("Error fetching certificates:", error);
-                setMessage("Error fetching additional certificates");
-                setSuccessful(false);
-                setShow(true);
-            } finally {
-                setloadingcompliance(false);
-            }
-        }
-
-        fetchAdditionalDoc();
-
-    }, [complianceData?.id])
 
 
     const handleCriticalChange = (index: number, checked: boolean) => {
@@ -103,13 +57,13 @@ export default function SiteAdditional({ complianceData }: SiteAdditionalProps) 
         setAdditionalCerts(updated);
     };
 
-
     const removeAdditionalCertificate = (index: number) => {
         setAdditionalCerts(prev => prev.filter((_, i) => i !== index));
 
     };
 
     const handleAdditionalCertChange = (index: number, field: string, value: string) => {
+        setHasChanges(true);
         const updated = [...additionalCerts];
         updated[index] = { ...updated[index], [field]: value };
         setAdditionalCerts(updated);
@@ -148,6 +102,18 @@ export default function SiteAdditional({ complianceData }: SiteAdditionalProps) 
             setAdditionalDocs(prev => prev.filter(doc => doc.id !== docId));
             setDocToDelete(null);
 
+            // History tracking for certificate deletion
+            const storedName = localStorage.getItem("user")?.replace(/^"|"$/g, '').trim() || "Unknown User";
+            const johannesburgTime = new Date().toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg" });
+
+            await client.models.History.create({
+                entityType: "COMPLIANCE",
+                entityId: complianceData?.customerSiteId,
+                action: "DELETE_CERTIFICATE",
+                timestamp: new Date().toISOString(),
+                details: `\n${storedName} DELETED site additional certificate "${docName}" at ${johannesburgTime}\n`
+            });
+
             setMessage(`Successfully deleted certificate: ${docName}`);
             setSuccessful(true);
             setShow(true);
@@ -171,15 +137,12 @@ export default function SiteAdditional({ complianceData }: SiteAdditionalProps) 
         setOpendelete(true);
     };
 
-
     const handleExistingCertChange = (index: number, field: string, value: string) => {
         setHasChanges(true);
         const updated = [...existingdocs];
         updated[index] = { ...updated[index], [field]: value };
         setAdditionalDocs(updated);
     };
-
-
 
     const handleExistingFileChange = (index: number) => (files: PDFState[]) => {
         setHasChanges(true);
@@ -263,14 +226,16 @@ export default function SiteAdditional({ complianceData }: SiteAdditionalProps) 
                 `${storedName} added Additional Certificate "${cert.certificateName}" at ${johannesburgTime}.\n`
             );
 
-            if (changedFields.length > 0) {
-                const historyText = `\nSite Additional Documents updated by ${storedName}. Changes:\n${changedFields.join('')}`;
+            // Create specific history entries for each certificate created
+            for (const cert of uploadedCerts) {
+                const historyEntry = `\n${storedName} CREATED site additional certificate "${cert.certificateName}" with expiry ${cert.expiryDate || 'No expiry'} at ${johannesburgTime}\n`;
+
                 await client.models.History.create({
                     entityType: "COMPLIANCE",
-                    entityId: complianceData?.id,
-                    action: "UPDATE",
+                    entityId: complianceData?.customerSiteId,
+                    action: "CREATE_CERTIFICATE",
                     timestamp: new Date().toISOString(),
-                    details: historyText
+                    details: historyEntry
                 });
             }
 
@@ -290,6 +255,7 @@ export default function SiteAdditional({ complianceData }: SiteAdditionalProps) 
             setUpdating(true);
 
             let updateCount = 0;
+            const updatedCertificates: string[] = [];
 
             // Process all existing documents
             for (let i = 0; i < existingdocs.length; i++) {
@@ -297,6 +263,7 @@ export default function SiteAdditional({ complianceData }: SiteAdditionalProps) 
                 if (!currentDoc.id) continue;
 
                 let requirementDoc = currentDoc.requirementDoc || "";
+                let wasUpdated = false;
 
                 // Handle new file upload ONLY (no deletion logic here)
                 const newFile = certificateFiles[i]?.[0];
@@ -305,6 +272,7 @@ export default function SiteAdditional({ complianceData }: SiteAdditionalProps) 
                         const newFileKey = await handleUpload(newFile);
                         if (newFileKey) {
                             requirementDoc = newFileKey;
+                            wasUpdated = true;
                         }
                     } catch (uploadError) {
                         console.error(`Failed to upload file:`, uploadError);
@@ -312,21 +280,35 @@ export default function SiteAdditional({ complianceData }: SiteAdditionalProps) 
                     }
                 }
 
-                // Update the document
-                try {
-                    await client.models.ComplianceAdditionals.update({
-                        id: currentDoc.id,
-                        name: currentDoc.name || "",
-                        expirey: currentDoc.expirey || "",
-                        requirementDoc: requirementDoc,
-                        critical: currentDoc.critical || "false"
-                    });
+                // Check if other fields changed
+                const originalDoc = complianceexistingdocs.find(doc => doc.id === currentDoc.id);
+                if (originalDoc) {
+                    if (currentDoc.name !== originalDoc.name ||
+                        currentDoc.expirey !== originalDoc.expirey ||
+                        currentDoc.critical !== originalDoc.critical ||
+                        wasUpdated) {
+                        wasUpdated = true;
+                    }
+                }
 
-                    updateCount++;
-                    console.log(`Updated document ${currentDoc.id}`);
-                } catch (error) {
-                    console.error(`Failed to update document ${currentDoc.id}:`, error);
-                    throw error;
+                // Update the document if changes detected
+                if (wasUpdated) {
+                    try {
+                        await client.models.ComplianceAdditionals.update({
+                            id: currentDoc.id,
+                            name: currentDoc.name || "",
+                            expirey: currentDoc.expirey || "",
+                            requirementDoc: requirementDoc,
+                            critical: currentDoc.critical || "false"
+                        });
+
+                        updateCount++;
+                        updatedCertificates.push(currentDoc.name || "Unnamed Certificate");
+                        console.log(`Updated document ${currentDoc.id}`);
+                    } catch (error) {
+                        console.error(`Failed to update document ${currentDoc.id}:`, error);
+                        throw error;
+                    }
                 }
             }
 
@@ -342,8 +324,22 @@ export default function SiteAdditional({ complianceData }: SiteAdditionalProps) 
             setSuccessful(true);
             setShow(true);
 
-            // Refresh data if updates were made
+            // History tracking - SPECIFIC ACTION FOR UPDATES
             if (updateCount > 0) {
+                const storedName = localStorage.getItem("user")?.replace(/^"|"$/g, '').trim() || "Unknown User";
+                const johannesburgTime = new Date().toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg" });
+
+                const historyEntry = `\n${storedName} UPDATED site additional certificates: ${updatedCertificates.join(', ')} at ${johannesburgTime}\n`;
+
+                await client.models.History.create({
+                    entityType: "COMPLIANCE",
+                    entityId: complianceData?.customerSiteId,
+                    action: "UPDATE_CERTIFICATES",
+                    timestamp: new Date().toISOString(),
+                    details: historyEntry
+                });
+
+                // Refresh data if updates were made
                 try {
                     const result = await client.models.ComplianceAdditionals.listComplianceAdditionalsByComplianceid({
                         complianceid: complianceData.id
@@ -354,18 +350,6 @@ export default function SiteAdditional({ complianceData }: SiteAdditionalProps) 
                 } catch (error) {
                     console.error("Error refreshing data:", error);
                 }
-
-                // History tracking
-                const storedName = localStorage.getItem("user")?.replace(/^"|"$/g, '').trim() || "Unknown User";
-                const johannesburgTime = new Date().toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg" });
-
-                await client.models.History.create({
-                    entityType: "COMPLIANCE",
-                    entityId: complianceData?.id,
-                    action: "UPDATE",
-                    timestamp: new Date().toISOString(),
-                    details: `Site Additional Documents updated by ${storedName} at ${johannesburgTime}. ${successMessage}`
-                });
             }
 
         } catch (error) {
@@ -379,7 +363,7 @@ export default function SiteAdditional({ complianceData }: SiteAdditionalProps) 
         }
     };
 
-    if (loadingcompliance) {
+    if (loading) {
         return (
             <Card className="mt-2">
                 <CardContent className="p-6">
@@ -543,7 +527,7 @@ export default function SiteAdditional({ complianceData }: SiteAdditionalProps) 
                                                     // 2. Update the database to remove the file reference
                                                     await client.models.ComplianceAdditionals.update({
                                                         id: cert.id,
-                                                        requirementDoc: "" // Clear the file reference
+                                                        requirementDoc: ""
                                                     });
 
                                                     // 3. Update local state - THIS WAS MISSING
@@ -553,8 +537,19 @@ export default function SiteAdditional({ complianceData }: SiteAdditionalProps) 
                                                         requirementDoc: ""
                                                     };
                                                     setAdditionalDocs(updatedDocs);
+                                                    // 4. History tracking for file removal
+                                                    const storedName = localStorage.getItem("user")?.replace(/^"|"$/g, '').trim() || "Unknown User";
+                                                    const johannesburgTime = new Date().toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg" });
 
-                                                    // 4. Show success message
+                                                    await client.models.History.create({
+                                                        entityType: "COMPLIANCE",
+                                                        entityId: complianceData?.customerSiteId,
+                                                        action: "REMOVE_CERTIFICATE_FILE",
+                                                        timestamp: new Date().toISOString(),
+                                                        details: `\n${storedName} REMOVED file from certificate "${cert.name}" at ${johannesburgTime}\n`
+                                                    });
+
+                                                    // 5. Show success message
                                                     setMessage(`File deleted successfully`);
                                                     setSuccessful(true);
                                                     setShow(true);

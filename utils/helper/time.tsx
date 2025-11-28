@@ -50,3 +50,18 @@ export function normalize(str: any): string {
     if (isExpiringSoon(expiryDate)) return "default";
     return "secondary";
   };
+
+   // Document status helper function
+    export  const getDocumentStatus = (expiryDate: string | null, hasDocument: boolean) => {
+          if (!expiryDate) return { variant: 'destructive' as const, label: 'No Date' };
+          
+          const today = new Date();
+          const expiry = new Date(expiryDate);
+          const daysUntilExpiry = Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+          
+          if (daysUntilExpiry < 0) return { variant: 'destructive' as const, label: 'Expired' };
+          if (daysUntilExpiry <= 30) return { variant: 'destructive' as const, label: 'Due Soon' };
+          if (daysUntilExpiry <= 90) return { variant: 'secondary' as const, label: 'Warning' };
+          
+          return { variant: 'default' as const, label: 'Valid' };
+      };

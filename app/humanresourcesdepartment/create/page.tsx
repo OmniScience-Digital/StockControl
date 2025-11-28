@@ -290,7 +290,7 @@ export default function CreateEmployeePage() {
                     timestamp: new Date().toISOString(),
                     details:historyEntries
                     });
-                  router.push('/humanresources');
+                  router.push('/humanresourcesdepartment');
 
             } else {
                 
@@ -329,7 +329,7 @@ export default function CreateEmployeePage() {
                             <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => router.push('/humanresources')}
+                                onClick={() => router.push('/humanresourcesdepartment')}
                                 className="h-9 w-9 p-0"
                             >
                                 <ArrowLeft className="h-5 w-5" />
@@ -887,7 +887,7 @@ export default function CreateEmployeePage() {
                             <div className="flex justify-end gap-3 mt-8">
                                 <Button
                                     variant="outline"
-                                    onClick={() => router.push('/humanresources')}
+                                    onClick={() => router.push('/humanresourcesdepartment')}
                                     disabled={saving}
                                 >
                                     Cancel

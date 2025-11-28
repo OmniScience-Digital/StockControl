@@ -33,3 +33,14 @@ export interface CustomerSiteState {
 
     comment: string;
 }
+
+export interface ComplianceAdditionals {
+    id?: string;
+    complianceid?: string;
+    name?: string;
+    expirey?: string;
+    requirementDoc?: string;
+    critical?: string;
+    createdAt?: string;
+    updatedAt?: string;
+}

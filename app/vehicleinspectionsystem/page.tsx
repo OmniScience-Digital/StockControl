@@ -73,7 +73,7 @@ export default function FleetPage() {
 
                 if (isSynced) {
                     setLoading(false);
-                    console.log("Initial data loaded"); // Debug log
+
                 }
             },
             error: (error) => {
@@ -83,7 +83,7 @@ export default function FleetPage() {
         });
 
         return () => {
-            console.log("Cleaning up subscription"); // Debug log
+
             subscription.unsubscribe();
         };
     }, []);

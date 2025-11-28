@@ -80,7 +80,7 @@ export default function Home() {
             F: "bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
             CRM: "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
             VIS: "bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300",
-            HR: "bg-pink-50 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300",
+            HRD: "bg-pink-50 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300",
             GenerCRMal: "bg-gray-50 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300"
         };
         return colors[category] || "bg-gray-50 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300";

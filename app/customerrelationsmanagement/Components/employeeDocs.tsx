@@ -3,10 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Download, Calendar, FileText, User, ChevronDown, Search, X, Eye, Plus } from "lucide-react";
+import { Calendar, FileText, User, ChevronDown, Search, X, Eye } from "lucide-react";
 import { Employee } from "@/types/hrd.types";
-import { getUrl } from "@aws-amplify/storage";
 import { formatDate, getExpiryBadgeVariant } from "@/utils/helper/time";
+import { viewDoc } from "@/utils/helper/helper";
 
 interface EmployeeSelectProps {
     employees: Employee[];
@@ -66,7 +66,18 @@ export default function EmployeeSelect({ employees, complianceData }: EmployeeSe
     };
 
     const getRequirementDetails = (employee: Employee, requirement: string) => {
+        const additionalCert = employee.additionalCertificates?.find(
+            cert => cert.certificateName.toUpperCase() === requirement
+        );
+
+        if (additionalCert) {
+            return {
+                attachment: additionalCert.attachment,
+                expiryDate: additionalCert.expiryDate
+            };
+        }
         const requirementMap: Record<string, { attachment?: string; expiryDate?: string }> = {
+
             // Medical Certificates
             CLINIC_PLUS: employee.medicalCertificates?.find(cert => cert.certificateType === "CLINIC_PLUS"),
             CLINIC_PLUS_INDUCTION: employee.medicalCertificates?.find(cert => cert.certificateType === "CLINIC_PLUS_INDUCTION"),
@@ -119,11 +130,7 @@ export default function EmployeeSelect({ employees, complianceData }: EmployeeSe
         return requirementMap[requirement] || {};
     };
 
-    const viewDoc = async (s3Key: string) => {
-        if (!s3Key) return;
-        const result = await getUrl({ path: s3Key });
-        window.open(result.url.href, '_blank');
-    }
+
 
     const clearSearch = () => {
         setSearchQuery("");
@@ -245,7 +252,7 @@ export default function EmployeeSelect({ employees, complianceData }: EmployeeSe
                                         Requirements for {selectedEmployee.firstName} {selectedEmployee.surname}
                                     </span>
                                 </div>
-                      
+
                             </CardTitle>
 
 

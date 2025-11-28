@@ -248,7 +248,7 @@ export default function HumanResourcesPage() {
       header: "Edit",
       cell: ({ row }: { row: any }) => (
         <div
-          onClick={() => router.push(`/humanresources/edit/${row.original.id}`)}
+          onClick={() => router.push(`/humanresourcesdepartment/edit/${row.original.id}`)}
           className="cursor-pointer text-slate-700"
 
         >
@@ -366,7 +366,7 @@ export default function HumanResourcesPage() {
               </div>
               <div className="flex gap-3">
                 <Button
-                  onClick={() => router.push('/humanresources/create')}
+                  onClick={() => router.push('/humanresourcesdepartment/create')}
                   className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg shadow-blue-500/25"
                 >
                   <Plus className="h-4 w-4 mr-2" />

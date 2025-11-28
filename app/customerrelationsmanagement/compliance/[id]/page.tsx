@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Search, Users, FileText, Plus, Minus } from "lucide-react";
+import { Search, Users, FileText, Plus, Minus, ArrowLeft } from "lucide-react";
 import { Employee, MEDICAL_CERTIFICATE_TYPES, TRAINING_CERTIFICATE_TYPES } from "@/types/hrd.types";
 import { client } from "@/services/schema";
 import Footer from "@/components/layout/footer";
@@ -19,21 +20,15 @@ import { getInitials } from "@/utils/helper/helper";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import PrimaryDoc from "../../Components/employeeDocs";
 import SiteAdditional from "../../Components/siteadditionalDoc";
-
-
-const requirementTypes = [
-    ...MEDICAL_CERTIFICATE_TYPES,
-    ...TRAINING_CERTIFICATE_TYPES,
-    "DRIVERS_LICENSE",
-    "PASSPORT",
-    "PDP",
-    "CURRICULUM_VITAE",
-    "PPE_LIST"
-];
+import VehicleDocs from "../../Components/vehicleDocs";
+import TabsHistory from "@/components/table/tabshistory";
+import { ComplianceAdditionals } from "@/types/crm.types";
 
 
 export default function Compliance() {
+    const router = useRouter();
     const params = useParams();
+
     const customerSiteId = decodeURIComponent(params.id as string);
     const [siteName, setSiteName] = useState("");
     const [siteLocation, setSiteLocation] = useState("");
@@ -49,43 +44,87 @@ export default function Compliance() {
     const [searchTerm, setSearchTerm] = useState("");
     const [loading, setLoading] = useState(true);
 
+    const [requirementTypes, setRequirementTypes] = useState<string[]>([]);
+    //vehicles
+    const [vehicles, setVehicles] = useState<any[]>([]);
+
+    //site additional documents 
+    const [existingdocs, setAdditionalDocs] = useState<ComplianceAdditionals[]>([]);
+
+
 
     // Fetch employees from your Employee model with relations
     useEffect(() => {
-      const fetchSite = async () => {
-  try {
-    const { data: customerSites } = await client.models.CustomerSite.list({
-      filter: { id: { eq: customerSiteId } }
-    });
+        const fetchSite = async () => {
+            try {
+                // Fetch all data concurrently
+                const [customerSitesResult, additionalListResult, complianceResult, siteVehiclesResult] = await Promise.all([
+                    client.models.CustomerSite.list({
+                        filter: { id: { eq: customerSiteId } }
+                    }),
+                    client.models.EmployeeAdditionalList.list(),
+                    client.models.Compliance.list({
+                        filter: { customerSiteId: { eq: customerSiteId } }
+                    }),
+                    client.models.Fleet.list(),
+                ]);
 
-    if (customerSites.length > 0) {
-      const site = customerSites[0];
-      setSiteName(site.siteName);
-      setSiteLocation(site.siteLocation || "");
+                const { data: customerSites } = customerSitesResult;
+                const { data: additionalList } = additionalListResult;
+                const { data: complianceRecords } = complianceResult;
+                const { data: vehicleseRecords } = siteVehiclesResult;
 
-      // Fetch compliance records and their relations in parallel
-      const { data: complianceRecords } = await client.models.Compliance.list({
-        filter: { customerSiteId: { eq: customerSiteId } }
-      });
+                setVehicles(vehicleseRecords || []);
 
-      if (complianceRecords.length > 0) {
-        const compliance = complianceRecords[0];
-   
-        setComplianceData({
-          ...compliance
-        });
+                const additionalCertNames = additionalList?.map(item => item.certificateName.toUpperCase()) || [];
 
-        // Pre-select employees based on existing data
-        if (compliance.linkedEmployees) {
-          const validEmployeeIds = compliance.linkedEmployees.filter((id): id is string => id !== null);
-          setSelectedEmployees(new Set(validEmployeeIds));
-        }
-      }
-    }
-  } catch (error) {
-    console.error("Error fetching site:", error);
-  }
-};
+                // Sort and set requirement types
+                const sortedRequirements = [
+                    ...MEDICAL_CERTIFICATE_TYPES,
+                    ...TRAINING_CERTIFICATE_TYPES,
+                    ...additionalCertNames,
+                    "DRIVERS_LICENSE",
+                    "PASSPORT",
+                    "PDP",
+                    "CURRICULUM_VITAE",
+                    "PPE_LIST"
+                ].sort((a, b) => formatRequirementName(a).localeCompare(formatRequirementName(b)));
+
+                setRequirementTypes(sortedRequirements);
+
+                if (customerSites.length > 0) {
+                    const site = customerSites[0];
+                    setSiteName(site.siteName);
+                    setSiteLocation(site.siteLocation || "");
+
+                    if (complianceRecords.length > 0) {
+                        const compliance = complianceRecords[0];
+                        setComplianceData({
+                            ...compliance
+                        });
+
+                        // FETCH SITE ADDITIONAL DOCS HERE - AFTER complianceData is set
+                        if (compliance.id) {
+                            const siteAdditionalsResult = await client.models.ComplianceAdditionals.listComplianceAdditionalsByComplianceid({
+                                complianceid: compliance.id
+                            });
+
+                            if (siteAdditionalsResult.data) {
+                                setAdditionalDocs(siteAdditionalsResult.data as ComplianceAdditionals[]);
+                            }
+                        }
+
+                        if (compliance.linkedEmployees) {
+                            const validEmployeeIds = compliance.linkedEmployees.filter((id): id is string => id !== null);
+                            setSelectedEmployees(new Set(validEmployeeIds));
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error("Error fetching site:", error);
+            }
+        };
+
 
         const fetchEmployeesWithRelations = async () => {
             try {
@@ -152,6 +191,7 @@ export default function Compliance() {
         fetchEmployeesWithRelations();
     }, [customerSiteId]);
 
+
     const filteredEmployees = employees.filter(employee =>
         `${employee.firstName} ${employee.surname}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
         employee.employeeId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -205,6 +245,15 @@ export default function Compliance() {
                 filter: { customerSiteId: { eq: customerSiteId } }
             });
 
+            // Get employee names for history BEFORE we process the link
+            const employeeNames: string[] = [];
+            Array.from(selectedEmployees).forEach(employeeId => {
+                const employee = employees.find(emp => emp.id === employeeId);
+                if (employee) {
+                    employeeNames.push(`${employee.firstName} ${employee.surname}`);
+                }
+            });
+
             // Start with existing employeeLookup or create new one
             let employeeLookup: Record<string, string[]> = {};
             if (existingCompliance?.[0]?.employeeLookup) {
@@ -214,6 +263,7 @@ export default function Compliance() {
                     console.error("Error parsing existing employee lookup:", error);
                 }
             }
+
 
             // Merge new requirements with existing ones for each employee
             Array.from(selectedEmployees).forEach(employeeId => {
@@ -252,7 +302,8 @@ export default function Compliance() {
                 "KRIEL_MEDICAL": "krielMedicalRqd",
                 "PRO_HEALTH_MEDICAL": "proHealthMedicalRqd",
                 "SATS_ILOT": "satsIlotRqd",
-                "HIRA_TRAINING": "hiraTrainingRqd"
+                "HIRA_TRAINING": "hiraTrainingRqd",
+
             };
 
             // Prepare the compliance data
@@ -288,6 +339,26 @@ export default function Compliance() {
             // Reset selection
             setSelectedEmployees(new Set());
             setSelectedRequirements(new Set());
+            // After the compliance update is successful, add history
+            const storedName = localStorage.getItem("user")?.replace(/^"|"$/g, '').trim() || "Unknown User";
+            const johannesburgTime = new Date().toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg" });
+
+            // Get requirement names for history
+            const requirementNames = Array.from(selectedRequirements).map(req =>
+                req.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+            );
+
+
+            const historyEntry = `\n${storedName} linked ${employeeNames.join(', ')} to requirements: ${requirementNames.join(', ')} at ${johannesburgTime}`;
+
+            // Save to database
+            await client.models.History.create({
+                entityType: "COMPLIANCE",
+                entityId: customerSiteId,
+                action: "LINK",
+                timestamp: new Date().toISOString(),
+                details: historyEntry
+            });
 
             // Refresh compliance data
             const { data: updatedCompliance } = await client.models.Compliance.list({
@@ -319,7 +390,18 @@ export default function Compliance() {
                 console.log("No compliance record found to unlink from");
                 return;
             }
-
+            // Get employee names for history BEFORE we process the unlink
+            const employeeNames: string[] = [];
+            Array.from(selectedEmployees).forEach(employeeId => {
+                const employee = employees.find(emp => emp.id === employeeId);
+                if (employee) {
+                    employeeNames.push(`${employee.firstName} ${employee.surname}`);
+                }
+            });
+            // Get requirement names for history
+            const requirementNames = Array.from(selectedRequirements).map(req =>
+                req.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+            );
             const compliance = existingCompliance[0];
 
             // Map requirement types to exact field names in your schema
@@ -404,7 +486,22 @@ export default function Compliance() {
             // Update the compliance record
             const result = await client.models.Compliance.update(complianceData);
 
-            console.log("Successfully unlinked requirements:", result);
+            // After the compliance update is successful, add history  
+            const storedName = localStorage.getItem("user")?.replace(/^"|"$/g, '').trim() || "Unknown User";
+            const johannesburgTime = new Date().toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg" });
+
+            const historyEntry = `\n${storedName} unlinked ${employeeNames.join(', ')} from requirements: ${requirementNames.join(', ')} at ${johannesburgTime}`;
+
+            // Save to database
+            await client.models.History.create({
+                entityType: "COMPLIANCE",
+                entityId: customerSiteId,
+                action: "UNLINK",
+                timestamp: new Date().toISOString(),
+                details: historyEntry
+            });
+
+
 
             // Reset selection
             setSelectedEmployees(new Set());
@@ -430,9 +527,23 @@ export default function Compliance() {
             <Navbar />
             <main className="flex-1 px-4 sm:px-6 mt-20 pb-20">
                 <div className="container mx-auto max-w-7xl mt-4">
+
                     <div className="mb-8">
-                        <h2 className="text-2xl font-bold text-foreground">{siteName} Compliance Management</h2>
-                        <p className="text-gray-600 mt-1">Link employees to required documents and certificates</p>
+                        <div className="flex items-center gap-4 mb-6">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => router.push('/customerrelationsmanagement')}
+                                className="h-9 w-9 p-0 relative hover:scale-105 active:scale-95 transition-transform duration-150">
+                                <ArrowLeft className="h-5 w-5" />
+                            </Button>
+                            <div>
+                                <h1 className="text-2xl font-bold text-foreground">
+                                    {siteName} Compliance Management
+                                </h1>
+                                <p className="text-muted-foreground text-base">Link employees to required documents and certificates</p>
+                            </div>
+                        </div>
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -443,15 +554,15 @@ export default function Compliance() {
                                     <div className="text-center mb-6">
                                         <Avatar className="h-24 w-24 border-4 border-white shadow-lg mx-auto mb-4">
                                             <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-xl font-bold">
-                                                {getInitials(siteName || '')}
+                                                {getInitials(siteName || 'Site')}
                                             </AvatarFallback>
                                         </Avatar>
                                         <div className="text-center">
                                             <h3 className="font-semibold">
-                                                {siteName}
+                                                {siteName || 'Site Name'}
                                             </h3>
                                             <p className="text-sm text-muted-foreground">
-                                                {siteLocation}
+                                                {siteLocation || 'Site Location'}
                                             </p>
                                         </div>
                                     </div>
@@ -476,6 +587,7 @@ export default function Compliance() {
 
                                             </div>
                                         </div>
+
                                     </div>
                                 </CardContent>
                             </Card>
@@ -487,7 +599,7 @@ export default function Compliance() {
                                 <TabsList className="grid w-full grid-cols-4">
                                     <TabsTrigger value="basic" className="cursor-pointer">Config</TabsTrigger>
                                     <TabsTrigger value="viewdocs" className="cursor-pointer">Employees Docs</TabsTrigger>
-                                    <TabsTrigger value="additionaldocs" className="cursor-pointer">Vehicle Docs</TabsTrigger>
+                                    <TabsTrigger value="vehicledocs" className="cursor-pointer">Vehicle Docs</TabsTrigger>
                                     <TabsTrigger value="history" className="cursor-pointer">History</TabsTrigger>
                                 </TabsList>
                                 <TabsContent value="basic">
@@ -560,55 +672,57 @@ export default function Compliance() {
                                                     Requirements ({requirementTypes.length})
                                                 </CardTitle>
                                             </CardHeader>
-                                            <CardContent>
-                                                <div className="space-y-3 max-h-96 overflow-y-auto">
-                                                    {requirementTypes.map((requirement) => {
-                                                        const isLinkedToSelected = Array.from(selectedEmployees).some(empId =>
-                                                            getEmployeeRequirements(empId).includes(requirement)
-                                                        );
+                                            {loading ? (<Loading />) : (
+                                                <CardContent>
+                                                    <div className="space-y-3 max-h-96 overflow-y-auto">
+                                                        {requirementTypes.map((requirement) => {
+                                                            const isLinkedToSelected = Array.from(selectedEmployees).some(empId =>
+                                                                getEmployeeRequirements(empId).includes(requirement)
+                                                            );
 
-                                                        return (
-                                                            <div
-                                                                key={requirement}
-                                                                className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors bg-background ${selectedRequirements.has(requirement) || isLinkedToSelected
-                                                                    ? "border-blue-200 bg-blue-50 dark:bg-blue-950 dark:border-blue-800"
-                                                                    : "hover:border-gray-200 dark:hover:border-gray-600"
-                                                                    }`}
-                                                                onClick={() => toggleRequirement(requirement)}
-                                                            >
-                                                                <Checkbox
-                                                                    checked={selectedRequirements.has(requirement)}
-                                                                    onChange={() => toggleRequirement(requirement)}
-                                                                />
-                                                                <div className="flex-1">
-                                                                    <p className="font-medium text-sm">
-                                                                        {formatRequirementName(requirement)}
-                                                                    </p>
-                                                                    {isLinkedToSelected && (
-                                                                        <p className="text-xs text-blue-600 mt-1">
-                                                                            Already linked to selected employees
+                                                            return (
+                                                                <div
+                                                                    key={requirement}
+                                                                    className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors bg-background ${selectedRequirements.has(requirement) || isLinkedToSelected
+                                                                        ? "border-blue-200 bg-blue-50 dark:bg-blue-950 dark:border-blue-800"
+                                                                        : "hover:border-gray-200 dark:hover:border-gray-600"
+                                                                        }`}
+                                                                    onClick={() => toggleRequirement(requirement)}
+                                                                >
+                                                                    <Checkbox
+                                                                        checked={selectedRequirements.has(requirement)}
+                                                                        onChange={() => toggleRequirement(requirement)}
+                                                                    />
+                                                                    <div className="flex-1">
+                                                                        <p className="font-medium text-sm">
+                                                                            {formatRequirementName(requirement)}
                                                                         </p>
-                                                                    )}
+                                                                        {isLinkedToSelected && (
+                                                                            <p className="text-xs text-blue-600 mt-1">
+                                                                                Already linked to selected employees
+                                                                            </p>
+                                                                        )}
+                                                                    </div>
+                                                                    <Badge variant={
+                                                                        selectedRequirements.has(requirement) ? "default" :
+                                                                            isLinkedToSelected ? "secondary" : "outline"
+                                                                    }>
+                                                                        {selectedRequirements.has(requirement) ? "Selected" :
+                                                                            isLinkedToSelected ? "Linked" : "Select"}
+                                                                    </Badge>
                                                                 </div>
-                                                                <Badge variant={
-                                                                    selectedRequirements.has(requirement) ? "default" :
-                                                                        isLinkedToSelected ? "secondary" : "outline"
-                                                                }>
-                                                                    {selectedRequirements.has(requirement) ? "Selected" :
-                                                                        isLinkedToSelected ? "Linked" : "Select"}
-                                                                </Badge>
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                                {selectedRequirements.size > 0 && (
-                                                    <div className="mt-4 p-3 bg-green-50 rounded-lg">
-                                                        <p className="text-sm font-medium text-green-900">
-                                                            {selectedRequirements.size} requirement(s) selected
-                                                        </p>
+                                                            );
+                                                        })}
                                                     </div>
-                                                )}
-                                            </CardContent>
+                                                    {selectedRequirements.size > 0 && (
+                                                        <div className="mt-4 p-3 bg-green-50 rounded-lg">
+                                                            <p className="text-sm font-medium text-green-900">
+                                                                {selectedRequirements.size} requirement(s) selected
+                                                            </p>
+                                                        </div>
+                                                    )}
+                                                </CardContent>
+                                            )}
                                         </Card>
                                     </div>
                                     {/* Action Section */}
@@ -654,16 +768,18 @@ export default function Compliance() {
                                         </CardContent>
 
                                     </Card>
-                                    <SiteAdditional complianceData={complianceData} />
+                                    <SiteAdditional complianceData={complianceData} complianceexistingdocs={existingdocs} loading={loading} />
                                 </TabsContent>
 
                                 <TabsContent value="viewdocs">
                                     <PrimaryDoc employees={employees} complianceData={complianceData} />
                                 </TabsContent>
-                                <TabsContent value="additionaldocs">
+                                <TabsContent value="vehicledocs">
+                                    <VehicleDocs vehicles={vehicles} complianceData={complianceData} onComplianceUpdate={(updatedData) => setComplianceData(updatedData)} />
 
                                 </TabsContent>
                                 <TabsContent value="history">
+                                    <TabsHistory customerSiteId={customerSiteId} />
 
                                 </TabsContent>
 
@@ -678,3 +794,12 @@ export default function Compliance() {
 }
 
 
+// additipnal docs panel , select that visa applies to employees not site then it appears under ppe List
+// but if allocated to customer we add the doc , set an expiry ,and does not appear under ppe list
+
+
+// employee requirement are created in the crm section then it apppears ,in hrd where we upload .
+
+// Additional require sites specific add [ critical requirement  ] 10% ech critical doc hold 10% ,if they are not expired they are worth the same as other docs
+
+// in a set of 90 docs - work permit holds 10% and employee requirements make 1 %

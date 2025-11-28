@@ -11,7 +11,7 @@ const protectedRoutes = [
   "/forms",
   "/vehicleinspectionform",
   "/subcategories",
-  "/humanresources"
+  "/humanresourcesdepartment"
 ];
 const publicRoutes = ["/"];
 

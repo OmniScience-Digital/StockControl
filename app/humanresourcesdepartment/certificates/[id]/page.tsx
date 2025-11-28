@@ -196,7 +196,7 @@ const handlePreview = async (pdf: any) => {
                             <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => router.push('/humanresources')}
+                                onClick={() => router.push('/humanresourcesdepartment')}
                                 className="h-9 w-9 p-0"
                             >
                                 <ArrowLeft className="h-5 w-5" />
