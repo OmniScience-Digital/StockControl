@@ -29,7 +29,7 @@ export default function SubcategoriesPage() {
   useEffect(() => {
     const fetchSubcategories = async () => {
       try {
-  
+
         // Get category name from localStorage or fetch it
         const storedName = localStorage.getItem("categoryName");
         if (storedName) {
@@ -47,7 +47,7 @@ export default function SubcategoriesPage() {
               categoryId: item.categoryId,
             }));
             setSubcategories(mappedSubcategories);
-            console.log('isSynced ',isSynced);
+            console.log('isSynced ', isSynced);
 
             if (isSynced) {
               setLoading(false);
@@ -66,7 +66,7 @@ export default function SubcategoriesPage() {
       }
     };
     fetchSubcategories();
-  
+
   }, [id]);
 
 
@@ -191,13 +191,13 @@ export default function SubcategoriesPage() {
             {selectedSubCategory && (
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
+
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={handleBackToSubcategories}
-                    className="h-8 w-8 p-0"
-                  >
-                    <ArrowLeft className="h-4 w-4 cursor-pointer" />
+                    className="h-9 w-9 p-0 relative hover:scale-105 active:scale-95 transition-transform duration-150">
+                    <ArrowLeft className="h-5 w-5" />
                   </Button>
                   <Package className="h-5 w-5 text-primary" />
                   <div>

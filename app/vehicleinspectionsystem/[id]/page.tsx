@@ -244,13 +244,14 @@ export default function InspectionsPage() {
                         {/* Header */}
                         <div className="mb-4 sm:mb-6">
                             <div className="flex items-center gap-3 mb-2">
+
+
                                 <Button
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => router.push('/vehicleinspectionsystem')}
-                                    className="h-8 w-8 p-0"
-                                >
-                                    <ArrowLeft className="h-4 w-4" />
+                                    className="h-9 w-9 p-0 relative hover:scale-105 active:scale-95 transition-transform duration-150">
+                                    <ArrowLeft className="h-5 w-5" />
                                 </Button>
                                 <Car className="h-5 w-5 text-primary" />
                                 <div>

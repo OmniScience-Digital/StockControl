@@ -23,6 +23,7 @@ import SiteAdditional from "../../Components/siteadditionalDoc";
 import VehicleDocs from "../../Components/vehicleDocs";
 import TabsHistory from "@/components/table/tabshistory";
 import { ComplianceAdditionals } from "@/types/crm.types";
+import { Textarea } from "@/components/ui/textarea";
 
 
 export default function Compliance() {
@@ -32,6 +33,9 @@ export default function Compliance() {
     const customerSiteId = decodeURIComponent(params.id as string);
     const [siteName, setSiteName] = useState("");
     const [siteLocation, setSiteLocation] = useState("");
+
+    const [rating, setCompRating] = useState(0);
+    const [thirtydayrating, setthirtyCompRating] = useState(0);
 
     const [employees, setEmployees] = useState<Employee[]>([]);
     const [selectedEmployees, setSelectedEmployees] = useState<Set<string>>(new Set());
@@ -75,6 +79,12 @@ export default function Compliance() {
                 const { data: vehicleseRecords } = siteVehiclesResult;
 
                 setVehicles(vehicleseRecords || []);
+
+                const firstRecord = complianceRecords?.[0];
+
+                setCompRating(parseInt(firstRecord?.complianceRating ?? "0"));
+                setthirtyCompRating(parseInt(firstRecord?.complianceRating30Days ?? "0"));
+
 
                 const additionalCertNames = additionalList?.map(item => item.certificateName.toUpperCase()) || [];
 
@@ -197,6 +207,7 @@ export default function Compliance() {
         employee.employeeId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         employee.employeeNumber?.toLowerCase().includes(searchTerm.toLowerCase())
     );
+
     const getEmployeeRequirements = (employeeId: string): string[] => {
         if (!complianceData?.employeeLookup) return [];
 
@@ -571,27 +582,31 @@ export default function Compliance() {
 
                                         <div className="pt-4">
                                             <Label className="mb-2 block">Site Summary</Label>
-                                            <div className="space-y-2 text-sm">
+                                            <div className="space-y-1 text-sm">
                                                 <div className="flex justify-between">
                                                     <span>Compliance Rating :</span>
-                                                    {/* <Badge variant={totalDocuments > 0 ? "default" : "secondary"}>
-                                                        {totalDocuments}
-                                                    </Badge> */}
+
+                                                    <Badge variant={rating < 90 ? "destructive" : "secondary"}>
+                                                        {rating}
+                                                    </Badge>
                                                 </div>
                                                 <div className="flex justify-between">
                                                     <span >Compliance Rating - 30 days :</span>
-                                                    {/* <Badge variant={totalExpiringDocuments > 0 ? "destructive" : "secondary"}>
-                                                        {totalExpiringDocuments}
-                                                    </Badge> */}
+                                                    <Badge variant={thirtydayrating < 90 ? "destructive" : "secondary"}>
+                                                        {thirtydayrating}
+                                                    </Badge>
                                                 </div>
 
                                             </div>
                                         </div>
 
                                     </div>
+
+                                   
                                 </CardContent>
                             </Card>
-                        </div>
+                     
+                        </div>              
 
                         {/* Main Form */}
                         <div className="lg:col-span-3">
@@ -794,12 +809,3 @@ export default function Compliance() {
 }
 
 
-// additipnal docs panel , select that visa applies to employees not site then it appears under ppe List
-// but if allocated to customer we add the doc , set an expiry ,and does not appear under ppe list
-
-
-// employee requirement are created in the crm section then it apppears ,in hrd where we upload .
-
-// Additional require sites specific add [ critical requirement  ] 10% ech critical doc hold 10% ,if they are not expired they are worth the same as other docs
-
-// in a set of 90 docs - work permit holds 10% and employee requirements make 1 %

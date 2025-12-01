@@ -305,11 +305,11 @@ export const FileUploadUpdate = ({ onFilesChange, assetName, title, folder, exis
                 {isExistingFile ? 'Existing Document' : 'Selected Document'}
               </h4>
 
-              <div className="bg-white border rounded-lg p-4 hover:shadow-md transition-shadow">
+              <div className="bg-background border rounded-lg p-4 hover:shadow-md transition-shadow">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-2 flex-1 min-w-0">
                     <FileText className="h-5 w-5 text-red-500 flex-shrink-0" />
-                    <span className="text-sm font-medium truncate flex-1" title={pdfs[0].name}>
+                    <span className="text-sm font-medium truncate flex-1 text-foreground" title={pdfs[0].name}>
                       {pdfs[0].name}
                     </span>
                   </div>

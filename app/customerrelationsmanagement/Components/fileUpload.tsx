@@ -7,15 +7,17 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/widgets/deletedialog";
 import { PDFState } from "@/types/schema";
+import { getUrl } from "@aws-amplify/storage";
+import ResponseModal from "@/components/widgets/response";
 
 interface PDFUploadProps {
-  onFilesChange: (files: PDFState[]) => void; 
+  onFilesChange: (files: PDFState[]) => void;
   assetName: string;
   title: string;
-    folder: string;
+  folder: string;
 }
 
-export const FileUpload = ({ onFilesChange, assetName, title,folder }: PDFUploadProps) => {
+export const FileUpload = ({ onFilesChange, assetName, title, folder }: PDFUploadProps) => {
   const [pdfs, setPdfs] = useState<PDFState[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -168,9 +170,8 @@ export const FileUpload = ({ onFilesChange, assetName, title,folder }: PDFUpload
         <CardContent className="pt-0">
           {/* Upload Zone */}
           <div
-            className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
-              isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
-            } ${hasPDF ? 'opacity-50 cursor-not-allowed' : ''}`}
+            className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
+              } ${hasPDF ? 'opacity-50 cursor-not-allowed' : ''}`}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
@@ -209,7 +210,7 @@ export const FileUpload = ({ onFilesChange, assetName, title,folder }: PDFUpload
             <div className="mt-4 space-y-3">
               <h4 className="text-sm font-medium">Selected Document</h4>
 
-              <div className="bg-white border rounded-lg p-4 hover:shadow-md transition-shadow">
+              <div className="bg-background border rounded-lg p-4 hover:shadow-md transition-shadow">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-2 flex-1 min-w-0">
                     <FileText className="h-5 w-5 text-red-500 flex-shrink-0" />
@@ -276,6 +277,11 @@ export const FileUploadMany = ({ onFilesChange, assetName, title, folder }: PDFU
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const previewUrlsRef = useRef<Set<string>>(new Set());
+
+  const [show, setShow] = useState(false);
+  const [successful, setSuccessful] = useState(false);
+  const [message, setMessage] = useState("");
+
 
   const [pdfToDelete, setPdfToDelete] = useState<{ index: number; name: string } | null>(null);
   const [opendelete, setOpendelete] = useState(false);
@@ -387,9 +393,27 @@ export const FileUploadMany = ({ onFilesChange, assetName, title, folder }: PDFU
     }, 100);
   }, [pdfs, onFilesChange]);
 
-  const handlePreview = (pdf: PDFState) => {
-    const url = pdf.previewUrl;
-    if (url) window.open(url, '_blank');
+  const handlePreview = async (pdf: PDFState) => {
+    try {
+      if (pdf.previewUrl) {
+        window.open(pdf.previewUrl, '_blank');
+      } else if (pdf.s3Key) {
+        const result = await getUrl({
+          path: pdf.s3Key,
+          options: {
+            validateObjectExistence: true
+          }
+        });
+        window.open(result.url.href, '_blank');
+      }
+    } catch (error: any) {
+      console.error('Error generating URL:', error);
+      if (error?.message?.includes('NoSuchKey') || error?.message?.includes('not exist')) {
+        setMessage("File not found in storage. It may have been deleted.");
+        setSuccessful(false);
+        setShow(true);
+      }
+    }
   };
 
   const triggerFileInput = () => fileInputRef.current?.click();
@@ -421,9 +445,8 @@ export const FileUploadMany = ({ onFilesChange, assetName, title, folder }: PDFU
         <CardContent className="pt-0">
           {/* Upload Zone */}
           <div
-            className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
-              isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
-            } ${hasPDF ? 'opacity-50 cursor-not-allowed' : ''}`}
+            className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
+              } ${hasPDF ? 'opacity-50 cursor-not-allowed' : ''}`}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
@@ -514,6 +537,13 @@ export const FileUploadMany = ({ onFilesChange, assetName, title, folder }: PDFU
             </div>
           )}
         </CardContent>
+        {show && (
+          <ResponseModal
+            successful={successful}
+            message={message}
+            setShow={setShow}
+          />
+        )}
       </Card>
       <ConfirmDialog
         open={opendelete}
