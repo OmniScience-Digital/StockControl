@@ -602,7 +602,7 @@ export default function EditEmployeePage() {
           trainingCertificates: trainingCerts,
           additionalCertificates: additionalCerts
         },
-        storedName // username
+        storedName 
       );
 
       // console.log(`\nEmployee ${formData.firstName} ${formData.surname} updated by ${storedName}. Changes:\n${changedFields.join('')}`);

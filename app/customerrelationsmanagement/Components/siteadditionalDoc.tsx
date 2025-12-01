@@ -16,6 +16,7 @@ import { ConfirmDialog } from "@/components/widgets/deletedialog";
 import { PDFState } from "@/types/schema";
 import { ComplianceAdditionals } from "@/types/crm.types";
 import { Textarea } from "@/components/ui/textarea";
+import { handleEmployeeTasks } from "@/app/humanresourcesdepartment/components/employeetasks";
 
 
 interface SiteAdditionalProps {
@@ -199,7 +200,6 @@ export default function SiteAdditional({ complianceData, complianceexistingdocs,
     };
 
     // Remove a contractors pack slot
-
     const removeContractorsPackSlot = async (index: number) => {
         try {
             const s3Key = digitalContractorsPack[index];
@@ -356,6 +356,44 @@ export default function SiteAdditional({ complianceData, complianceexistingdocs,
         }
     };
 
+    const checkAndUpdateComplianceTasks = async (originalDocs: ComplianceAdditionals[], updatedDocs: ComplianceAdditionals[], username: string) => {
+    try {
+        // For each updated document
+        for (let i = 0; i < updatedDocs.length; i++) {
+            const updatedDoc = updatedDocs[i];
+            const originalDoc = originalDocs.find(doc => doc.id === updatedDoc.id);
+            
+            if (!originalDoc || !updatedDoc.id) continue;
+            
+            // Check if expiry date changed
+            if (updatedDoc.expirey && updatedDoc.expirey !== originalDoc.expirey) {
+                const documentIdentifier = `${complianceData.customerSiteId}_additional_${updatedDoc.name}`;
+                
+                // Check if task exists using GSI - SAME AS EMPLOYEE PATTERN
+                const { data: existingTasks } = await client.models.EmployeeTaskTable.listEmployeeTaskTableByDocumentIdentifier({
+                    documentIdentifier: documentIdentifier
+                });
+                
+                const existingTask = existingTasks?.[0];
+                
+                if (existingTask) {
+                    // Use the SAME handleEmployeeTasks function from HRD
+                    await handleEmployeeTasks(updatedDoc.expirey, existingTask, {
+                        key: 'expirey',
+                        type: `additional_${updatedDoc.name}`,
+                        attachment: updatedDoc.requirementDoc
+                    });
+                } else {
+                    console.log(`No task found for: ${documentIdentifier}`);
+                }
+            }
+        }
+    } catch (error) {
+        console.error("Error in compliance task checking:", error);
+        // Don't throw - this is a side effect, not critical
+    }
+};
+
     // In your save function, handle multiple files
     const handleSave = async () => {
         try {
@@ -445,144 +483,293 @@ export default function SiteAdditional({ complianceData, complianceexistingdocs,
         }
     };
 
+    // const handleUpdate = async () => {
+    //     try {
+    //         setUpdating(true);
+
+    //         let updateCount = 0;
+    //         const updatedCertificates: string[] = [];
+
+    //         // Process all existing documents
+    //         for (let i = 0; i < existingdocs.length; i++) {
+    //             const currentDoc = existingdocs[i];
+    //             if (!currentDoc.id) continue;
+
+    //             let requirementDoc = currentDoc.requirementDoc || "";
+    //             let wasUpdated = false;
+
+    //             // Handle new file upload ONLY (no deletion logic here)
+    //             const newFile = certificateFiles[i]?.[0];
+    //             if (newFile) {
+    //                 try {
+    //                     const newFileKey = await handleUpload(newFile);
+    //                     if (newFileKey) {
+    //                         requirementDoc = newFileKey;
+    //                         wasUpdated = true;
+    //                     }
+    //                 } catch (uploadError) {
+    //                     console.error(`Failed to upload file:`, uploadError);
+    //                     throw uploadError;
+    //                 }
+    //             }
+
+    //             // Check if other fields changed
+    //             const originalDoc = complianceexistingdocs.find(doc => doc.id === currentDoc.id);
+    //             if (originalDoc) {
+    //                 if (currentDoc.name !== originalDoc.name ||
+    //                     currentDoc.expirey !== originalDoc.expirey ||
+    //                     currentDoc.critical !== originalDoc.critical ||
+    //                     wasUpdated) {
+    //                     wasUpdated = true;
+    //                 }
+    //             }
+
+
+    //             // Update the document if changes detected
+    //             if (wasUpdated) {
+    //                 try {
+    //                     await client.models.ComplianceAdditionals.update({
+    //                         id: currentDoc.id,
+    //                         name: currentDoc.name || "",
+    //                         expirey: currentDoc.expirey || "",
+    //                         requirementDoc: requirementDoc,
+    //                         critical: currentDoc.critical || "false"
+    //                     });
+
+    //                     updateCount++;
+    //                     updatedCertificates.push(currentDoc.name || "Unnamed Certificate");
+    //                     console.log(`Updated document ${currentDoc.id}`);
+    //                 } catch (error) {
+    //                     console.error(`Failed to update document ${currentDoc.id}:`, error);
+    //                     throw error;
+    //                 }
+    //             }
+    //         }
+    //         // Update notes if they've changed
+    //         if (notes !== complianceData?.notes) {
+    //             try {
+    //                 await client.models.Compliance.update({
+    //                     id: complianceData.id,
+    //                     notes: notes
+    //                 });
+    //                 updateCount++; // Count this as an update
+    //             } catch (error) {
+    //                 console.error("Failed to update notes:", error);
+    //                 throw error;
+    //             }
+    //         }
+
+    //         // Clear states
+    //         setCertificateFiles({});
+
+    //         // Show success message
+    //         const successMessage = updateCount > 0
+    //             ? `Successfully updated ${updateCount} certificate${updateCount !== 1 ? 's' : ''}`
+    //             : "No changes were made";
+
+    //         setMessage(successMessage);
+    //         setSuccessful(true);
+    //         setShow(true);
+
+    //         // History tracking - SPECIFIC ACTION FOR UPDATES
+    //         if (updateCount > 0) {
+    //             const storedName = localStorage.getItem("user")?.replace(/^"|"$/g, '').trim() || "Unknown User";
+    //             const johannesburgTime = new Date().toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg" });
+
+    //             const historyEntry = `\n${storedName} UPDATED site additional certificates: ${updatedCertificates.join(', ')} at ${johannesburgTime}\n`;
+
+    //             // Check if notes were updated
+    //             if (notes !== complianceData?.notes) {
+    //                 await client.models.History.create({
+    //                     entityType: "COMPLIANCE",
+    //                     entityId: complianceData?.customerSiteId,
+    //                     action: "UPDATE_NOTES",
+    //                     timestamp: new Date().toISOString(),
+    //                     details: `\n${storedName} UPDATED compliance notes at ${johannesburgTime}\nNew notes: ${notes}\n`
+    //                 });
+    //             }
+
+    //             await client.models.History.create({
+    //                 entityType: "COMPLIANCE",
+    //                 entityId: complianceData?.customerSiteId,
+    //                 action: "UPDATE_CERTIFICATES",
+    //                 timestamp: new Date().toISOString(),
+    //                 details: historyEntry
+    //             });
+
+    //             // Refresh data if updates were made
+    //             try {
+    //                 const result = await client.models.ComplianceAdditionals.listComplianceAdditionalsByComplianceid({
+    //                     complianceid: complianceData.id
+    //                 });
+    //                 if (result.data) {
+    //                     setAdditionalDocs(result.data as ComplianceAdditionals[]);
+    //                 }
+    //             } catch (error) {
+    //                 console.error("Error refreshing data:", error);
+    //             }
+    //         }
+
+    //     } catch (error) {
+    //         console.error("Error updating certificates:", error);
+    //         setMessage("Error updating certificates. Please try again.");
+    //         setSuccessful(false);
+    //         setShow(true);
+    //     } finally {
+    //         setUpdating(false);
+    //         setHasChanges(false);
+    //     }
+    // };
+    
     const handleUpdate = async () => {
-        try {
-            setUpdating(true);
+    try {
+        setUpdating(true);
 
-            let updateCount = 0;
-            const updatedCertificates: string[] = [];
+        let updateCount = 0;
+        const updatedCertificates: string[] = [];
 
-            // Process all existing documents
-            for (let i = 0; i < existingdocs.length; i++) {
-                const currentDoc = existingdocs[i];
-                if (!currentDoc.id) continue;
+        // Store original docs before any updates
+        const originalDocsBeforeUpdate = [...existingdocs];
 
-                let requirementDoc = currentDoc.requirementDoc || "";
-                let wasUpdated = false;
+        // Process all existing documents
+        for (let i = 0; i < existingdocs.length; i++) {
+            const currentDoc = existingdocs[i];
+            if (!currentDoc.id) continue;
 
-                // Handle new file upload ONLY (no deletion logic here)
-                const newFile = certificateFiles[i]?.[0];
-                if (newFile) {
-                    try {
-                        const newFileKey = await handleUpload(newFile);
-                        if (newFileKey) {
-                            requirementDoc = newFileKey;
-                            wasUpdated = true;
-                        }
-                    } catch (uploadError) {
-                        console.error(`Failed to upload file:`, uploadError);
-                        throw uploadError;
-                    }
-                }
+            let requirementDoc = currentDoc.requirementDoc || "";
+            let wasUpdated = false;
 
-                // Check if other fields changed
-                const originalDoc = complianceexistingdocs.find(doc => doc.id === currentDoc.id);
-                if (originalDoc) {
-                    if (currentDoc.name !== originalDoc.name ||
-                        currentDoc.expirey !== originalDoc.expirey ||
-                        currentDoc.critical !== originalDoc.critical ||
-                        wasUpdated) {
+            // Handle new file upload ONLY (no deletion logic here)
+            const newFile = certificateFiles[i]?.[0];
+            if (newFile) {
+                try {
+                    const newFileKey = await handleUpload(newFile);
+                    if (newFileKey) {
+                        requirementDoc = newFileKey;
                         wasUpdated = true;
                     }
-                }
-
-
-                // Update the document if changes detected
-                if (wasUpdated) {
-                    try {
-                        await client.models.ComplianceAdditionals.update({
-                            id: currentDoc.id,
-                            name: currentDoc.name || "",
-                            expirey: currentDoc.expirey || "",
-                            requirementDoc: requirementDoc,
-                            critical: currentDoc.critical || "false"
-                        });
-
-                        updateCount++;
-                        updatedCertificates.push(currentDoc.name || "Unnamed Certificate");
-                        console.log(`Updated document ${currentDoc.id}`);
-                    } catch (error) {
-                        console.error(`Failed to update document ${currentDoc.id}:`, error);
-                        throw error;
-                    }
+                } catch (uploadError) {
+                    console.error(`Failed to upload file:`, uploadError);
+                    throw uploadError;
                 }
             }
-            // Update notes if they've changed
-            if (notes !== complianceData?.notes) {
+
+            // Check if other fields changed
+            const originalDoc = complianceexistingdocs.find(doc => doc.id === currentDoc.id);
+            if (originalDoc) {
+                if (currentDoc.name !== originalDoc.name ||
+                    currentDoc.expirey !== originalDoc.expirey ||
+                    currentDoc.critical !== originalDoc.critical ||
+                    wasUpdated) {
+                    wasUpdated = true;
+                }
+            }
+
+            // Update the document if changes detected
+            if (wasUpdated) {
                 try {
-                    await client.models.Compliance.update({
-                        id: complianceData.id,
-                        notes: notes
+                    await client.models.ComplianceAdditionals.update({
+                        id: currentDoc.id,
+                        name: currentDoc.name || "",
+                        expirey: currentDoc.expirey || "",
+                        requirementDoc: requirementDoc,
+                        critical: currentDoc.critical || "false"
                     });
-                    updateCount++; // Count this as an update
+
+                    updateCount++;
+                    updatedCertificates.push(currentDoc.name || "Unnamed Certificate");
+                    console.log(`Updated document ${currentDoc.id}`);
                 } catch (error) {
-                    console.error("Failed to update notes:", error);
+                    console.error(`Failed to update document ${currentDoc.id}:`, error);
                     throw error;
                 }
             }
+        }
+        
+        // Update notes if they've changed
+        if (notes !== complianceData?.notes) {
+            try {
+                await client.models.Compliance.update({
+                    id: complianceData.id,
+                    notes: notes
+                });
+                updateCount++; // Count this as an update
+            } catch (error) {
+                console.error("Failed to update notes:", error);
+                throw error;
+            }
+        }
 
-            // Clear states
-            setCertificateFiles({});
+        // Clear states
+        setCertificateFiles({});
 
-            // Show success message
-            const successMessage = updateCount > 0
-                ? `Successfully updated ${updateCount} certificate${updateCount !== 1 ? 's' : ''}`
-                : "No changes were made";
+        // Show success message
+        const successMessage = updateCount > 0
+            ? `Successfully updated ${updateCount} certificate${updateCount !== 1 ? 's' : ''}`
+            : "No changes were made";
 
-            setMessage(successMessage);
-            setSuccessful(true);
-            setShow(true);
+        setMessage(successMessage);
+        setSuccessful(true);
+        setShow(true);
 
-            // History tracking - SPECIFIC ACTION FOR UPDATES
-            if (updateCount > 0) {
-                const storedName = localStorage.getItem("user")?.replace(/^"|"$/g, '').trim() || "Unknown User";
-                const johannesburgTime = new Date().toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg" });
+        // History tracking - SPECIFIC ACTION FOR UPDATES
+        if (updateCount > 0) {
+            const storedName = localStorage.getItem("user")?.replace(/^"|"$/g, '').trim() || "Unknown User";
+            const johannesburgTime = new Date().toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg" });
 
-                const historyEntry = `\n${storedName} UPDATED site additional certificates: ${updatedCertificates.join(', ')} at ${johannesburgTime}\n`;
+            const historyEntry = `\n${storedName} UPDATED site additional certificates: ${updatedCertificates.join(', ')} at ${johannesburgTime}\n`;
 
-                // Check if notes were updated
-                if (notes !== complianceData?.notes) {
-                    await client.models.History.create({
-                        entityType: "COMPLIANCE",
-                        entityId: complianceData?.customerSiteId,
-                        action: "UPDATE_NOTES",
-                        timestamp: new Date().toISOString(),
-                        details: `\n${storedName} UPDATED compliance notes at ${johannesburgTime}\nNew notes: ${notes}\n`
-                    });
-                }
-
+            // Check if notes were updated
+            if (notes !== complianceData?.notes) {
                 await client.models.History.create({
                     entityType: "COMPLIANCE",
                     entityId: complianceData?.customerSiteId,
-                    action: "UPDATE_CERTIFICATES",
+                    action: "UPDATE_NOTES",
                     timestamp: new Date().toISOString(),
-                    details: historyEntry
+                    details: `\n${storedName} UPDATED compliance notes at ${johannesburgTime}\nNew notes: ${notes}\n`
                 });
-
-                // Refresh data if updates were made
-                try {
-                    const result = await client.models.ComplianceAdditionals.listComplianceAdditionalsByComplianceid({
-                        complianceid: complianceData.id
-                    });
-                    if (result.data) {
-                        setAdditionalDocs(result.data as ComplianceAdditionals[]);
-                    }
-                } catch (error) {
-                    console.error("Error refreshing data:", error);
-                }
             }
 
-        } catch (error) {
-            console.error("Error updating certificates:", error);
-            setMessage("Error updating certificates. Please try again.");
-            setSuccessful(false);
-            setShow(true);
-        } finally {
-            setUpdating(false);
-            setHasChanges(false);
-        }
-    };
+            await client.models.History.create({
+                entityType: "COMPLIANCE",
+                entityId: complianceData?.customerSiteId,
+                action: "UPDATE_CERTIFICATES",
+                timestamp: new Date().toISOString(),
+                details: historyEntry
+            });
 
+            // ============ NEW: CHECK AND UPDATE COMPLIANCE TASKS ============
+            // This runs after successful update to check for task updates
+            await checkAndUpdateComplianceTasks(
+                originalDocsBeforeUpdate, 
+                existingdocs, 
+                storedName
+            );
+            // ============ END NEW CODE ============
+
+            // Refresh data if updates were made
+            try {
+                const result = await client.models.ComplianceAdditionals.listComplianceAdditionalsByComplianceid({
+                    complianceid: complianceData.id
+                });
+                if (result.data) {
+                    setAdditionalDocs(result.data as ComplianceAdditionals[]);
+                }
+            } catch (error) {
+                console.error("Error refreshing data:", error);
+            }
+        }
+
+    } catch (error) {
+        console.error("Error updating certificates:", error);
+        setMessage("Error updating certificates. Please try again.");
+        setSuccessful(false);
+        setShow(true);
+    } finally {
+        setUpdating(false);
+        setHasChanges(false);
+    }
+};
     if (loading) {
         return (
             <Card className="mt-2">
