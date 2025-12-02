@@ -243,6 +243,29 @@ export default function HumanResourcesPage() {
         </div>
       ),
     },
+    //      {
+    //     id: "edit",
+    //     header: "Test",
+    //     cell: ({ row }: { row: any }) => (
+    //       <div
+    //         onClick={() => router.push(`/humanresourcesdepartment/certificates/${row.original.id}`)}
+    //         className="cursor-pointer text-slate-700"
+
+    //       >
+    //         <Edit className="
+    //   h-4 w-4 mr-2
+    //   cursor-pointer
+    //   hover:bg-slate-100
+    //   active:bg-slate-200
+    //   active:scale-95
+    //   rounded
+    //   transition
+    //   inline-block
+    // " />
+
+    //       </div>
+    //     ),
+    //   },
     {
       id: "edit",
       header: "Edit",

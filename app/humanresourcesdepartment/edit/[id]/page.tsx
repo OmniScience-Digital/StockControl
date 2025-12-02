@@ -602,7 +602,7 @@ export default function EditEmployeePage() {
           trainingCertificates: trainingCerts,
           additionalCertificates: additionalCerts
         },
-        storedName 
+        storedName
       );
 
       // console.log(`\nEmployee ${formData.firstName} ${formData.surname} updated by ${storedName}. Changes:\n${changedFields.join('')}`);
@@ -816,21 +816,31 @@ export default function EditEmployeePage() {
                     <div className="pt-4">
                       <Label className="mb-2 block">Document Summary</Label>
                       <div className="space-y-2 text-sm">
+
                         <div className="flex justify-between">
                           <span>Total Documents uploaded:</span>
-                          <Badge variant={totalDocuments > 0 ? "default" : "secondary"}>
+                          <Badge className="bg-black dark:bg-black text-white">
                             {totalDocuments}
                           </Badge>
                         </div>
+
                         <div className="flex justify-between">
-                          <span >Documents expiring:</span>
-                          <Badge variant={totalExpiringDocuments > 0 ? "destructive" : "secondary"}>
+                          <span>Expiring / Expired Documents:</span>
+
+                          <Badge
+                            className={
+                              totalExpiringDocuments > 0
+                                ? "bg-red-500 dark:bg-red-500 text-white"
+                                : "bg-black-500 dark:bg-black-500 text-white"
+                            }
+                          >
                             {totalExpiringDocuments}
                           </Badge>
                         </div>
 
                       </div>
                     </div>
+
                   </div>
                 </CardContent>
               </Card>

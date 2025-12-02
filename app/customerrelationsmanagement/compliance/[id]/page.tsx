@@ -586,27 +586,41 @@ export default function Compliance() {
                                                 <div className="flex justify-between">
                                                     <span>Compliance Rating :</span>
 
-                                                    <Badge variant={rating < 90 ? "destructive" : "secondary"}>
+                                                    <Badge
+                                                        className={
+                                                            rating < 90
+                                                                ? "bg-red-600 dark:bg-red-500 text-white"
+                                                                : "bg-black dark:bg-black text-white"
+                                                        }
+                                                    >
                                                         {rating}
                                                     </Badge>
                                                 </div>
+
                                                 <div className="flex justify-between">
-                                                    <span >Compliance Rating - 30 days :</span>
-                                                    <Badge variant={thirtydayrating < 90 ? "destructive" : "secondary"}>
+                                                    <span>Compliance Rating - 30 days :</span>
+
+                                                    <Badge
+                                                        className={
+                                                            thirtydayrating < 90
+                                                                ? "bg-red-600 dark:bg-red-500 text-white"
+                                                                : "bg-black dark:bg-black text-white"
+                                                        }
+                                                    >
                                                         {thirtydayrating}
                                                     </Badge>
                                                 </div>
-
                                             </div>
+
                                         </div>
 
                                     </div>
 
-                                   
+
                                 </CardContent>
                             </Card>
-                     
-                        </div>              
+
+                        </div>
 
                         {/* Main Form */}
                         <div className="lg:col-span-3">

@@ -74,7 +74,6 @@ const schema = a.schema({
     inspection: a.hasMany('Inspection', 'fleetid'),
   }).authorization((allow) => [allow.publicApiKey()]),
 
-
   Inspection: a.model({
     fleetid: a.string().required(),
     inspectionNo: a.integer(),
@@ -287,6 +286,10 @@ const schema = a.schema({
       siteManagerName: a.string(),
       siteManagerMail: a.string(),
       siteManagerNumber: a.string(),
+
+      siteSafetyName: a.string(),
+      siteSafetyMail: a.string(),
+      siteSafetyNumber: a.string(),
 
       siteProcurementName: a.string(),
       siteProcurementMail: a.string(),

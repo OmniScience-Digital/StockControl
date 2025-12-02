@@ -35,27 +35,35 @@ export const calculateCustomFields = async (
 
     const reviewRequired = formState.booleanQuestions.some((q: any) => {
         const question = q.question.toLowerCase();
-        const value = q.value;
+        const value = q.value; // Already boolean true/false
 
-        if (question.includes("oil and coolant")) return !value;
-        if (question.includes("full tank")) return !value;
-        if (question.includes("seatbelt")) return !value;
-        if (question.includes("handbrake")) return !value;
-        if (question.includes("tyre") && question.includes("wear")) return !value;
-        if (question.includes("spare tyre")) return !value;
-        if (question.includes("number plate")) return !value;
-        if (question.includes("license disc")) return !value;
-        if (question.includes("leaks")) return value;
-        if (question.includes("light")) return !value;
-        if (question.includes("defrost") || question.includes("air condition")) return !value;
-        if (question.includes("emergency kit")) return !value;
-        if (question.includes("clean")) return !value;
-        if (question.includes("warning light")) return value;
-        if (question.includes("windscreen wiper")) return !value;
-        if (question.includes("service book")) return !value;
-        return false;
+        if (question.includes("oil and coolant")) return !value; // Should be true
+        if (question.includes("full tank")) return !value; // Should be true
+        if (question.includes("seatbelt")) return !value; // Should be true
+        if (question.includes("handbrake")) return !value; // Should be true
+        if (question.includes("tyre") && (question.includes("wear") || question.includes("tread"))) return !value; // Should be true
+        if (question.includes("spare tyre")) return !value; // Should be true
+        if (question.includes("number plate")) return !value; // Should be true
+        if (question.includes("license disc")) return !value; // Should be true
+        if (question.includes("leaks")) return value; // Should be false, so if value is true → fail
+        if (question.includes("warning light")) return value; // Should be false, so if value is true → fail
+
+        // For the lights question
+        if (question.includes("headlights") || question.includes("taillights") || question.includes("fog lights") ||
+            question.includes("indicators") || question.includes("hazards")) {
+            return !value; // Should be true
+        }
+
+        if (question.includes("defrost") || question.includes("air condition")) return !value; // Should be true
+        if (question.includes("emergency kit")) return !value; // Should be true
+        if (question.includes("clean")) return !value; // Should be true
+        if (question.includes("windscreen wiper")) return !value; // Should be true
+        if (question.includes("service book")) return !value; // Should be true
+
+        return false; // Questions not in the list don't trigger review
     });
 
+    console.log('reviewRequired ', reviewRequired);
 
     //  secondary index query - return the actual tasks data
     const getExistingTasks = async (vehicleReg: string, taskType: "service" | "rotation") => {
@@ -66,10 +74,10 @@ export const calculateCustomFields = async (
         return existingTasks || [];
     };
 
-    
+
     // --- Service Task ---
-     if (serviceRequired) {
-    
+    if (serviceRequired) {
+
         const existingServiceTasks = await getExistingTasks(formState.selectedVehicleReg, "service");
         const taskExists = existingServiceTasks.length > 0;
 
@@ -110,22 +118,22 @@ export const calculateCustomFields = async (
                 });
             }
         } else {
-            
+
             //update description with timestamp
             await fetch("/api/update-description", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     taskId: existingServiceTasks[0].clickupTaskId,
-                    odometer:odometer
+                    odometer: odometer
                 }),
             });
         }
     }
 
     // --- Tyre Rotation Task ---
-     if (tyreRotationRequired) {
-    
+    if (tyreRotationRequired) {
+
         const existingRotationTasks = await getExistingTasks(formState.selectedVehicleReg, "rotation");
         const taskExists = existingRotationTasks.length > 0;
 
@@ -166,14 +174,14 @@ export const calculateCustomFields = async (
                 });
             }
         } else {
-            
+
             //update description with timestamp
             await fetch("/api/update-description", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     taskId: existingRotationTasks[0].clickupTaskId,
-                    odometer:odometer
+                    odometer: odometer
                 }),
             });
         }
