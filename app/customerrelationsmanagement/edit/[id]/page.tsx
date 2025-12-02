@@ -31,6 +31,7 @@ export default function EditCustomerPage() {
   const router = useRouter();
   const params = useParams();
   const customerSiteId = decodeURIComponent(params.id as string);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -52,6 +53,9 @@ export default function EditCustomerPage() {
     siteManagerName: '',
     siteManagerMail: '',
     siteManagerNumber: '',
+    siteSafetyName: '',
+    siteSafetyMail: '',
+    siteSafetyNumber: '',
     siteProcurementName: '',
     siteProcurementMail: '',
     siteProcurementNumber: '',
@@ -99,6 +103,12 @@ export default function EditCustomerPage() {
           siteManagerName: customerSiteData.siteManagerName || '',
           siteManagerMail: customerSiteData.siteManagerMail || '',
           siteManagerNumber: customerSiteData.siteManagerNumber || '',
+
+          siteSafetyName: customerSiteData.siteSafetyName || '',
+          siteSafetyMail: customerSiteData.siteSafetyMail || '',
+          siteSafetyNumber: customerSiteData.siteSafetyNumber || '',
+
+
           siteProcurementName: customerSiteData.siteProcurementName || '',
           siteProcurementMail: customerSiteData.siteProcurementMail || '',
           siteProcurementNumber: customerSiteData.siteProcurementNumber || '',
@@ -120,6 +130,11 @@ export default function EditCustomerPage() {
 
     fetchCustomerSite();
   }, [customerSiteId]);
+
+    const handleAssetCreated = () => {
+    setRefreshTrigger(prev => prev + 1);
+  };
+
 
   const handleInputChange = (field: keyof CustomerSiteState, value: string) => {
     setFormData(prev => ({
@@ -164,6 +179,9 @@ export default function EditCustomerPage() {
         siteManagerName: formData.siteManagerName || null,
         siteManagerMail: formData.siteManagerMail || null,
         siteManagerNumber: formData.siteManagerNumber || null,
+        siteSafetyName: formData.siteSafetyName || null,
+        siteSafetyMail: formData.siteSafetyMail || null,
+        siteSafetyNumber: formData.siteSafetyMail || null,
         siteProcurementName: formData.siteProcurementName || null,
         siteProcurementMail: formData.siteProcurementMail || null,
         siteProcurementNumber: formData.siteProcurementNumber || null,
@@ -264,15 +282,15 @@ export default function EditCustomerPage() {
               className="h-9 w-9 p-0"
             >
               <ArrowLeft className="
-    h-5 w-5 mr-2
-    cursor-pointer
-    hover:bg-slate-100
-    active:bg-slate-200
-    active:scale-95
-    rounded
-    transition
-    inline-block
-  " />
+                h-5 w-5 mr-2
+                cursor-pointer
+                hover:bg-slate-100
+                active:bg-slate-200
+                active:scale-95
+                rounded
+                transition
+                inline-block
+              " />
             </Button>
             <div>
               <h2 className="text-2xl font-bold mt-4">
@@ -477,6 +495,37 @@ export default function EditCustomerPage() {
                           </div>
                         </div>
                       </div>
+                      {/* Site Safety */}
+                      <div className="space-y-4">
+                        <h4 className="font-semibold border-b pb-2">Site Safety Name</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div>
+                            <Label>Name</Label>
+                            <Input
+                              value={formData.siteSafetyName}
+                              onChange={(e) => handleInputChange('siteSafetyName', e.target.value)}
+                              placeholder="Sarah Johnson"
+                            />
+                          </div>
+                          <div>
+                            <Label>Email</Label>
+                            <Input
+                              type="email"
+                              value={formData.siteSafetyMail}
+                              onChange={(e) => handleInputChange('siteSafetyMail', e.target.value)}
+                              placeholder="sarah@company.com"
+                            />
+                          </div>
+                          <div>
+                            <Label>Phone</Label>
+                            <Input
+                              value={formData.siteSafetyNumber}
+                              onChange={(e) => handleInputChange('siteSafetyNumber', e.target.value)}
+                              placeholder="+27 11 123 4568"
+                            />
+                          </div>
+                        </div>
+                      </div>
 
                       {/* Site Procurement */}
                       <div className="space-y-4">
@@ -600,8 +649,8 @@ export default function EditCustomerPage() {
 
             {/* Assets */}
             <TabsContent value="assets">
-              <AssetCreate customerSiteId={customerSiteId} folder={customerSite.siteName} />
-              <AssetsList customerSiteId={customerSiteId} />
+              <AssetCreate customerSiteId={customerSiteId} folder={customerSite.siteName}  onAssetCreated={handleAssetCreated} />
+              <AssetsList customerSiteId={customerSiteId}    refreshTrigger={refreshTrigger}/>
             </TabsContent>
           </Tabs>
         </div>

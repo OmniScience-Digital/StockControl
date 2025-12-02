@@ -23,8 +23,6 @@ import SiteAdditional from "../../Components/siteadditionalDoc";
 import VehicleDocs from "../../Components/vehicleDocs";
 import TabsHistory from "@/components/table/tabshistory";
 import { ComplianceAdditionals } from "@/types/crm.types";
-import { Textarea } from "@/components/ui/textarea";
-
 
 export default function Compliance() {
     const router = useRouter();

@@ -15,9 +15,10 @@ import { PDFState } from "@/types/schema";
 interface ASSETPROPS {
     customerSiteId: string;
     folder: string;
+     onAssetCreated?: () => void;
 }
 
-export default function AssetCreate({ customerSiteId, folder }: ASSETPROPS) {
+export default function AssetCreate({ customerSiteId, folder,onAssetCreated  }: ASSETPROPS) {
     const [saving, setSaving] = useState(false);
     const [isCreating, setIsCreating] = useState(false);
 
@@ -131,6 +132,10 @@ export default function AssetCreate({ customerSiteId, folder }: ASSETPROPS) {
                     notes: "",
                 });
                 setIsCreating(false);
+
+                  if (onAssetCreated) {
+                    onAssetCreated();
+                }
             }
 
         } catch (error) {

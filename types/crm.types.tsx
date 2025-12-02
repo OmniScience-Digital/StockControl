@@ -23,6 +23,10 @@ export interface CustomerSiteState {
     siteManagerMail: string;
     siteManagerNumber: string;
 
+    siteSafetyName: string,
+    siteSafetyMail: string,
+    siteSafetyNumber: string,
+
     siteProcurementName: string;
     siteProcurementMail: string;
     siteProcurementNumber: string;

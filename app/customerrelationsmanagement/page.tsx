@@ -18,7 +18,7 @@ export default function CustomerRelationsManagement() {
     const [filteredCustomerSites, setFilteredCustomerSites] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
-    
+
 
     useEffect(() => {
         const subscription = client.models.CustomerSite.observeQuery().subscribe({
@@ -113,15 +113,15 @@ export default function CustomerRelationsManagement() {
 
                 >
                     <Edit className="
-    h-4 w-4 mr-2
-    cursor-pointer
-    hover:bg-slate-100
-    active:bg-slate-200
-    active:scale-95
-    rounded
-    transition
-    inline-block
-  "/>
+                    h-4 w-4 mr-2
+                    cursor-pointer
+                    hover:bg-slate-100
+                    active:bg-slate-200
+                    active:scale-95
+                    rounded
+                    transition
+                    inline-block
+                "/>
                 </div>
             ),
         },
@@ -135,15 +135,15 @@ export default function CustomerRelationsManagement() {
                             router.push(`/customerrelationsmanagement/compliance/${row.original.id}`)
                         }
                         className="
-    h-4 w-4 mr-2
-    cursor-pointer
-    hover:bg-slate-100
-    active:bg-slate-200
-    active:scale-95
-    rounded
-    transition
-    inline-block
-  "
+                        h-4 w-4 mr-2
+                        cursor-pointer
+                        hover:bg-slate-100
+                        active:bg-slate-200
+                        active:scale-95
+                        rounded
+                        transition
+                        inline-block
+                    "
                     />
                 </div>
 

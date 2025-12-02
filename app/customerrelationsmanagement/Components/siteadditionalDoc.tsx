@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import ResponseModal from "@/components/widgets/response";
-import { FileText, Loader2, Plus, Save, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, FileText, Loader2, Plus, Save, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { FileUploadUpdate } from "./fileupdate";
 import { FileUploadMany } from "./fileUpload";
@@ -49,6 +49,10 @@ export default function SiteAdditional({ complianceData, complianceexistingdocs,
 
     const [hasContractorsPackChanges, setHasContractorsPackChanges] = useState(false);
     const [updatingContractorsPack, setUpdatingContractorsPack] = useState(false);
+
+    //pagination controls
+     const [currentPage, setCurrentPage] = useState(1);
+const itemsPerPage = 10;
 
 
     // Initialize states
@@ -695,114 +699,132 @@ export default function SiteAdditional({ complianceData, complianceexistingdocs,
             </Card>
         );
     }
-
+    
+   
     return (
         <>
-            <Card className="mt-2">
+    <Card className="mt-2">
+            <CardHeader>
+                <div className="flex justify-between items-center">
+                    <CardTitle className="flex items-center gap-2">
+                        <FileText className="h-5 w-5" />
+                        Site Additional Documents
+                    </CardTitle>
+                    <Button onClick={addAdditionalCertificate} size="sm">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Certificate
+                    </Button>
+                </div>
+            </CardHeader>
+            <CardContent className="p-6">
+                {additionalCerts.length > 0 && additionalCerts.map((cert, index) => (
+                    <div key={index} className="p-4 border rounded-lg">
+                        <div className="flex justify-between items-start mb-4">
+                            <h4 className="font-semibold">Additional Certificate #{index + 1}</h4>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => removeAdditionalCertificate(index)}
+                                className="text-red-600 hover:text-red-800"
+                            >
+                                <Trash2 className="h-4 w-4" />
+                            </Button>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="flex flex-row md:col-span-2 text-xss">
+                                <Label className="mr-3">Critical (optional)</Label>
+                                <Checkbox
+                                    className="cursor-pointer"
+                                    checked={cert.critical || false}
+                                    onCheckedChange={(checked) => handleCriticalChange(index, checked === true)}
+                                />
+                            </div>
+                            <div>
+                                <Label>Certificate Name</Label>
+                                <Input
+                                    value={cert.certificateName || ''}
+                                    onChange={(e) => handleAdditionalCertChange(index, 'certificateName', e.target.value)}
+                                    placeholder="Enter certificate name"
+                                />
+                            </div>
+                            <div>
+                                <Label>Expiry Date</Label>
+                                <Input
+                                    type="date"
+                                    value={cert.expiryDate || ''}
+                                    onChange={(e) => handleAdditionalCertChange(index, 'expiryDate', e.target.value)}
+                                />
+                            </div>
+                            <div className="md:col-span-2">
+                                <FileUploadMany
+                                    assetName={cert.certificateName}
+                                    title={cert.certificateName || "Additional Certificate"}
+                                    folder="site-additionals"
+                                    onFilesChange={handleCertificateFilesChange(index)}
+                                />
+                            </div>
+                        </div>
+                        <div className="flex justify-end gap-3 mt-8">
+                            <Button
+                                onClick={handleSave}
+                                disabled={saving || !hasChanges}
+                                className=" hover:bg-blue-700"
+                            >
+                                {saving ? (
+                                    <>
+                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                        Saving...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Save className="h-4 w-4 mr-2" />
+                                        Create
+                                    </>
+                                )}
+                            </Button>
+                        </div>
+                    </div>
+                ))}
+                {additionalCerts.length === 0 && existingdocs.length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                        No additional certificates added yet.
+                    </div>
+                )}
+                {additionalCerts.length > 0 && (<div className="mb-10" />)}
 
-                <CardHeader>
-                    <div className="flex justify-between items-center">
-                        <CardTitle className="flex items-center gap-2">
-                            <FileText className="h-5 w-5" />
-                            Site Additional Documents
-                        </CardTitle>
-                        <Button onClick={addAdditionalCertificate} size="sm">
-                            <Plus className="h-4 w-4 mr-2" />
-                            Add Certificate
+                {/* PAGINATION CONTROLS */}
+                {existingdocs.length > itemsPerPage && (
+                    <div className="flex justify-center items-center gap-4 mb-4">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCurrentPage(currentPage - 1)}
+                            disabled={currentPage === 1}
+                        >
+                            <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <span className="text-sm">
+                            Page {currentPage} of {Math.ceil(existingdocs.length / itemsPerPage)}
+                        </span>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCurrentPage(currentPage + 1)}
+                            disabled={currentPage >= Math.ceil(existingdocs.length / itemsPerPage)}
+                        >
+                            <ChevronRight className="h-4 w-4" />
                         </Button>
                     </div>
+                )}
 
-                </CardHeader>
-                <CardContent className="p-6 ">
-
-                    {additionalCerts.length > 0 && additionalCerts.map((cert, index) => (
-
-                        <div key={index} className="p-4 border rounded-lg">
-                            <div className="flex justify-between items-start mb-4">
-                                <h4 className="font-semibold">Additional Certificate #{index + 1}</h4>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => removeAdditionalCertificate(index)}
-                                    className="text-red-600 hover:text-red-800"
-                                >
-                                    <Trash2 className="h-4 w-4" />
-                                </Button>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="flex flex-row md:col-span-2 text-xss">
-                                    <Label className="mr-3">Critical (optional)</Label>
-                                    <Checkbox
-                                        className="cursor-pointer"
-                                        checked={cert.critical || false}
-                                        onCheckedChange={(checked) => handleCriticalChange(index, checked === true)}
-                                    />
-                                </div>
-                                <div>
-                                    <Label>Certificate Name</Label>
-                                    <Input
-                                        value={cert.certificateName || ''}
-                                        onChange={(e) => handleAdditionalCertChange(index, 'certificateName', e.target.value)}
-                                        placeholder="Enter certificate name"
-                                    />
-                                </div>
-                                <div>
-                                    <Label>Expiry Date</Label>
-                                    <Input
-                                        type="date"
-                                        value={cert.expiryDate || ''}
-                                        onChange={(e) => handleAdditionalCertChange(index, 'expiryDate', e.target.value)}
-                                    />
-                                </div>
-
-                                <div className="md:col-span-2">
-                                    <FileUploadMany
-                                        assetName={cert.certificateName}
-                                        title={cert.certificateName || "Additional Certificate"}
-                                        folder="site-additionals"
-                                        onFilesChange={handleCertificateFilesChange(index)}
-                                    />
-
-                                </div>
-                            </div>
-                            {/* Action Buttons */}
-                            <div className="flex justify-end gap-3 mt-8">
-
-                                <Button
-                                    onClick={handleSave}
-                                    disabled={saving || !hasChanges}
-                                    className=" hover:bg-blue-700"
-                                >
-                                    {saving ? (
-                                        <>
-                                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                            Saving...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Save className="h-4 w-4 mr-2" />
-                                            Create
-                                        </>
-                                    )}
-                                </Button>
-                            </div>
-                        </div>
-                    ))}
-                    {additionalCerts.length === 0 && existingdocs.length === 0 && (
-                        <div className="text-center py-8 text-muted-foreground">
-                            No additional certificates added yet.
-                        </div>
-                    )}
-
-                    {additionalCerts.length > 0 && (<div className="mb-10" />
-                    )}
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-                        {
-                            existingdocs.map((cert, index) => (
-
-                                <div key={index} className="space-y-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {existingdocs
+                        .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                        .map((cert, index) => {
+                            const originalIndex = (currentPage - 1) * itemsPerPage + index;
+                            
+                            return (
+                                <div key={cert.id || originalIndex} className="space-y-2">
                                     <div className="flex justify-between items-start">
                                         <h4 className="font-semibold">Existing Certificate</h4>
                                         <Button
@@ -814,24 +836,23 @@ export default function SiteAdditional({ complianceData, complianceexistingdocs,
                                             <Trash2 className="h-4 w-4" />
                                         </Button>
                                     </div>
-                                    {/* CRITICAL CHECKBOX */}
                                     <div className="flex flex-row text-xss items-center gap-2">
                                         <Checkbox
-                                            id={`critical-${index}`}
+                                            id={`critical-${originalIndex}`}
                                             checked={cert.critical === "true"}
                                             onCheckedChange={(checked) =>
-                                                handleExistingCertChange(index, 'critical', checked === true ? "true" : "false")
+                                                handleExistingCertChange(originalIndex, 'critical', checked === true ? "true" : "false")
                                             }
                                         />
-                                        <Label htmlFor={`critical-${index}`} className="cursor-pointer">
+                                        <Label htmlFor={`critical-${originalIndex}`} className="cursor-pointer">
                                             Critical Certificate
                                         </Label>
                                     </div>
-                                    <div >
+                                    <div>
                                         <Label>Certificate Name</Label>
                                         <Input
                                             value={cert.name || ''}
-                                            onChange={(e) => handleExistingCertChange(index, 'name', e.target.value)}
+                                            onChange={(e) => handleExistingCertChange(originalIndex, 'name', e.target.value)}
                                             placeholder="Enter certificate name"
                                         />
                                     </div>
@@ -840,7 +861,7 @@ export default function SiteAdditional({ complianceData, complianceexistingdocs,
                                         <Input
                                             type="date"
                                             value={cert.expirey || ''}
-                                            onChange={(e) => handleExistingCertChange(index, 'expirey', e.target.value)}
+                                            onChange={(e) => handleExistingCertChange(originalIndex, 'expirey', e.target.value)}
                                         />
                                     </div>
                                     <div>
@@ -849,32 +870,25 @@ export default function SiteAdditional({ complianceData, complianceexistingdocs,
                                             title={cert.name || ""}
                                             folder="site-additionals"
                                             existingFiles={cert.requirementDoc ? [cert.requirementDoc] : []}
-                                            onFilesChange={handleExistingFileChange(index)}
+                                            onFilesChange={handleExistingFileChange(originalIndex)}
                                             onFileRemove={async (s3Key) => {
                                                 if (s3Key && cert.id) {
                                                     try {
                                                         setUpdating(true);
                                                         setHasChanges(false);
-                                                        // 1. Delete from S3 immediately
                                                         await remove({ path: s3Key });
-
-                                                        // 2. Update the database to remove the file reference
                                                         await client.models.ComplianceAdditionals.update({
                                                             id: cert.id,
                                                             requirementDoc: ""
                                                         });
-
-                                                        // 3. Update local state - THIS WAS MISSING
                                                         const updatedDocs = [...existingdocs];
-                                                        updatedDocs[index] = {
-                                                            ...updatedDocs[index],
+                                                        updatedDocs[originalIndex] = {
+                                                            ...updatedDocs[originalIndex],
                                                             requirementDoc: ""
                                                         };
                                                         setAdditionalDocs(updatedDocs);
-                                                        // 4. History tracking for file removal
                                                         const storedName = localStorage.getItem("user")?.replace(/^"|"$/g, '').trim() || "Unknown User";
                                                         const johannesburgTime = new Date().toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg" });
-
                                                         await client.models.History.create({
                                                             entityType: "COMPLIANCE",
                                                             entityId: complianceData?.customerSiteId,
@@ -882,12 +896,9 @@ export default function SiteAdditional({ complianceData, complianceexistingdocs,
                                                             timestamp: new Date().toISOString(),
                                                             details: `\n${storedName} REMOVED file from certificate "${cert.name}" at ${johannesburgTime}\n`
                                                         });
-
-                                                        // 5. Show success message
                                                         setMessage(`File deleted successfully`);
                                                         setSuccessful(true);
                                                         setShow(true);
-
                                                     } catch (error) {
                                                         console.error(`Failed to delete file: ${s3Key}`, error);
                                                         setMessage("Error deleting file");
@@ -899,49 +910,36 @@ export default function SiteAdditional({ complianceData, complianceexistingdocs,
                                                 }
                                             }}
                                         />
-
                                     </div>
-
-
                                 </div>
-
-
-
-                            )
-
-                            )
-                        }
-
-
-
-                    </div>
-
-                    {existingdocs.length > 0 && (
-                        <div className="flex justify-end gap-3 mt-8">
-
-                            <Button
-                                onClick={handleUpdate}
-                                disabled={!hasChanges}
-
-                            >
-                                {updating ? (
-                                    <>
-                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                        Saving...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Save className="h-4 w-4 mr-2" />
-                                        Update
-                                    </>
-                                )}
-                            </Button>
-                        </div>
-                    )
+                            );
+                        })
                     }
+                </div>
 
-                </CardContent>
-            </Card>
+                {existingdocs.length > 0 && (
+                    <div className="flex justify-end gap-3 mt-8">
+                        <Button
+                            onClick={handleUpdate}
+                            disabled={!hasChanges}
+                        >
+                            {updating ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    Saving...
+                                </>
+                            ) : (
+                                <>
+                                    <Save className="h-4 w-4 mr-2" />
+                                    Update
+                                </>
+                            )}
+                        </Button>
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+            
 
             {/* Digital Contractors Pack Card - NEW COMPONENT */}
             <Card className="mt-2">

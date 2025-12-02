@@ -25,9 +25,10 @@ import { remove } from 'aws-amplify/storage';
 
 interface AssetsListProps {
     customerSiteId: string;
+    refreshTrigger?: number;
 }
 
-export default function AssetsList({ customerSiteId }: AssetsListProps) {
+export default function AssetsList({ customerSiteId, refreshTrigger = 0 }: AssetsListProps) {
     const [assets, setAssets] = useState<Asset[]>([]);
     const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
     const [editedAsset, setEditedAsset] = useState<Partial<Asset>>({});
@@ -85,7 +86,10 @@ export default function AssetsList({ customerSiteId }: AssetsListProps) {
                     notes: item.notes || undefined,
                     createdAt: item.createdAt,
                     updatedAt: item.updatedAt,
-                }));
+                })).sort((a, b) =>
+                    a.assetName.localeCompare(b.assetName),
+                );
+
                 setAssets(convertedAssets);
             } catch (error) {
                 console.error("Error fetching assets:", error);
@@ -96,7 +100,7 @@ export default function AssetsList({ customerSiteId }: AssetsListProps) {
         };
 
         fetchAssets();
-    }, [customerSiteId]);
+    }, [customerSiteId, refreshTrigger]);
 
 
     useEffect(() => {
@@ -434,8 +438,8 @@ export default function AssetsList({ customerSiteId }: AssetsListProps) {
                                             </Button>
                                         </div>
                                     </div>
-
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                        {/* Asset Information */}
                                         <div className="space-y-2">
                                             <label className="text-sm font-medium">Asset Name *</label>
                                             <Input
@@ -460,6 +464,8 @@ export default function AssetsList({ customerSiteId }: AssetsListProps) {
                                                 className="h-9"
                                             />
                                         </div>
+
+                                        {/* Scale Information */}
                                         <div className="space-y-2">
                                             <label className="text-sm font-medium">Scale OEM</label>
                                             <Input
@@ -476,6 +482,8 @@ export default function AssetsList({ customerSiteId }: AssetsListProps) {
                                                 className="h-9"
                                             />
                                         </div>
+
+                                        {/* Belt/Conveyor Specifications */}
                                         <div className="space-y-2">
                                             <label className="text-sm font-medium">Belt Width</label>
                                             <Input
@@ -492,6 +500,50 @@ export default function AssetsList({ customerSiteId }: AssetsListProps) {
                                                 className="h-9"
                                             />
                                         </div>
+
+                                        {/* Idler Information */}
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium">Weigh Idler QTY</label>
+                                            <Input
+                                                value={editedAsset.weighIdlerQTY || ""}
+                                                onChange={(e) => handleChange("weighIdlerQTY", e.target.value)}
+                                                className="h-9"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium">Approach Idler QTY</label>
+                                            <Input
+                                                value={editedAsset.approachIdlerQTY || ""}
+                                                onChange={(e) => handleChange("approachIdlerQTY", e.target.value)}
+                                                className="h-9"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium">Retreat Idler QTY</label>
+                                            <Input
+                                                value={editedAsset.retreatIdlerQTY || ""}
+                                                onChange={(e) => handleChange("retreatIdlerQTY", e.target.value)}
+                                                className="h-9"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium">Center Roll Size</label>
+                                            <Input
+                                                value={editedAsset.centerRollSize || ""}
+                                                onChange={(e) => handleChange("centerRollSize", e.target.value)}
+                                                className="h-9"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium">Wing Roll Size</label>
+                                            <Input
+                                                value={editedAsset.wingRollSize || ""}
+                                                onChange={(e) => handleChange("wingRollSize", e.target.value)}
+                                                className="h-9"
+                                            />
+                                        </div>
+
+                                        {/* Load Cell Information */}
                                         <div className="space-y-2">
                                             <label className="text-sm font-medium">Load Cell Type</label>
                                             <Input
@@ -509,6 +561,16 @@ export default function AssetsList({ customerSiteId }: AssetsListProps) {
                                             />
                                         </div>
                                         <div className="space-y-2">
+                                            <label className="text-sm font-medium">Load Cell Size</label>
+                                            <Input
+                                                value={editedAsset.loadcellSize || ""}
+                                                onChange={(e) => handleChange("loadcellSize", e.target.value)}
+                                                className="h-9"
+                                            />
+                                        </div>
+
+                                        {/* Integrator Information */}
+                                        <div className="space-y-2">
                                             <label className="text-sm font-medium">Integrator OEM</label>
                                             <Input
                                                 value={editedAsset.integratorOEM || ""}
@@ -524,6 +586,8 @@ export default function AssetsList({ customerSiteId }: AssetsListProps) {
                                                 className="h-9"
                                             />
                                         </div>
+
+                                        {/* SSR Information */}
                                         <div className="space-y-2">
                                             <label className="text-sm font-medium">SSR OEM</label>
                                             <Input
@@ -532,7 +596,16 @@ export default function AssetsList({ customerSiteId }: AssetsListProps) {
                                                 className="h-9"
                                             />
                                         </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium">SSR Model</label>
+                                            <Input
+                                                value={editedAsset.ssrModel || ""}
+                                                onChange={(e) => handleChange("ssrModel", e.target.value)}
+                                                className="h-9"
+                                            />
+                                        </div>
                                     </div>
+
 
                                     {/* Textareas for longer text fields */}
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -547,6 +620,7 @@ export default function AssetsList({ customerSiteId }: AssetsListProps) {
                                         </div>
 
                                     </div>
+
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div className="space-y-2">
                                             <label className="text-sm font-medium">Scale Datasheet</label>
@@ -597,6 +671,8 @@ export default function AssetsList({ customerSiteId }: AssetsListProps) {
                                 </div>
                             ) : (
                                 // View Mode - Enhanced Display
+
+
                                 <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
                                     <div className="flex-1 min-w-0 space-y-3">
                                         {/* Header with asset info */}
@@ -606,6 +682,9 @@ export default function AssetsList({ customerSiteId }: AssetsListProps) {
                                                     <h4 className="font-semibold text-base truncate">
                                                         {asset.assetName || "Unnamed Asset"}
                                                     </h4>
+                                                    <Badge variant="outline" className="text-xs">
+                                                        {asset.scaleModel || "No Model"}
+                                                    </Badge>
                                                     <Badge variant="outline" className="text-xs">
                                                         {asset.scaleTag || "No Tag"}
                                                     </Badge>
@@ -617,21 +696,28 @@ export default function AssetsList({ customerSiteId }: AssetsListProps) {
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                                             <div className="space-y-2">
                                                 <div>
-                                                    <span className="text-muted-foreground text-sm">Scale OEM: </span>
-                                                    <span className="font-medium">{asset.scaleOEM || "N/A"}</span>
+                                                    <span className="text-muted-foreground text-sm">Scale:</span>
+                                                    <span className="font-medium text-xs"> {asset.scaleOEM || "N/A"}</span>
                                                     {asset.scaleModel && (
                                                         <span className="text-xs text-muted-foreground ml-2">
                                                             ({asset.scaleModel})
                                                         </span>
                                                     )}
+                                                    {asset.beltwidth && (
+                                                        <span className="text-xs text-muted-foreground ml-2">
+                                                            ({asset.beltwidth} BW)
+                                                        </span>
+                                                    )}
                                                 </div>
                                                 <div>
-                                                    <span className="text-muted-foreground text-sm">Belt Width: </span>
-                                                    <span className="font-medium">{asset.beltwidth || "N/A"}</span>
+                                                    <span className="text-muted-foreground text-sm">Intergrator: </span>
+                                                    <span className="font-medium text-xs">{asset.integratorOEM || "N/A"}</span>
+                                                    <span className="text-xs text-muted-foreground ml-2">({asset.integratorModel || "N/A"})</span>
                                                 </div>
                                                 <div>
-                                                    <span className="text-muted-foreground text-sm">Trough Angle: </span>
-                                                    <span className="font-medium">{asset.troughAngle || "N/A"}</span>
+                                                    <span className="text-muted-foreground text-sm">Speed Sensor: </span>
+                                                    <span className="font-medium text-xs">{asset.ssrOEM || "N/A"}</span>
+                                                    <span className="text-xs text-muted-foreground ml-2">({asset.ssrModel || "N/A"})</span>
                                                 </div>
                                             </div>
 
@@ -651,24 +737,17 @@ export default function AssetsList({ customerSiteId }: AssetsListProps) {
                                                             {asset.loadcellType || "N/A"}
                                                         </span>
                                                     </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-muted-foreground text-sm">Size: </span>
+                                                        <span className={asset.loadcellSize ? "text-green-600 font-medium" : "text-red-600"}>
+                                                            {asset.loadcellSize || "N/A"}
+                                                        </span>
+                                                    </div>
                                                 </div>
                                                 <div>
-                                                    <span className="text-muted-foreground text-sm">Integrator: </span>
-                                                    <span className="font-medium">{asset.integratorOEM || "N/A"}</span>
-                                                    {asset.integratorModel && (
-                                                        <span className="text-xs text-muted-foreground ml-2">
-                                                            ({asset.integratorModel})
-                                                        </span>
-                                                    )}
+
                                                 </div>
-                                                {asset.notes && (
-                                                    <div>
-                                                        <p className="text-muted-foreground text-sm mb-1">Notes:</p>
-                                                        <p className="text-sm bg-muted/50 p-2 rounded-md whitespace-nowrap overflow-hidden text-ellipsis">
-                                                            {asset.notes}
-                                                        </p>
-                                                    </div>
-                                                )}
+
                                             </div>
                                         </div>
                                     </div>
@@ -696,6 +775,8 @@ export default function AssetsList({ customerSiteId }: AssetsListProps) {
                                         </Button>
                                     </div>
                                 </div>
+
+
                             )}
                         </div>
                     ))}

@@ -45,6 +45,10 @@ export default function CreateCustomer() {
         siteManagerMail: '',
         siteManagerNumber: '',
 
+        siteSafetyName: '',
+        siteSafetyMail: '',
+        siteSafetyNumber: '',
+
         siteProcurementName: '',
         siteProcurementMail: '',
         siteProcurementNumber: '',
@@ -109,6 +113,9 @@ export default function CreateCustomer() {
                 siteManagerName: formData.siteManagerName || null,
                 siteManagerMail: formData.siteManagerMail || null,
                 siteManagerNumber: formData.siteManagerNumber || null,
+                siteSafetyName: formData.siteSafetyName || null,
+                siteSafetyMail: formData.siteSafetyMail || null,
+                siteSafetyNumber: formData.siteSafetyMail || null,
                 siteProcurementName: formData.siteProcurementName || null,
                 siteProcurementMail: formData.siteProcurementMail || null,
                 siteProcurementNumber: formData.siteProcurementNumber || null,
@@ -353,6 +360,37 @@ export default function CreateCustomer() {
                                                 <Input
                                                     value={formData.siteManagerNumber}
                                                     onChange={(e) => handleInputChange('siteManagerNumber', e.target.value)}
+                                                    placeholder="+27 11 123 4568"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {/* Site Safety */}
+                                    <div className="space-y-4">
+                                        <h4 className="font-semibold border-b pb-2">Site Safety Name</h4>
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                            <div>
+                                                <Label>Name</Label>
+                                                <Input
+                                                    value={formData.siteSafetyName}
+                                                    onChange={(e) => handleInputChange('siteSafetyName', e.target.value)}
+                                                    placeholder="Sarah Johnson"
+                                                />
+                                            </div>
+                                            <div>
+                                                <Label>Email</Label>
+                                                <Input
+                                                    type="email"
+                                                    value={formData.siteSafetyMail}
+                                                    onChange={(e) => handleInputChange('siteSafetyMail', e.target.value)}
+                                                    placeholder="sarah@company.com"
+                                                />
+                                            </div>
+                                            <div>
+                                                <Label>Phone</Label>
+                                                <Input
+                                                    value={formData.siteSafetyNumber}
+                                                    onChange={(e) => handleInputChange('siteSafetyNumber', e.target.value)}
                                                     placeholder="+27 11 123 4568"
                                                 />
                                             </div>
