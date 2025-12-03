@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Search, Users, FileText, Plus, Minus, ArrowLeft } from "lucide-react";
+import { Search, Users, FileText, Plus, Minus, ArrowLeft, Pencil, Check, X } from "lucide-react";
 import { Employee, MEDICAL_CERTIFICATE_TYPES, TRAINING_CERTIFICATE_TYPES } from "@/types/hrd.types";
 import { client } from "@/services/schema";
 import Footer from "@/components/layout/footer";
@@ -23,6 +23,8 @@ import SiteAdditional from "../../Components/siteadditionalDoc";
 import VehicleDocs from "../../Components/vehicleDocs";
 import TabsHistory from "@/components/table/tabshistory";
 import { ComplianceAdditionals } from "@/types/crm.types";
+import { Textarea } from "@/components/ui/textarea";
+import ResponseModal from "@/components/widgets/response";
 
 export default function Compliance() {
     const router = useRouter();
@@ -44,7 +46,13 @@ export default function Compliance() {
 
     const [selectedRequirements, setSelectedRequirements] = useState<Set<string>>(new Set());
     const [searchTerm, setSearchTerm] = useState("");
+    const [searchReqTerm, setSearchReqTerm] = useState("");
     const [loading, setLoading] = useState(true);
+    const [notes, setNotes] = useState<string>("");
+
+    const [show, setShow] = useState(false);
+    const [successful, setSuccessful] = useState(false);
+    const [message, setMessage] = useState("");
 
     const [requirementTypes, setRequirementTypes] = useState<string[]>([]);
     //vehicles
@@ -52,7 +60,7 @@ export default function Compliance() {
 
     //site additional documents 
     const [existingdocs, setAdditionalDocs] = useState<ComplianceAdditionals[]>([]);
-
+    const [editingNotes, setEditingNotes] = useState(false);
 
 
     // Fetch employees from your Employee model with relations
@@ -111,6 +119,9 @@ export default function Compliance() {
                             ...compliance
                         });
 
+                        // Set notes immediately after
+                        setNotes(compliance.notes || "");
+
                         // FETCH SITE ADDITIONAL DOCS HERE - AFTER complianceData is set
                         if (compliance.id) {
                             const siteAdditionalsResult = await client.models.ComplianceAdditionals.listComplianceAdditionalsByComplianceid({
@@ -121,6 +132,7 @@ export default function Compliance() {
                                 setAdditionalDocs(siteAdditionalsResult.data as ComplianceAdditionals[]);
                             }
                         }
+
 
                         if (compliance.linkedEmployees) {
                             const validEmployeeIds = compliance.linkedEmployees.filter((id): id is string => id !== null);
@@ -205,6 +217,11 @@ export default function Compliance() {
         employee.employeeId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         employee.employeeNumber?.toLowerCase().includes(searchTerm.toLowerCase())
     );
+
+     const filteredRequirements = requirementTypes.filter(item =>
+  item.toLowerCase().includes(searchReqTerm.toLowerCase())
+);
+
 
     const getEmployeeRequirements = (employeeId: string): string[] => {
         if (!complianceData?.employeeLookup) return [];
@@ -531,6 +548,56 @@ export default function Compliance() {
         }
     };
 
+
+    const handleNotesChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        setNotes(e.target.value);
+    };
+
+    const saveNotes = async () => {
+
+        try {
+            const storedName = localStorage.getItem("user")?.replace(/^"|"$/g, '').trim() || "Unknown User";
+            const johannesburgTime = new Date().toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg" });
+
+            // Update notes if they've changed - ALWAYS update if we're in edit mode
+            if (notes.trim() !== (complianceData?.notes || "").trim()) {
+
+                try {
+                    // First update the database
+                    const result = await client.models.Compliance.update({
+                        id: complianceData.id,
+                        notes: notes
+                    });
+
+
+                    // Create history entry
+                    await client.models.History.create({
+                        entityType: "COMPLIANCE",
+                        entityId: complianceData?.customerSiteId,
+                        action: "UPDATE_NOTES",
+                        timestamp: new Date().toISOString(),
+                        details: `\n${storedName} UPDATED compliance notes at ${johannesburgTime}\nNew notes: ${notes}\n`
+                    });
+
+
+                } catch (error) {
+                    console.error("Failed to update notes:", error);
+                    throw error;
+                }
+            } else {
+                setMessage(`No changes to save`);
+                setSuccessful(true);
+                setShow(true);
+
+            }
+        } catch (error) {
+            console.error("Error in saveNotes:", error);
+        } finally {
+            setEditingNotes(false);
+
+        }
+    }
+
     return (
         <div className="flex flex-col min-h-screen bg-background">
             <Navbar />
@@ -698,11 +765,20 @@ export default function Compliance() {
                                                     <FileText className="h-5 w-5" />
                                                     Requirements ({requirementTypes.length})
                                                 </CardTitle>
+                                                    <div className="relative">
+                                                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                                                    <Input
+                                                        placeholder="Search by requirement..."
+                                                        value={searchReqTerm}
+                                                        onChange={(e) => setSearchReqTerm(e.target.value)}
+                                                        className="pl-10"
+                                                    />
+                                                </div>
                                             </CardHeader>
                                             {loading ? (<Loading />) : (
                                                 <CardContent>
                                                     <div className="space-y-3 max-h-96 overflow-y-auto">
-                                                        {requirementTypes.map((requirement) => {
+                                                        {filteredRequirements.map((requirement) => {
                                                             const isLinkedToSelected = Array.from(selectedEmployees).some(empId =>
                                                                 getEmployeeRequirements(empId).includes(requirement)
                                                             );
@@ -748,6 +824,8 @@ export default function Compliance() {
                                                             </p>
                                                         </div>
                                                     )}
+
+
                                                 </CardContent>
                                             )}
                                         </Card>
@@ -791,9 +869,66 @@ export default function Compliance() {
                                                     </Button>
                                                 </div>
                                             </div>
-
                                         </CardContent>
 
+                                    </Card>
+                                    <Card className="mt-2">
+                                        <CardContent >
+                                            {/* Notes Section */}
+
+                                            <div className="mt-2 pt-4">
+                                                <div className="flex justify-between items-center">
+                                                    <label className="text-sm font-medium">Compliance Notes</label>
+
+                                                    {/* EDIT / SAVE / CANCEL BUTTONS */}
+                                                    {!editingNotes ? (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => setEditingNotes(true)}
+                                                            className="text-blue-600 hover:text-blue-800"
+                                                        >
+                                                            <Pencil className="h-4 w-4" />
+                                                        </Button>
+                                                    ) : (
+                                                        <div className="flex gap-2">
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                onClick={() => {
+                                                                    saveNotes();
+                                                                }}
+                                                                className="text-green-600 hover:text-green-800"
+                                                            >
+                                                                <Check className="h-4 w-4" />
+                                                            </Button>
+
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                onClick={() => {
+                                                                    setNotes(complianceData?.notes || "");
+                                                                    setEditingNotes(false);
+                                                                }}
+                                                                className="text-red-600 hover:text-red-800"
+                                                            >
+                                                                <X className="h-4 w-4" />
+                                                            </Button>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                <Textarea
+                                                    value={notes}
+                                                    onChange={handleNotesChange}
+                                                    disabled={!editingNotes}
+                                                    className={`min-h-[80px] text-sm resize-vertical ${!editingNotes ? "bg-muted cursor-not-allowed" : ""
+                                                        }`}
+                                                    placeholder="Additional notes about site compliance..."
+                                                />
+                                            </div>
+
+                                        </CardContent>
                                     </Card>
                                     <SiteAdditional complianceData={complianceData} complianceexistingdocs={existingdocs} loading={loading} />
                                 </TabsContent>
@@ -814,6 +949,14 @@ export default function Compliance() {
                         </div>
                     </div>
                 </div>
+                {show && (
+                    <ResponseModal
+                        successful={successful}
+                        message={message}
+                        setShow={setShow}
+                    />
+                )}
+
             </main>
             <Footer />
         </div>

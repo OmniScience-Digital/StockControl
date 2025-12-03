@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import ResponseModal from "@/components/widgets/response";
-import { ChevronLeft, ChevronRight, FileText, Loader2, Plus, Save, Trash2 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ChevronLeft, ChevronRight, FileText, Loader2, Plus, Save, Search, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { FileUploadUpdate } from "./fileupdate";
 import { FileUploadMany } from "./fileUpload";
@@ -15,7 +16,6 @@ import { remove } from "aws-amplify/storage";
 import { ConfirmDialog } from "@/components/widgets/deletedialog";
 import { PDFState } from "@/types/schema";
 import { ComplianceAdditionals } from "@/types/crm.types";
-import { Textarea } from "@/components/ui/textarea";
 import { handleCrmTasks } from "./crmtasks";
 
 
@@ -24,7 +24,6 @@ interface SiteAdditionalProps {
     complianceexistingdocs: ComplianceAdditionals[];
     loading: boolean;
 }
-
 
 
 export default function SiteAdditional({ complianceData, complianceexistingdocs, loading }: SiteAdditionalProps) {
@@ -40,7 +39,7 @@ export default function SiteAdditional({ complianceData, complianceexistingdocs,
     const [saving, setSaving] = useState(false);
     const [updating, setUpdating] = useState(false);
 
-    const [notes, setNotes] = useState<string>("");
+
     const [hasChanges, setHasChanges] = useState(false);
 
     //handle delete site file 
@@ -51,8 +50,16 @@ export default function SiteAdditional({ complianceData, complianceexistingdocs,
     const [updatingContractorsPack, setUpdatingContractorsPack] = useState(false);
 
     //pagination controls
-     const [currentPage, setCurrentPage] = useState(1);
-const itemsPerPage = 10;
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
+
+    // Add these near your other state variables
+    const [contractorsCurrentPage, setContractorsCurrentPage] = useState(1);
+    const contractorsItemsPerPage = 10;
+
+    const [searchCertTerm, setSearchCertTerm] = useState("");
+
+    const [searchContractorsTerm, setSearchContractorsTerm] = useState("");
 
 
     // Initialize states
@@ -64,13 +71,16 @@ const itemsPerPage = 10;
         if (complianceData?.digitalContractorsPack) {
             setDigitalContractorsPack(complianceData.digitalContractorsPack);
         }
-        if (complianceData?.notes) {
-            setNotes(complianceData.notes);
-        } else {
-            setNotes("");
-        }
+
     }, [complianceData]);
 
+    const filteredexistingdocs = existingdocs.filter(doc =>
+        `${doc.name}`.toLowerCase().includes(searchCertTerm.toLowerCase())
+    );
+
+    const filteredContractordocs = digitalContractorsPack.filter(doc =>
+        doc.toLowerCase().includes(searchContractorsTerm.toLowerCase())
+    );
 
 
     const handleCriticalChange = (index: number, checked: boolean) => {
@@ -134,10 +144,6 @@ const itemsPerPage = 10;
         }
     };
 
-    const handleNotesChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        setHasChanges(true);
-        setNotes(e.target.value);
-    };
     // ====== DIGITAL CONTRACTORS PACK FUNCTIONS ======
 
     // Handle file changes for each contractors pack document
@@ -362,7 +368,7 @@ const itemsPerPage = 10;
 
     const checkAndUpdateComplianceTasks = async (originalDocs: ComplianceAdditionals[], updatedDocs: ComplianceAdditionals[]) => {
         try {
-       
+
             // Find ALL certificates that changed expiry
             const changedCertificates = [];
 
@@ -380,7 +386,7 @@ const itemsPerPage = 10;
                         oldExpiry: originalDoc.expirey,
                         attachment: updatedDoc.requirementDoc || ''
                     });
-      
+
                 }
             }
 
@@ -438,7 +444,7 @@ const itemsPerPage = 10;
                         console.log(`ℹ️ ${changedCertificates.length - 1} additional certificates also changed expiry`);
                     }
 
-                    break; 
+                    break;
                 }
             }
 
@@ -605,19 +611,6 @@ const itemsPerPage = 10;
                 }
             }
 
-            // Update notes if they've changed
-            if (notes !== complianceData?.notes) {
-                try {
-                    await client.models.Compliance.update({
-                        id: complianceData.id,
-                        notes: notes
-                    });
-                    updateCount++; // Count this as an update
-                } catch (error) {
-                    console.error("Failed to update notes:", error);
-                    throw error;
-                }
-            }
 
             // Clear states
             setCertificateFiles({});
@@ -639,16 +632,7 @@ const itemsPerPage = 10;
 
                 const historyEntry = `\n${storedName} UPDATED site additional certificates: ${updatedCertificates.join(', ')} at ${johannesburgTime}\n`;
 
-                // Check if notes were updated
-                if (notes !== complianceData?.notes) {
-                    await client.models.History.create({
-                        entityType: "COMPLIANCE",
-                        entityId: complianceData?.customerSiteId,
-                        action: "UPDATE_NOTES",
-                        timestamp: new Date().toISOString(),
-                        details: `\n${storedName} UPDATED compliance notes at ${johannesburgTime}\nNew notes: ${notes}\n`
-                    });
-                }
+
 
                 await client.models.History.create({
                     entityType: "COMPLIANCE",
@@ -687,6 +671,7 @@ const itemsPerPage = 10;
             setHasChanges(false);
         }
     };
+
     if (loading) {
         return (
             <Card className="mt-2">
@@ -699,372 +684,470 @@ const itemsPerPage = 10;
             </Card>
         );
     }
-    
-   
+
+
     return (
         <>
-    <Card className="mt-2">
-            <CardHeader>
-                <div className="flex justify-between items-center">
-                    <CardTitle className="flex items-center gap-2">
-                        <FileText className="h-5 w-5" />
-                        Site Additional Documents
-                    </CardTitle>
-                    <Button onClick={addAdditionalCertificate} size="sm">
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add Certificate
-                    </Button>
-                </div>
-            </CardHeader>
-            <CardContent className="p-6">
-                {additionalCerts.length > 0 && additionalCerts.map((cert, index) => (
-                    <div key={index} className="p-4 border rounded-lg">
-                        <div className="flex justify-between items-start mb-4">
-                            <h4 className="font-semibold">Additional Certificate #{index + 1}</h4>
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => removeAdditionalCertificate(index)}
-                                className="text-red-600 hover:text-red-800"
-                            >
-                                <Trash2 className="h-4 w-4" />
-                            </Button>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="flex flex-row md:col-span-2 text-xss">
-                                <Label className="mr-3">Critical (optional)</Label>
-                                <Checkbox
-                                    className="cursor-pointer"
-                                    checked={cert.critical || false}
-                                    onCheckedChange={(checked) => handleCriticalChange(index, checked === true)}
-                                />
-                            </div>
-                            <div>
-                                <Label>Certificate Name</Label>
-                                <Input
-                                    value={cert.certificateName || ''}
-                                    onChange={(e) => handleAdditionalCertChange(index, 'certificateName', e.target.value)}
-                                    placeholder="Enter certificate name"
-                                />
-                            </div>
-                            <div>
-                                <Label>Expiry Date</Label>
-                                <Input
-                                    type="date"
-                                    value={cert.expiryDate || ''}
-                                    onChange={(e) => handleAdditionalCertChange(index, 'expiryDate', e.target.value)}
-                                />
-                            </div>
-                            <div className="md:col-span-2">
-                                <FileUploadMany
-                                    assetName={cert.certificateName}
-                                    title={cert.certificateName || "Additional Certificate"}
-                                    folder="site-additionals"
-                                    onFilesChange={handleCertificateFilesChange(index)}
-                                />
-                            </div>
-                        </div>
-                        <div className="flex justify-end gap-3 mt-8">
-                            <Button
-                                onClick={handleSave}
-                                disabled={saving || !hasChanges}
-                                className=" hover:bg-blue-700"
-                            >
-                                {saving ? (
-                                    <>
-                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                        Saving...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Save className="h-4 w-4 mr-2" />
-                                        Create
-                                    </>
-                                )}
-                            </Button>
-                        </div>
-                    </div>
-                ))}
-                {additionalCerts.length === 0 && existingdocs.length === 0 && (
-                    <div className="text-center py-8 text-muted-foreground">
-                        No additional certificates added yet.
-                    </div>
-                )}
-                {additionalCerts.length > 0 && (<div className="mb-10" />)}
+            <div className="flex flex-col py-3 px-2">
+                <Tabs defaultValue="siteadditonaldocs" className="space-y-4">
+                    <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="siteadditonaldocs" className="cursor-pointer">Site Additional Documents</TabsTrigger>
+                        <TabsTrigger value="contractorspack" className="cursor-pointer">Digital Contractors Pack</TabsTrigger>
+                    </TabsList>
 
-                {/* PAGINATION CONTROLS */}
-                {existingdocs.length > itemsPerPage && (
-                    <div className="flex justify-center items-center gap-4 mb-4">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setCurrentPage(currentPage - 1)}
-                            disabled={currentPage === 1}
-                        >
-                            <ChevronLeft className="h-4 w-4" />
-                        </Button>
-                        <span className="text-sm">
-                            Page {currentPage} of {Math.ceil(existingdocs.length / itemsPerPage)}
-                        </span>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setCurrentPage(currentPage + 1)}
-                            disabled={currentPage >= Math.ceil(existingdocs.length / itemsPerPage)}
-                        >
-                            <ChevronRight className="h-4 w-4" />
-                        </Button>
-                    </div>
-                )}
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {existingdocs
-                        .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
-                        .map((cert, index) => {
-                            const originalIndex = (currentPage - 1) * itemsPerPage + index;
-                            
-                            return (
-                                <div key={cert.id || originalIndex} className="space-y-2">
-                                    <div className="flex justify-between items-start">
-                                        <h4 className="font-semibold">Existing Certificate</h4>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => handleDeleteClick(cert.id!, cert.name || "Unnamed Certificate")}
-                                            className="text-red-600 hover:text-red-800"
-                                        >
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                    <div className="flex flex-row text-xss items-center gap-2">
-                                        <Checkbox
-                                            id={`critical-${originalIndex}`}
-                                            checked={cert.critical === "true"}
-                                            onCheckedChange={(checked) =>
-                                                handleExistingCertChange(originalIndex, 'critical', checked === true ? "true" : "false")
-                                            }
-                                        />
-                                        <Label htmlFor={`critical-${originalIndex}`} className="cursor-pointer">
-                                            Critical Certificate
-                                        </Label>
-                                    </div>
-                                    <div>
-                                        <Label>Certificate Name</Label>
-                                        <Input
-                                            value={cert.name || ''}
-                                            onChange={(e) => handleExistingCertChange(originalIndex, 'name', e.target.value)}
-                                            placeholder="Enter certificate name"
-                                        />
-                                    </div>
-                                    <div>
-                                        <Label>Expiry Date</Label>
-                                        <Input
-                                            type="date"
-                                            value={cert.expirey || ''}
-                                            onChange={(e) => handleExistingCertChange(originalIndex, 'expirey', e.target.value)}
-                                        />
-                                    </div>
-                                    <div>
-                                        <FileUploadUpdate
-                                            assetName={cert.name || ""}
-                                            title={cert.name || ""}
-                                            folder="site-additionals"
-                                            existingFiles={cert.requirementDoc ? [cert.requirementDoc] : []}
-                                            onFilesChange={handleExistingFileChange(originalIndex)}
-                                            onFileRemove={async (s3Key) => {
-                                                if (s3Key && cert.id) {
-                                                    try {
-                                                        setUpdating(true);
-                                                        setHasChanges(false);
-                                                        await remove({ path: s3Key });
-                                                        await client.models.ComplianceAdditionals.update({
-                                                            id: cert.id,
-                                                            requirementDoc: ""
-                                                        });
-                                                        const updatedDocs = [...existingdocs];
-                                                        updatedDocs[originalIndex] = {
-                                                            ...updatedDocs[originalIndex],
-                                                            requirementDoc: ""
-                                                        };
-                                                        setAdditionalDocs(updatedDocs);
-                                                        const storedName = localStorage.getItem("user")?.replace(/^"|"$/g, '').trim() || "Unknown User";
-                                                        const johannesburgTime = new Date().toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg" });
-                                                        await client.models.History.create({
-                                                            entityType: "COMPLIANCE",
-                                                            entityId: complianceData?.customerSiteId,
-                                                            action: "REMOVE_CERTIFICATE_FILE",
-                                                            timestamp: new Date().toISOString(),
-                                                            details: `\n${storedName} REMOVED file from certificate "${cert.name}" at ${johannesburgTime}\n`
-                                                        });
-                                                        setMessage(`File deleted successfully`);
-                                                        setSuccessful(true);
-                                                        setShow(true);
-                                                    } catch (error) {
-                                                        console.error(`Failed to delete file: ${s3Key}`, error);
-                                                        setMessage("Error deleting file");
-                                                        setSuccessful(false);
-                                                        setShow(true);
-                                                    } finally {
-                                                        setUpdating(false);
-                                                    }
-                                                }
-                                            }}
-                                        />
-                                    </div>
+                    <TabsContent value="siteadditonaldocs">
+                        <Card className="mt-2">
+                            <CardHeader>
+                                <div className="flex justify-between items-center">
+                                    <CardTitle className="flex items-center gap-2">
+                                        <FileText className="h-5 w-5" />
+                                        Site Additional Documents
+                                    </CardTitle>
+                                    <Button onClick={addAdditionalCertificate} size="sm">
+                                        <Plus className="h-4 w-4 mr-2" />
+                                        Add Certificate
+                                    </Button>
                                 </div>
-                            );
-                        })
-                    }
-                </div>
-
-                {existingdocs.length > 0 && (
-                    <div className="flex justify-end gap-3 mt-8">
-                        <Button
-                            onClick={handleUpdate}
-                            disabled={!hasChanges}
-                        >
-                            {updating ? (
-                                <>
-                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                    Saving...
-                                </>
-                            ) : (
-                                <>
-                                    <Save className="h-4 w-4 mr-2" />
-                                    Update
-                                </>
-                            )}
-                        </Button>
-                    </div>
-                )}
-            </CardContent>
-        </Card>
-            
-
-            {/* Digital Contractors Pack Card - NEW COMPONENT */}
-            <Card className="mt-2">
-                <CardHeader>
-                    <div className="flex justify-between items-center">
-                        <CardTitle className="flex items-center gap-2">
-                            <FileText className="h-5 w-5" />
-                            Digital Contractors Pack
-                        </CardTitle>
-                        <div className="flex gap-2">
-                            <Button onClick={addContractorsPackSlot} size="sm">
-                                <Plus className="h-4 w-4 mr-2" />
-                                Add Document Slot
-                            </Button>
-                            {(hasContractorsPackChanges || Object.keys(contractorFiles).length > 0) && (
-                                <Button
-                                    onClick={saveContractorsPack}
-                                    size="sm"
-                                    disabled={updatingContractorsPack}
-                                >
-                                    {updatingContractorsPack ? (
-                                        <>
-                                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                            Saving...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Save className="h-4 w-4 mr-2" />
-                                            Save Pack
-                                        </>
-                                    )}
-                                </Button>
-                            )}
-                        </div>
-                    </div>
-                </CardHeader>
-                <CardContent className="p-6">
-                    {/* Digital Contractors Pack Documents */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {digitalContractorsPack.map((s3Key, index) => {
-                            const fileName = s3Key && s3Key.trim() !== ""
-                                ? s3Key.split('/').pop() || `Document ${index + 1}`
-                                : `New Document ${index + 1}`;
-
-                            return (
-                                <div key={index} className="space-y-2 border rounded-lg p-4">
-                                    <div className="flex justify-between items-start">
-                                        <h4 className="font-semibold">
-                                            {s3Key && s3Key.trim() !== "" ? "Existing Document" : "New Document"}
-                                        </h4>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => removeContractorsPackSlot(index)}
-                                            className="text-red-600 hover:text-red-800"
-                                        >
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-
-                                    <div>
-                                        <FileUploadUpdate
-                                            assetName={`contractors-pack-${index}`}
-                                            title={fileName}
-                                            folder="contractors-pack"
-                                            existingFiles={s3Key && s3Key.trim() !== "" ? [s3Key] : []}
-                                            onFilesChange={handleContractorsPackFileChange(index)}
-                                            onFileRemove={async (s3KeyToRemove) => {
-                                                await handleContractorsFileRemove(s3KeyToRemove, index);
-                                            }}
-                                        />
-                                    </div>
-
-                                    {contractorFiles[index]?.[0] && (
-                                        <div className="text-xs text-green-600">
-                                            New file selected for upload
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                                    <Input
+                                        placeholder="Search by certificate name..."
+                                        value={searchCertTerm}
+                                        onChange={(e) => setSearchCertTerm(e.target.value)}
+                                        className="pl-10"
+                                    />
+                                </div>
+                            </CardHeader>
+                            <CardContent className="p-6">
+                                {additionalCerts.length > 0 && additionalCerts.map((cert, index) => (
+                                    <div key={index} className="p-4 border rounded-lg">
+                                        <div className="flex justify-between items-start mb-4">
+                                            <h4 className="font-semibold">Additional Certificate #{index + 1}</h4>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => removeAdditionalCertificate(index)}
+                                                className="text-red-600 hover:text-red-800"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
                                         </div>
-                                    )}
-                                </div>
-                            );
-                        })}
-                    </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="flex flex-row md:col-span-2 text-xss">
+                                                <Label className="mr-3">Critical (optional)</Label>
+                                                <Checkbox
+                                                    className="cursor-pointer"
+                                                    checked={cert.critical || false}
+                                                    onCheckedChange={(checked) => handleCriticalChange(index, checked === true)}
+                                                />
+                                            </div>
+                                            <div>
+                                                <Label>Certificate Name</Label>
+                                                <Input
+                                                    value={cert.certificateName || ''}
+                                                    onChange={(e) => handleAdditionalCertChange(index, 'certificateName', e.target.value)}
+                                                    placeholder="Enter certificate name"
+                                                />
+                                            </div>
+                                            <div>
+                                                <Label>Expiry Date</Label>
+                                                <Input
+                                                    type="date"
+                                                    value={cert.expiryDate || ''}
+                                                    onChange={(e) => handleAdditionalCertChange(index, 'expiryDate', e.target.value)}
+                                                />
+                                            </div>
+                                            <div className="md:col-span-2">
+                                                <FileUploadMany
+                                                    assetName={cert.certificateName}
+                                                    title={cert.certificateName || "Additional Certificate"}
+                                                    folder="site-additionals"
+                                                    onFilesChange={handleCertificateFilesChange(index)}
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="flex justify-end gap-3 mt-8">
+                                            <Button
+                                                onClick={handleSave}
+                                                disabled={saving || !hasChanges}
+                                                className=" hover:bg-blue-700"
+                                            >
+                                                {saving ? (
+                                                    <>
+                                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                                        Saving...
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Save className="h-4 w-4 mr-2" />
+                                                        Create
+                                                    </>
+                                                )}
+                                            </Button>
+                                        </div>
+                                    </div>
+                                ))}
+                                {additionalCerts.length === 0 && existingdocs.length === 0 && (
+                                    <div className="text-center py-8 text-muted-foreground">
+                                        No additional certificates added yet.
+                                    </div>
+                                )}
+                                {additionalCerts.length > 0 && (<div className="mb-10" />)}
 
-                    {digitalContractorsPack.length === 0 && (
-                        <div className="text-center py-8 text-muted-foreground">
-                            No documents in Digital Contractors Pack yet. Click "Add Document Slot" to get started.
-                        </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {filteredexistingdocs
+                                        .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                                        .map((cert, index) => {
+                                            const originalIndex = (currentPage - 1) * itemsPerPage + index;
+
+                                            return (
+                                                <div key={cert.id || originalIndex} className="space-y-2">
+                                               
+                                                <div className="flex flex-row text-xss items-center gap-2 justify-between">
+                                                    <div className="flex items-center gap-2">
+                                                        <Checkbox
+                                                        id={`critical-${originalIndex}`}
+                                                        checked={cert.critical === "true"}
+                                                        onCheckedChange={(checked) =>
+                                                            handleExistingCertChange(originalIndex, 'critical', checked === true ? "true" : "false")
+                                                        }
+                                                        />
+                                                        <Label htmlFor={`critical-${originalIndex}`} className="cursor-pointer">
+                                                        Critical Certificate
+                                                        </Label>
+                                                    </div>
+                                                    
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => handleDeleteClick(cert.id!, cert.name || "Unnamed Certificate")}
+                                                        className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                    </div>
+                                                                                                        
+                                                    <div>
+                                                        <Label>Certificate Name</Label>
+                                                        <Input
+                                                            value={cert.name || ''}
+                                                            onChange={(e) => handleExistingCertChange(originalIndex, 'name', e.target.value)}
+                                                            placeholder="Enter certificate name"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <Label>Expiry Date</Label>
+                                                        <Input
+                                                            type="date"
+                                                            value={cert.expirey || ''}
+                                                            onChange={(e) => handleExistingCertChange(originalIndex, 'expirey', e.target.value)}
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <FileUploadUpdate
+                                                            assetName={cert.name || ""}
+                                                            title={cert.name || ""}
+                                                            folder="site-additionals"
+                                                            existingFiles={cert.requirementDoc ? [cert.requirementDoc] : []}
+                                                            onFilesChange={handleExistingFileChange(originalIndex)}
+                                                            onFileRemove={async (s3Key) => {
+                                                                if (s3Key && cert.id) {
+                                                                    try {
+                                                                        setUpdating(true);
+                                                                        setHasChanges(false);
+                                                                        await remove({ path: s3Key });
+                                                                        await client.models.ComplianceAdditionals.update({
+                                                                            id: cert.id,
+                                                                            requirementDoc: ""
+                                                                        });
+                                                                        const updatedDocs = [...existingdocs];
+                                                                        updatedDocs[originalIndex] = {
+                                                                            ...updatedDocs[originalIndex],
+                                                                            requirementDoc: ""
+                                                                        };
+                                                                        setAdditionalDocs(updatedDocs);
+                                                                        const storedName = localStorage.getItem("user")?.replace(/^"|"$/g, '').trim() || "Unknown User";
+                                                                        const johannesburgTime = new Date().toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg" });
+                                                                        await client.models.History.create({
+                                                                            entityType: "COMPLIANCE",
+                                                                            entityId: complianceData?.customerSiteId,
+                                                                            action: "REMOVE_CERTIFICATE_FILE",
+                                                                            timestamp: new Date().toISOString(),
+                                                                            details: `\n${storedName} REMOVED file from certificate "${cert.name}" at ${johannesburgTime}\n`
+                                                                        });
+                                                                        setMessage(`File deleted successfully`);
+                                                                        setSuccessful(true);
+                                                                        setShow(true);
+                                                                    } catch (error) {
+                                                                        console.error(`Failed to delete file: ${s3Key}`, error);
+                                                                        setMessage("Error deleting file");
+                                                                        setSuccessful(false);
+                                                                        setShow(true);
+                                                                    } finally {
+                                                                        setUpdating(false);
+                                                                    }
+                                                                }
+                                                            }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            );
+                                        })
+                                    }
+                                </div>
+                                {/* PAGINATION CONTROLS */}
+
+                                {existingdocs.length > itemsPerPage && (
+                                    <div className="flex justify-center items-center gap-2 my-6">
+
+                                        {/* Prev Button */}
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="rounded-full"
+                                            onClick={() => setCurrentPage(currentPage - 1)}
+                                            disabled={currentPage === 1}
+                                        >
+                                            <ChevronLeft className="h-4 w-4" />
+                                        </Button>
+
+                                        {/* Page Numbers */}
+                                        {Array.from({ length: Math.ceil(existingdocs.length / itemsPerPage) }).map((_, i) => {
+                                            const pageNum = i + 1;
+                                            const isActive = currentPage === pageNum;
+
+                                            return (
+                                                <Button
+                                                    key={i}
+                                                    size="sm"
+                                                    onClick={() => setCurrentPage(pageNum)}
+                                                    className={`rounded-full px-4 ${isActive
+                                                        ? "bg-blue-600 text-white hover:bg-blue-700"
+                                                        : "bg-muted hover:bg-muted/70"
+                                                        }`}
+                                                    variant={isActive ? "default" : "outline"}
+                                                >
+                                                    {pageNum}
+                                                </Button>
+                                            );
+                                        })}
+
+                                        {/* Next Button */}
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="rounded-full"
+                                            onClick={() => setCurrentPage(currentPage + 1)}
+                                            disabled={currentPage >= Math.ceil(existingdocs.length / itemsPerPage)}
+                                        >
+                                            <ChevronRight className="h-4 w-4" />
+                                        </Button>
+
+                                    </div>
+                                )}
+
+                                {existingdocs.length > 0 && (
+                                    <div className="flex justify-end gap-3 mt-8">
+                                        <Button
+                                            onClick={handleUpdate}
+                                            disabled={!hasChanges}
+                                        >
+                                            {updating ? (
+                                                <>
+                                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                                    Saving...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Save className="h-4 w-4 mr-2" />
+                                                    Update
+                                                </>
+                                            )}
+                                        </Button>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+
+                    {/* Digital Contractors Pack Card  */}
+                    <TabsContent value="contractorspack">
+                        <Card className="mt-2">
+                            <CardHeader>
+                                <div className="flex justify-between items-center">
+                                    <CardTitle className="flex items-center gap-2">
+                                        <FileText className="h-5 w-5" />
+                                        Digital Contractors Pack
+                                    </CardTitle>
+                                    <div className="flex gap-2">
+                                        <Button
+                                            onClick={() => {
+                                                addContractorsPackSlot();
+                                                // Navigate to the last page where the new slot will appear
+                                                const newTotalItems = digitalContractorsPack.length + 1;
+                                                const lastPage = Math.ceil(newTotalItems / contractorsItemsPerPage);
+                                                setContractorsCurrentPage(lastPage);
+                                            }}
+                                            size="sm"
+                                        >
+                                            <Plus className="h-4 w-4 mr-2" />
+                                            Add Document
+                                        </Button>
+                                        {(hasContractorsPackChanges || Object.keys(contractorFiles).length > 0) && (
+                                            <Button
+                                                onClick={saveContractorsPack}
+                                                size="sm"
+                                                disabled={updatingContractorsPack}
+                                            >
+                                                {updatingContractorsPack ? (
+                                                    <>
+                                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                                        Saving...
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Save className="h-4 w-4 mr-2" />
+                                                        Save Pack
+                                                    </>
+                                                )}
+                                            </Button>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                                    <Input
+                                        placeholder="Search by document name..."
+                                        value={searchContractorsTerm}
+                                        onChange={(e) => setSearchContractorsTerm(e.target.value)}
+                                        className="pl-10"
+                                    />
+                                </div>
+                            </CardHeader>
+                            <CardContent className="p-6">
+                                {/* Digital Contractors Pack Documents */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {filteredContractordocs
+                                        .slice((contractorsCurrentPage - 1) * contractorsItemsPerPage, contractorsCurrentPage * contractorsItemsPerPage)
+                                        .map((s3Key, index) => {
+                                            const originalIndex = (contractorsCurrentPage - 1) * contractorsItemsPerPage + index;
+                                            const fileName = s3Key && s3Key.trim() !== ""
+                                                ? s3Key.split('/').pop() || `Document ${originalIndex + 1}`
+                                                : `New Document ${originalIndex + 1}`;
+
+                                            return (
+                                                <div key={originalIndex} className="space-y-2 border rounded-lg p-4">
+                                                    <div className="flex justify-between items-start">
+                                                        <h4 className="font-semibold">
+                                                            {s3Key && s3Key.trim() !== "" ? "Existing Document" : "New Document"}
+                                                        </h4>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => removeContractorsPackSlot(originalIndex)}
+                                                            className="text-red-600 hover:text-red-800"
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
+
+                                                    <div>
+                                                        <FileUploadUpdate
+                                                            assetName={`contractors-pack-${originalIndex}`}
+                                                            title={fileName}
+                                                            folder="contractors-pack"
+                                                            existingFiles={s3Key && s3Key.trim() !== "" ? [s3Key] : []}
+                                                            onFilesChange={handleContractorsPackFileChange(originalIndex)}
+                                                            onFileRemove={async (s3KeyToRemove) => {
+                                                                await handleContractorsFileRemove(s3KeyToRemove, originalIndex);
+                                                            }}
+                                                        />
+                                                    </div>
+
+                                                </div>
+                                            );
+                                        })
+                                    }
+                                </div>
+
+                                {digitalContractorsPack.length === 0 && (
+                                    <div className="text-center py-8 text-muted-foreground">
+                                        No documents in Digital Contractors Pack yet. Click "Add Document Slot" to get started.
+                                    </div>
+                                )}
+
+                                {/* PAGINATION CONTROLS - Same style */}
+                                {digitalContractorsPack.length > contractorsItemsPerPage && (
+                                    <div className="flex justify-center items-center gap-2 my-6">
+                                        {/* Prev Button */}
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="rounded-full"
+                                            onClick={() => setContractorsCurrentPage(contractorsCurrentPage - 1)}
+                                            disabled={contractorsCurrentPage === 1}
+                                        >
+                                            <ChevronLeft className="h-4 w-4" />
+                                        </Button>
+
+                                        {/* Page Numbers */}
+                                        {Array.from({ length: Math.ceil(digitalContractorsPack.length / contractorsItemsPerPage) }).map((_, i) => {
+                                            const pageNum = i + 1;
+                                            const isActive = contractorsCurrentPage === pageNum;
+
+                                            return (
+                                                <Button
+                                                    key={i}
+                                                    size="sm"
+                                                    onClick={() => setContractorsCurrentPage(pageNum)}
+                                                    className={`rounded-full px-4 ${isActive
+                                                        ? "bg-blue-600 text-white hover:bg-blue-700"
+                                                        : "bg-muted hover:bg-muted/70"
+                                                        }`}
+                                                    variant={isActive ? "default" : "outline"}
+                                                >
+                                                    {pageNum}
+                                                </Button>
+                                            );
+                                        })}
+
+                                        {/* Next Button */}
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="rounded-full"
+                                            onClick={() => setContractorsCurrentPage(contractorsCurrentPage + 1)}
+                                            disabled={contractorsCurrentPage >= Math.ceil(digitalContractorsPack.length / contractorsItemsPerPage)}
+                                        >
+                                            <ChevronRight className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                )}
+
+
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+
+                    {/* Shared Modals */}
+                    {show && (
+                        <ResponseModal
+                            successful={successful}
+                            message={message}
+                            setShow={setShow}
+                        />
                     )}
 
-
-                    {/* Notes Section */}
-                    <div className="mt-6 border-t pt-4">
-                        <div className="flex justify-between items-center mb-2">
-                            <label className="text-sm font-medium">Compliance Notes</label>
-                            <span className="text-xs text-muted-foreground">
-                                {notes !== complianceData?.notes ? "(Modified)" : ""}
-                            </span>
-                        </div>
-                        <Textarea
-                            value={notes}
-                            onChange={handleNotesChange}
-                            className="min-h-[80px] text-sm resize-vertical"
-                            placeholder="Additional notes about site compliance..."
-                        />
-                    </div>
-                </CardContent>
-            </Card>
-
-            {/* Shared Modals */}
-            {show && (
-                <ResponseModal
-                    successful={successful}
-                    message={message}
-                    setShow={setShow}
-                />
-            )}
-
-            <ConfirmDialog
-                open={opendelete}
-                setOpen={setOpendelete}
-                handleConfirm={() => {
-                    handleConfirmDelete();
-                }}
-            />
-
+                    <ConfirmDialog
+                        open={opendelete}
+                        setOpen={setOpendelete}
+                        handleConfirm={() => {
+                            handleConfirmDelete();
+                        }}
+                    />
+                </Tabs>
+            </div>
         </>
     );
 }
