@@ -680,10 +680,10 @@ export default function AssetsList({ customerSiteId, refreshTrigger = 0 }: Asset
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center gap-2 mb-2">
                                                     <h4 className="font-semibold text-base truncate">
-                                                        {asset.assetName || "Unnamed Asset"}
+                                                        {asset.assetPlant || "Unnamed Plant"}
                                                     </h4>
                                                     <Badge variant="outline" className="text-xs">
-                                                        {asset.scaleModel || "No Model"}
+                                                          {asset.assetName || "Unnamed Asset"}
                                                     </Badge>
                                                     <Badge variant="outline" className="text-xs">
                                                         {asset.scaleTag || "No Tag"}

@@ -215,7 +215,7 @@ export default function FleetPage() {
         : [];
 
     const handleEdit = (fleet: any) => {
-        router.push(`/vehicleinspectionsystem/edit/${fleet.id}`);
+        router.push(`/fleetmanagementsystem/edit/${fleet.id}`);
     };
 
     // Handle create new
@@ -390,7 +390,7 @@ export default function FleetPage() {
     // Redirect to inspections
     const redirectToInspections = (id: string) => {
         localStorage.setItem('fleetId', id);
-        router.push(`/vehicleinspectionsystem/${id}`);
+        router.push(`/fleetmanagementsystem/${id}`);
     };
 
     const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {

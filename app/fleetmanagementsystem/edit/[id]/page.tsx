@@ -231,7 +231,7 @@ export default function FleetEditPage() {
             }
 
             // Navigate back to list page
-            router.push('/vehicleinspectionsystem');
+            router.push('/fleetmanagementsystem');
 
         } catch (error) {
             console.error("Error saving fleet:", error);
@@ -248,7 +248,7 @@ export default function FleetEditPage() {
             });
             setOpendelete(false);
             // Navigate back to list page after delete
-            router.push('/vehicleinspectionsystem');
+            router.push('/fleetmanagementsystem');
         } catch (error) {
             console.error("Error deleting fleet:", error);
         }
@@ -304,7 +304,7 @@ export default function FleetEditPage() {
                             <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => router.push('/vehicleinspectionsystem')}
+                                onClick={() => router.push('/fleetmanagementsystem')}
                                 className="h-9 w-9 p-0 relative hover:scale-105 active:scale-95 transition-transform duration-150">
                                 <ArrowLeft className="h-5 w-5" />
                             </Button>
@@ -348,7 +348,7 @@ export default function FleetEditPage() {
                                     <Button
                                         size="sm"
                                         variant="outline"
-                                        onClick={() => router.push('/vehicleinspectionsystem')}
+                                        onClick={() => router.push('/fleetmanagementsystem')}
                                         className="h-8 text-xs cursor-pointer flex-1 sm:flex-none"
                                     >
                                         <X className="h-3 w-3 mr-1" />

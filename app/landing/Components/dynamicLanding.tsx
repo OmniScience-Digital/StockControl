@@ -77,9 +77,9 @@ export default function Home() {
         const colors: { [key: string]: string } = {
             IMS: "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
             SCF: "bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300",
-            F: "bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
+            PFF: "bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
             CRM: "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
-            VIS: "bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300",
+            FMS: "bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300",
             HRD: "bg-pink-50 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300",
             GenerCRMal: "bg-gray-50 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300"
         };
@@ -206,12 +206,14 @@ export default function Home() {
                                                                 {dashboard.items}
                                                             </h3>
                                                             {/* Badge - Now using the actual key */}
+                                                            {(getCategory(dashboard.key).length>2) &&
                                                             <Badge
                                                                 variant="secondary"
                                                                 className={`${getCategoryColor(dashboard.key)} text-xs font-normal px-1.5 py-0 hidden sm:inline-flex`}
                                                             >
                                                                 {getCategory(dashboard.key)}
                                                             </Badge>
+                                                        }
                                                         </div>
                                                     </div>
                                                 </div>

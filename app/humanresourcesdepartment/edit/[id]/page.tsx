@@ -4,14 +4,7 @@ import { client } from "@/services/schema";
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import {
-  Save,
-  ArrowLeft,
-  User,
-  Loader2,
-  FileText,
-  Plus,
-  Trash2,
-  BriefcaseMedical
+  Save, ArrowLeft, User, Loader2, FileText, Plus, Trash2, BriefcaseMedical, Search
 } from "lucide-react";
 import Footer from "@/components/layout/footer";
 import Navbar from "@/components/layout/navbar";
@@ -27,10 +20,14 @@ import { Badge } from "@/components/ui/badge";
 import ResponseModal from "@/components/widgets/response";
 import { formatDateForAmplify } from "@/utils/helper/time";
 import { Textarea } from "@/components/ui/textarea";
-import { HrdPDFUpload } from "../../components/hrdimages";
 import { Employee, MEDICAL_CERTIFICATE_TYPES, TRAINING_CERTIFICATE_TYPES } from "@/types/hrd.types";
 import { handleEmployeeTasks } from "../../components/employeetasks";
 import { getInitials } from "@/utils/helper/helper";
+import { FileUploadUpdate } from "@/app/customerrelationsmanagement/Components/fileupdate";
+import { PDFState } from "@/types/schema";
+import { handleUpload } from "@/services/s3.service";
+import { remove } from "aws-amplify/storage";
+import { FileUploadMany } from "@/app/customerrelationsmanagement/Components/fileUpload";
 
 
 
@@ -55,12 +52,11 @@ export default function EditEmployeePage() {
   const [totalDocuments, setTotalDocuments] = useState(0);
   const [totalExpiringDocuments, setTotalExpiringDocuments] = useState(0);
 
+  //search
+  const [searchCertTerm, setSearchCertTerm] = useState("");
+  //handle additional
+  const [additionalCertificateFiles, setAdditionalCertificateFiles] = useState<{ [key: number]: PDFState[] }>({});
 
-  // Add state to track which certificate is being uploaded
-  const [uploadingCertIndex, setUploadingCertIndex] = useState<{
-    type: 'medical' | 'training' | 'additional';
-    index: number;
-  } | null>(null);
 
   const fetchEmployeeWithRelations = async (): Promise<Employee | null> => {
     try {
@@ -255,370 +251,91 @@ export default function EditEmployeePage() {
   };
 
   const addAdditionalCertificate = () => {
-    setAdditionalCerts(prev => [...prev, { certificateName: "", expiryDate: "", attachment: "" }]);
+    setAdditionalCerts(prev => [{ certificateName: "", expiryDate: "", attachment: "" }, ...prev]);
   };
-
 
   const removeAdditionalCertificate = (index: number) => {
     setAdditionalCerts(prev => prev.filter((_, i) => i !== index));
 
   };
+  const handleTrainingFileChange = (index: number) => (files: PDFState[]) => {
+    const updated = [...trainingCerts];
+    updated[index] = {
+      ...updated[index],
+      attachment: files[0]?.s3Key || ""
+    };
+    setTrainingCerts(updated);
+  };
 
+  const handleExistingFileChange = (index: number) => (files: PDFState[]) => {
+    setAdditionalCertificateFiles(prev => ({
+      ...prev,
+      [index]: files
+    }));
 
-  const handleChange = async (dbkey: string, urls: string[]) => {
-    try {
-
-      // Take only the first URL since we're now doing single file uploads
-      const url = urls.length > 0 ? urls[0] : '';
-
-      switch (dbkey) {
-        case "employeeId":
-          setFormData(prev => ({ ...prev, employeeIdAttachment: url }));
-          break;
-
-        case "passport":
-          setFormData(prev => ({ ...prev, passportAttachment: url }));
-          break;
-
-        case "driversLicense":
-          setFormData(prev => ({ ...prev, driversLicenseAttachment: url }));
-          break;
-
-        case "pdp":
-          setFormData(prev => ({ ...prev, pdpAttachment: url }));
-          break;
-
-        case "ppeList":
-          setFormData(prev => ({ ...prev, ppeListAttachment: url }));
-          break;
-
-        case "cv":
-          setFormData(prev => ({ ...prev, cvAttachment: url }));
-          break;
-
-        case "medicalCerts":
-          // Update the specific medical certificate that was being uploaded
-          if (uploadingCertIndex?.type === 'medical') {
-            const updatedCerts = [...medicalCerts];
-            updatedCerts[uploadingCertIndex.index] = {
-              ...updatedCerts[uploadingCertIndex.index],
-              attachment: url
-            };
-            setMedicalCerts(updatedCerts);
-          }
-          break;
-
-        case "trainingCerts":
-          if (uploadingCertIndex?.type === 'training') {
-            const updatedCerts = [...trainingCerts];
-            updatedCerts[uploadingCertIndex.index] = {
-              ...updatedCerts[uploadingCertIndex.index],
-              attachment: url
-            };
-            setTrainingCerts(updatedCerts);
-          }
-          break;
-
-        case "additionalCerts":
-          if (uploadingCertIndex?.type === 'additional') {
-            const updatedCerts = [...additionalCerts];
-            updatedCerts[uploadingCertIndex.index] = {
-              ...updatedCerts[uploadingCertIndex.index],
-              attachment: url
-            };
-            setAdditionalCerts(updatedCerts);
-          }
-          break;
-
-        default:
-          console.warn(`Unknown dbkey: ${dbkey}`);
-      }
-
-      // Reset uploading index
-      setUploadingCertIndex(null);
-
-    } catch (error) {
-      console.error('Error handling file change:', error);
-      setMessage("Failed to update file attachment!");
-      setShow(true);
-      setSuccessful(false);
-
-      setUploadingCertIndex(null);
-    }
-  }
-
-  const handleSave = async () => {
-    if (!employee) return;
-
-    try {
-      setSaving(true);
-
-      const storedName = localStorage.getItem("user")?.replace(/^"|"$/g, '').trim() || "Unknown User";
-      const johannesburgTime = new Date().toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg" });
-
-      // Track changed fields for History table
-      const changedFields: string[] = [];
-      Object.keys(formData).forEach(key => {
-        const typedKey = key as keyof Employee;
-        if (formData[typedKey] !== employee[typedKey]) {
-          changedFields.push(` ${storedName} updated ${typedKey} from ${employee[typedKey]} to ${formData[typedKey]} at ${johannesburgTime}.\n`);
-        }
-      });
-
-      // Track certificate changes
-      const existingMedicalCerts = employee.medicalCertificates || [];
-      const existingTrainingCerts = employee.trainingCertificates || [];
-      const existingAdditionalCerts = employee.additionalCertificates || [];
-
-      // Track medical certificate changes
-      medicalCerts.forEach(cert => {
-        const existingCert = existingMedicalCerts.find(ec => ec.certificateType === cert.certificateType);
-        if (existingCert) {
-          if (cert.expiryDate !== existingCert.expiryDate) {
-            changedFields.push(`${storedName} updated Medical ${cert.certificateType} expiry from ${existingCert.expiryDate} to ${cert.expiryDate} at ${johannesburgTime}.\n`);
-          }
-          if (cert.attachment !== existingCert.attachment) {
-            changedFields.push(`${storedName} updated Medical ${cert.certificateType} attachment at ${johannesburgTime}.\n`);
-          }
-        } else if (cert.expiryDate || cert.attachment) {
-          changedFields.push(`${storedName} added Medical ${cert.certificateType} certificate at ${johannesburgTime}.\n`);
-        }
-      });
-
-      // Track training certificate changes
-      trainingCerts.forEach(cert => {
-        const existingCert = existingTrainingCerts.find(ec => ec.certificateType === cert.certificateType);
-        if (existingCert) {
-          if (cert.expiryDate !== existingCert.expiryDate) {
-            changedFields.push(`${storedName} updated Training ${cert.certificateType} expiry from ${existingCert.expiryDate} to ${cert.expiryDate} at ${johannesburgTime}.\n`);
-          }
-          if (cert.attachment !== existingCert.attachment) {
-            changedFields.push(`${storedName} updated Training ${cert.certificateType} attachment at ${johannesburgTime}.\n`);
-          }
-        } else if (cert.expiryDate || cert.attachment) {
-          changedFields.push(`${storedName} added Training ${cert.certificateType} certificate at ${johannesburgTime}.\n`);
-        }
-      });
-
-      // Track additional certificate changes
-      additionalCerts.forEach(cert => {
-        const existingCert = existingAdditionalCerts.find(ec => ec.id === cert.id);
-        if (existingCert) {
-          if (cert.certificateName !== existingCert.certificateName) {
-            changedFields.push(`${storedName} updated Additional Certificate name from "${existingCert.certificateName}" to "${cert.certificateName}" at ${johannesburgTime}.\n`);
-          }
-          if (cert.expiryDate !== existingCert.expiryDate) {
-            changedFields.push(`${storedName} updated Additional Certificate "${cert.certificateName}" expiry from ${existingCert.expiryDate} to ${cert.expiryDate} at ${johannesburgTime}.\n`);
-          }
-          if (cert.attachment !== existingCert.attachment) {
-            changedFields.push(`${storedName} updated Additional Certificate "${cert.certificateName}" attachment at ${johannesburgTime}.\n`);
-          }
-        } else if (cert.certificateName || cert.expiryDate || cert.attachment) {
-          changedFields.push(`${storedName} added Additional Certificate "${cert.certificateName}" at ${johannesburgTime}.\n`);
-        }
-      });
-
-      // Track removed additional certificates
-      existingAdditionalCerts.forEach(existingCert => {
-        const stillExists = additionalCerts.find(ac => ac.id === existingCert.id);
-        if (!stillExists) {
-          changedFields.push(`${storedName} removed Additional Certificate "${existingCert.certificateName}" at ${johannesburgTime}.\n`);
-        }
-      });
-
-      // Update main employee record
-      const employeeData = {
-        employeeId: formData.employeeId!,
-        firstName: formData.firstName!,
-        surname: formData.surname!,
-        employeeNumber: formData.employeeNumber || null,
-        knownAs: formData.knownAs || null,
-        passportNumber: formData.passportNumber || null,
-        passportExpiry: formatDateForAmplify(formData.passportExpiry),
-        passportAttachment: formData.passportAttachment || null,
-        driversLicenseCode: formData.driversLicenseCode || null,
-        driversLicenseExpiry: formatDateForAmplify(formData.driversLicenseExpiry),
-        driversLicenseAttachment: formData.driversLicenseAttachment || null,
-        authorizedDriver: formData.authorizedDriver!,
-        pdpExpiry: formatDateForAmplify(formData.pdpExpiry),
-        pdpAttachment: formData.pdpAttachment || null,
-        cvAttachment: formData.cvAttachment || null,
-        ppeListAttachment: formData.ppeListAttachment || null,
-        ppeExpiry: formatDateForAmplify(formData.ppeExpiry),
-        employeeIdAttachment: formData.employeeIdAttachment || null,
-      };
-
-      const result = await client.models.Employee.update({
-        id: employee.id,
-        ...employeeData
-      });
-
-      if (changedFields.length > 0) {
-        await client.models.History.create({
-          entityType: "EMPLOYEE",
-          entityId: employee.employeeId,
-          action: "UPDATE",
-          timestamp: new Date().toISOString(),
-          details: `\nEmployee ${formData.firstName} ${formData.surname} updated by ${storedName}. Changes:\n${changedFields.join('')}`
-        });
-
-        // Update history state immediately
-        setHistory(prev => `\nEmployee ${formData.firstName} ${formData.surname} updated by ${storedName}. Changes:\n${changedFields.join('')}\n${prev}`);
-      }
-
-
-      if (result.errors) {
-        throw new Error("Failed to update employee");
-      }
-
-      // Update medical certificates - only if changed
-      for (const cert of medicalCerts) {
-        const existingCert = existingMedicalCerts.find(ec => ec.certificateType === cert.certificateType);
-
-        // Check if data actually changed or is new
-        const expiryChanged = existingCert?.expiryDate !== cert.expiryDate;
-        const attachmentChanged = existingCert?.attachment !== cert.attachment;
-        const hasNewData = cert.expiryDate || cert.attachment;
-
-        if ((expiryChanged || attachmentChanged || !existingCert) && hasNewData) {
-          if (existingCert) {
-            await client.models.EmployeeMedicalCertificate.update({
-              id: existingCert.id,
-              certificateType: cert.certificateType,
-              expiryDate: formatDateForAmplify(cert.expiryDate) || "",
-              attachment: cert.attachment || null
-            });
-          } else {
-            await client.models.EmployeeMedicalCertificate.create({
-              employeeId: employee.employeeId,
-              certificateType: cert.certificateType,
-              expiryDate: formatDateForAmplify(cert.expiryDate) || "",
-              attachment: cert.attachment || null
-            });
-          }
-        }
-      }
-
-      // Update training certificates - only if changed
-      for (const cert of trainingCerts) {
-        const existingCert = existingTrainingCerts.find(ec => ec.certificateType === cert.certificateType);
-
-        // Check if data actually changed or is new
-        const expiryChanged = existingCert?.expiryDate !== cert.expiryDate;
-        const attachmentChanged = existingCert?.attachment !== cert.attachment;
-        const hasNewData = cert.expiryDate || cert.attachment;
-
-        if ((expiryChanged || attachmentChanged || !existingCert) && hasNewData) {
-          if (existingCert) {
-            await client.models.EmployeeTrainingCertificate.update({
-              id: existingCert.id,
-              certificateType: cert.certificateType,
-              expiryDate: formatDateForAmplify(cert.expiryDate) || "",
-              attachment: cert.attachment || null
-            });
-          } else {
-            await client.models.EmployeeTrainingCertificate.create({
-              employeeId: employee.employeeId,
-              certificateType: cert.certificateType,
-              expiryDate: formatDateForAmplify(cert.expiryDate) || "",
-              attachment: cert.attachment || null
-            });
-          }
-        }
-      }
-
-      // First, get all existing certificate names from EmployeeAdditionalList once
-      const existingListItems = await client.models.EmployeeAdditionalList.list();
-      const existingCertificateNames = new Set(
-        existingListItems.data?.map(item => item.certificateName.toLowerCase()) || []
-      );
-
-      // Update additional certificates - only if changed
-      for (const cert of additionalCerts) {
-        const existingCert = existingAdditionalCerts.find(ec => ec.id === cert.id);
-
-        // Check if data actually changed or is new
-        const nameChanged = existingCert?.certificateName !== cert.certificateName;
-        const expiryChanged = existingCert?.expiryDate !== cert.expiryDate;
-        const attachmentChanged = existingCert?.attachment !== cert.attachment;
-        const hasNewData = cert.expiryDate || cert.attachment || cert.certificateName;
-
-        if ((nameChanged || expiryChanged || attachmentChanged || !existingCert) && hasNewData) {
-          // Save certificate name to EmployeeAdditionalList if it doesn't exist
-          if (cert.certificateName && cert.certificateName.trim() !== '' &&
-            !existingCertificateNames.has(cert.certificateName.toLowerCase())) {
-            await client.models.EmployeeAdditionalList.create({
-              certificateName: cert.certificateName.trim()
-            });
-            existingCertificateNames.add(cert.certificateName.toLowerCase());
-          }
-
-          // Update or create the employee certificate
-          if (existingCert) {
-            await client.models.EmployeeAdditionalCertificate.update({
-              id: existingCert.id,
-              certificateName: cert.certificateName,
-              expiryDate: formatDateForAmplify(cert.expiryDate) || "",
-              attachment: cert.attachment || null
-            });
-          } else if (cert.certificateName) {
-            await client.models.EmployeeAdditionalCertificate.create({
-              employeeId: employee.employeeId,
-              certificateName: cert.certificateName,
-              expiryDate: formatDateForAmplify(cert.expiryDate) || "",
-              attachment: cert.attachment || null
-            });
-          }
-        }
-      }
-
-      // Remove additional certificates that were deleted
-      for (const existingCert of existingAdditionalCerts) {
-        const stillExists = additionalCerts.find(ac => ac.id === existingCert.id);
-        if (!stillExists) {
-          // Find the correct EmployeeAdditionalList ID by certificate name
-          const listItemToDelete = existingListItems.data?.find(
-            item => item.certificateName.toLowerCase() === existingCert.certificateName.toLowerCase()
-          );
-
-          // Delete from EmployeeAdditionalList using the correct ID
-          if (listItemToDelete) {
-            await client.models.EmployeeAdditionalList.delete({
-              id: listItemToDelete.id
-            });
-          }
-          await client.models.EmployeeAdditionalCertificate.delete({
-            id: existingCert.id
-          });
-        }
-      }
-
-      // Call the task checking function after all updates are complete
-      await checkAndPrintTasks(
-        employee, // oldEmployee
-        {
-          ...employeeData,
-          medicalCertificates: medicalCerts,
-          trainingCertificates: trainingCerts,
-          additionalCertificates: additionalCerts
-        },
-        storedName
-      );
-
-      // console.log(`\nEmployee ${formData.firstName} ${formData.surname} updated by ${storedName}. Changes:\n${changedFields.join('')}`);
-      router.push('/humanresourcesdepartment');
-    } catch (error) {
-      console.error("Error saving employee:", error);
-
-      setMessage("Error saving employee data!");
-      setShow(true);
-      setSuccessful(false);
-
-    } finally {
-      setSaving(false);
+    const updated = [...additionalCerts];
+    if (index >= 0 && index < updated.length && files.length > 0) {
+      updated[index].attachment = files[0]?.s3Key || "";
+      setAdditionalCerts(updated);
     }
   };
 
+  const handleMedicalFileChange = (index: number) => (files: PDFState[]) => {
+    const updated = [...medicalCerts];
+    updated[index] = {
+      ...updated[index],
+      attachment: files[0]?.s3Key || ""
+    };
+    setMedicalCerts(updated);
+  };
+
+  // Generic handler for all document file changes
+  const handleDocumentFileChange = (field: keyof Employee) => (files: PDFState[]) => {
+    const url = files[0]?.s3Key || '';
+    setFormData(prev => ({ ...prev, [field]: url }));
+  };
+
+  // Generic handler for file removal
+  const handleDocumentFileRemove = (field: keyof Employee) => async (s3Key: string) => {
+    if (s3Key) {
+      try {
+        await remove({ path: s3Key });
+        setFormData(prev => ({ ...prev, [field]: '' }));
+
+        const storedName = localStorage.getItem("user")?.replace(/^"|"$/g, '').trim() || "Unknown User";
+        const johannesburgTime = new Date().toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg" });
+
+        // Create a readable field name for the history
+        const fieldName = field.replace('Attachment', '')
+          .replace(/([A-Z])/g, ' $1')
+          .trim()
+          .toLowerCase()
+          .replace(/\b\w/g, l => l.toUpperCase());
+
+        const historyDetails = `\n${storedName} removed ${fieldName} file at ${johannesburgTime}`;
+
+        await client.models.History.create({
+          entityType: "EMPLOYEE",
+          entityId: employee?.employeeId || '',
+          action: "REMOVE_DOCUMENT_FILE",
+          timestamp: new Date().toISOString(),
+          details: historyDetails
+        });
+
+        // Update the history state
+        setHistory(prev => `${historyDetails}\n${prev}`);
+
+        setMessage(`File deleted successfully`);
+        setSuccessful(true);
+        setShow(true);
+      } catch (error) {
+        console.error(`Failed to delete file: ${s3Key}`, error);
+        setMessage("Error deleting file");
+        setSuccessful(false);
+        setShow(true);
+      }
+    }
+  };
   const checkAndPrintTasks = async (oldEmployee: Employee, newData: any, username: string) => {
     // Check main employee documents - USE LOWERCASE to match database
     const mainDocumentTypes = [
@@ -721,6 +438,746 @@ export default function EditEmployeePage() {
       }
     }
   };
+
+  // const handleSave = async () => {
+  //   if (!employee) {
+  //     console.error("❌ No employee found, cannot save");
+  //     return;
+  //   }
+
+  //   try {
+  //     setSaving(true);
+
+  //     const storedName = localStorage.getItem("user")?.replace(/^"|"$/g, '').trim() || "Unknown User";
+  //     const johannesburgTime = new Date().toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg" });
+
+  //     // Track changed fields for History table
+  //     const changedFields: string[] = [];
+
+  //     // Log form data changes
+  //     Object.keys(formData).forEach(key => {
+  //       const typedKey = key as keyof Employee;
+  //       if (formData[typedKey] !== employee[typedKey]) {
+  //         changedFields.push(` ${storedName} updated ${typedKey} from ${employee[typedKey]} to ${formData[typedKey]} at ${johannesburgTime}.\n`);
+  //         console.log(`   🔄 ${typedKey}: ${employee[typedKey]} → ${formData[typedKey]}`);
+  //       }
+  //     });
+
+  //     // Existing certificates from DB for THIS employee
+  //     const existingAdditionalCerts = employee.additionalCertificates || [];
+  //     const existingTrainingCertsFromDB = employee.trainingCertificates || [];
+  //     const existingMedicalCertsFromDB = employee.medicalCertificates || []; // ADD THIS
+
+  //     // ==============================================
+  //     // 1. UPLOAD ADDITIONAL CERTIFICATE FILES
+  //     // ==============================================
+  //     const certsToSave = [...additionalCerts];
+  //     for (let i = 0; i < certsToSave.length; i++) {
+  //       const cert = certsToSave[i];
+  //       const uploadedFiles = additionalCertificateFiles[i];
+
+  //       if (cert.certificateName && uploadedFiles && uploadedFiles.length > 0 && uploadedFiles[0] && uploadedFiles[0].file) {
+  //         const uploadedKey = await handleUpload(uploadedFiles[0]);
+  //         if (uploadedKey) {
+  //           certsToSave[i].attachment = uploadedKey;
+  //         }
+  //       }
+  //     }
+
+  //     // ==============================================
+  //     // 2. VALIDATE CERTIFICATES WITH ATTACHMENTS
+  //     // ==============================================
+  //     let hasValidationError = false;
+  //     let errorCertName = "";
+  //     let errorCertType = "";
+
+  //     // Validate additional certificates
+  //     for (const cert of certsToSave) {
+  //       if (cert.certificateName &&
+  //         cert.certificateName.trim() !== '' &&
+  //         cert.attachment &&
+  //         cert.attachment.trim() !== '' &&
+  //         !cert.expiryDate) {
+  //         hasValidationError = true;
+  //         errorCertName = cert.certificateName;
+  //         errorCertType = "Additional";
+  //         break;
+  //       }
+  //     }
+
+  //     // Validate training certificates
+  //     if (!hasValidationError) {
+  //       for (const cert of trainingCerts) {
+  //         if (cert.attachment &&
+  //           cert.attachment.trim() !== '' &&
+  //           !cert.expiryDate) {
+  //           hasValidationError = true;
+  //           errorCertName = cert.certificateType;
+  //           errorCertType = "Training";
+  //           break;
+  //         }
+  //       }
+  //     }
+
+  //     // Validate medical certificates - ADD THIS
+  //     if (!hasValidationError) {
+  //       for (const cert of medicalCerts) {
+  //         if (cert.attachment &&
+  //           cert.attachment.trim() !== '' &&
+  //           !cert.expiryDate) {
+  //           hasValidationError = true;
+  //           errorCertName = cert.certificateType;
+  //           errorCertType = "Medical";
+  //           break;
+  //         }
+  //       }
+  //     }
+
+  //     if (hasValidationError) {
+  //       setMessage(`${errorCertType} Certificate "${errorCertName}" requires an expiry date since it has an attachment`);
+  //       setShow(true);
+  //       setSuccessful(false);
+  //       setSaving(false);
+  //       return;
+  //     }
+
+  //     // ==============================================
+  //     // 3. TRACK CHANGES FOR HISTORY
+  //     // ==============================================
+
+  //     // Track additional certificate changes
+  //     certsToSave.forEach(cert => {
+  //       const existingCert = existingAdditionalCerts.find(ec => ec.id === cert.id);
+
+  //       if (!cert.certificateName || cert.certificateName.trim() === '') {
+  //         return;
+  //       }
+
+  //       if (existingCert) {
+  //         if (cert.certificateName !== existingCert.certificateName) {
+  //           changedFields.push(`${storedName} updated Additional Certificate name from "${existingCert.certificateName}" to "${cert.certificateName}" at ${johannesburgTime}.\n`);
+  //         }
+  //         if (cert.expiryDate !== existingCert.expiryDate) {
+  //           changedFields.push(`${storedName} updated Additional Certificate "${cert.certificateName}" expiry from ${existingCert.expiryDate} to ${cert.expiryDate} at ${johannesburgTime}.\n`);
+  //         }
+  //         if (cert.attachment && cert.attachment !== existingCert.attachment) {
+  //           changedFields.push(`${storedName} updated Additional Certificate "${cert.certificateName}" attachment at ${johannesburgTime}.\n`);
+  //         }
+  //       } else if (cert.certificateName && (cert.expiryDate || cert.attachment)) {
+  //         changedFields.push(`${storedName} added Additional Certificate "${cert.certificateName}" at ${johannesburgTime}.\n`);
+  //       }
+  //     });
+
+  //     // Track training certificate changes
+  //     trainingCerts.forEach(cert => {
+  //       const existingCert = existingTrainingCertsFromDB.find(ec => ec.certificateType === cert.certificateType);
+
+  //       if (existingCert) {
+  //         if (cert.expiryDate !== existingCert.expiryDate) {
+  //           changedFields.push(`${storedName} updated Training ${cert.certificateType} expiry from ${existingCert.expiryDate} to ${cert.expiryDate} at ${johannesburgTime}.\n`);
+  //         }
+  //         if (cert.attachment && cert.attachment !== existingCert.attachment) {
+  //           changedFields.push(`${storedName} updated Training ${cert.certificateType} attachment at ${johannesburgTime}.\n`);
+  //         }
+  //       } else if (cert.expiryDate || cert.attachment) {
+  //         changedFields.push(`${storedName} added Training ${cert.certificateType} certificate at ${johannesburgTime}.\n`);
+  //       }
+  //     });
+
+  //     // Track medical certificate changes - ADD THIS
+  //     medicalCerts.forEach(cert => {
+  //       const existingCert = existingMedicalCertsFromDB.find(ec => ec.certificateType === cert.certificateType);
+
+  //       if (existingCert) {
+  //         if (cert.expiryDate !== existingCert.expiryDate) {
+  //           changedFields.push(`${storedName} updated Medical ${cert.certificateType} expiry from ${existingCert.expiryDate} to ${cert.expiryDate} at ${johannesburgTime}.\n`);
+  //         }
+  //         if (cert.attachment && cert.attachment !== existingCert.attachment) {
+  //           changedFields.push(`${storedName} updated Medical ${cert.certificateType} attachment at ${johannesburgTime}.\n`);
+  //         }
+  //       } else if (cert.expiryDate || cert.attachment) {
+  //         changedFields.push(`${storedName} added Medical ${cert.certificateType} certificate at ${johannesburgTime}.\n`);
+  //       }
+  //     });
+
+  //     // Track removed additional certificates
+  //     existingAdditionalCerts.forEach(existingCert => {
+  //       const stillExists = certsToSave.find(ac => ac.id === existingCert.id);
+  //       if (!stillExists) {
+  //         changedFields.push(`${storedName} removed Additional Certificate "${existingCert.certificateName}" at ${johannesburgTime}.\n`);
+  //       }
+  //     });
+
+  //     // ==============================================
+  //     // 4. UPDATE MAIN EMPLOYEE RECORD
+  //     // ==============================================
+  //     const employeeData = {
+  //       employeeId: formData.employeeId!,
+  //       firstName: formData.firstName!,
+  //       surname: formData.surname!,
+  //       employeeNumber: formData.employeeNumber || null,
+  //       knownAs: formData.knownAs || null,
+  //       passportNumber: formData.passportNumber || null,
+  //       passportExpiry: formatDateForAmplify(formData.passportExpiry),
+  //       passportAttachment: formData.passportAttachment || null,
+  //       driversLicenseCode: formData.driversLicenseCode || null,
+  //       driversLicenseExpiry: formatDateForAmplify(formData.driversLicenseExpiry),
+  //       driversLicenseAttachment: formData.driversLicenseAttachment || null,
+  //       authorizedDriver: formData.authorizedDriver!,
+  //       pdpExpiry: formatDateForAmplify(formData.pdpExpiry),
+  //       pdpAttachment: formData.pdpAttachment || null,
+  //       cvAttachment: formData.cvAttachment || null,
+  //       ppeListAttachment: formData.ppeListAttachment || null,
+  //       ppeExpiry: formatDateForAmplify(formData.ppeExpiry),
+  //       employeeIdAttachment: formData.employeeIdAttachment || null,
+  //     };
+
+  //     const result = await client.models.Employee.update({
+  //       id: employee.id,
+  //       ...employeeData
+  //     });
+
+  //     if (result.errors) {
+  //       throw new Error("Failed to update employee");
+  //     }
+
+  //     // ==============================================
+  //     // 5. SAVE MEDICAL CERTIFICATES - ADD THIS
+  //     // ==============================================
+  //     for (const cert of medicalCerts) {
+  //       const existingCert = existingMedicalCertsFromDB.find(ec => ec.certificateType === cert.certificateType);
+
+  //       // Skip if no attachment AND no expiry date
+  //       if (!cert.attachment && !cert.expiryDate) {
+  //         continue;
+  //       }
+
+  //       if (existingCert && existingCert.id) {
+  //         await client.models.EmployeeMedicalCertificate.update({
+  //           id: existingCert.id,
+  //           certificateType: cert.certificateType,
+  //           expiryDate: formatDateForAmplify(cert.expiryDate) || "",
+  //           attachment: cert.attachment || null
+  //         });
+  //       } else {
+  //         await client.models.EmployeeMedicalCertificate.create({
+  //           employeeId: employee.employeeId,
+  //           certificateType: cert.certificateType,
+  //           expiryDate: formatDateForAmplify(cert.expiryDate) || "",
+  //           attachment: cert.attachment || null
+  //         });
+  //       }
+  //     }
+
+  //     // ==============================================
+  //     // 6. SAVE TRAINING CERTIFICATES
+  //     // ==============================================
+  //     for (const cert of trainingCerts) {
+  //       const existingCert = existingTrainingCertsFromDB.find(ec => ec.certificateType === cert.certificateType);
+
+  //       // Skip if no attachment AND no expiry date
+  //       if (!cert.attachment && !cert.expiryDate) {
+  //         continue;
+  //       }
+
+  //       if (existingCert && existingCert.id) {
+  //         await client.models.EmployeeTrainingCertificate.update({
+  //           id: existingCert.id,
+  //           certificateType: cert.certificateType,
+  //           expiryDate: formatDateForAmplify(cert.expiryDate) || "",
+  //           attachment: cert.attachment || null
+  //         });
+  //       } else {
+  //         await client.models.EmployeeTrainingCertificate.create({
+  //           employeeId: employee.employeeId,
+  //           certificateType: cert.certificateType,
+  //           expiryDate: formatDateForAmplify(cert.expiryDate) || "",
+  //           attachment: cert.attachment || null
+  //         });
+  //       }
+  //     }
+
+  //     // ==============================================
+  //     // 7. SAVE ADDITIONAL CERTIFICATES
+  //     // ==============================================
+  //     const existingListItems = await client.models.EmployeeAdditionalList.list();
+  //     const existingCertificateNames = new Set(
+  //       existingListItems.data?.map(item => item.certificateName.toLowerCase()) || []
+  //     );
+
+  //     for (const cert of certsToSave) {
+  //       if (!cert.certificateName || cert.certificateName.trim() === '') {
+  //         continue;
+  //       }
+
+  //       if (!cert.attachment && !cert.expiryDate) {
+  //         continue;
+  //       }
+
+  //       const existingCert = existingAdditionalCerts.find(ec => ec.id === cert.id);
+
+  //       if (!existingCertificateNames.has(cert.certificateName.toLowerCase())) {
+  //         await client.models.EmployeeAdditionalList.create({
+  //           certificateName: cert.certificateName.trim()
+  //         });
+  //         existingCertificateNames.add(cert.certificateName.toLowerCase());
+  //       }
+
+  //       if (existingCert && cert.id) {
+  //         await client.models.EmployeeAdditionalCertificate.update({
+  //           id: existingCert.id,
+  //           certificateName: cert.certificateName,
+  //           expiryDate: formatDateForAmplify(cert.expiryDate) || "",
+  //           attachment: cert.attachment || null
+  //         });
+  //       } else {
+  //         await client.models.EmployeeAdditionalCertificate.create({
+  //           employeeId: employee.employeeId,
+  //           certificateName: cert.certificateName,
+  //           expiryDate: formatDateForAmplify(cert.expiryDate) || "",
+  //           attachment: cert.attachment || null
+  //         });
+  //       }
+  //     }
+
+  //     // Remove deleted additional certificates
+  //     for (const existingCert of existingAdditionalCerts) {
+  //       const stillExists = certsToSave.find(ac => ac.id === existingCert.id);
+  //       if (!stillExists) {
+  //         await client.models.EmployeeAdditionalCertificate.delete({
+  //           id: existingCert.id
+  //         });
+  //       }
+  //     }
+
+  //     // ==============================================
+  //     // 8. CREATE HISTORY
+  //     // ==============================================
+  //     if (changedFields.length > 0) {
+  //       await client.models.History.create({
+  //         entityType: "EMPLOYEE",
+  //         entityId: employee.employeeId,
+  //         action: "UPDATE",
+  //         timestamp: new Date().toISOString(),
+  //         details: `\nEmployee ${formData.firstName} ${formData.surname} updated by ${storedName}. Changes:\n${changedFields.join('')}`
+  //       });
+
+  //       setHistory(prev => `Employee ${formData.firstName} ${formData.surname} updated by ${storedName}. Changes:\n${changedFields.join('')}\n${prev}`);
+  //     }
+
+  //     // Call the task checking function after all updates are complete
+  //     await checkAndPrintTasks(
+  //       employee, // oldEmployee
+  //       {
+  //         ...employeeData,
+  //         medicalCertificates: medicalCerts,
+  //         trainingCertificates: trainingCerts,
+  //         additionalCertificates: additionalCerts
+  //       },
+  //       storedName
+  //     );
+
+  //     setMessage("Employee data saved successfully!");
+  //     setShow(true);
+  //     setSuccessful(true);
+
+  //   } catch (error) {
+  //     console.error("❌ Error saving employee:", error);
+  //     setMessage(error instanceof Error ? error.message : "Error saving employee data");
+  //     setShow(true);
+  //     setSuccessful(false);
+  //   } finally {
+  //     setSaving(false);
+  //   }
+  // };
+
+const handleSave = async () => {
+  if (!employee) {
+    console.error("❌ No employee found, cannot save");
+    return;
+  }
+
+  try {
+    setSaving(true);
+
+    const storedName = localStorage.getItem("user")?.replace(/^"|"$/g, '').trim() || "Unknown User";
+    const johannesburgTime = new Date().toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg" });
+
+    // Track changed fields for History table
+    const changedFields: string[] = [];
+
+    // Log form data changes
+    Object.keys(formData).forEach(key => {
+      const typedKey = key as keyof Employee;
+      if (formData[typedKey] !== employee[typedKey]) {
+        changedFields.push(` ${storedName} updated ${typedKey} from ${employee[typedKey]} to ${formData[typedKey]} at ${johannesburgTime}.\n`);
+        console.log(`   🔄 ${typedKey}: ${employee[typedKey]} → ${formData[typedKey]}`);
+      }
+    });
+
+    // Existing certificates from DB for THIS employee
+    const existingAdditionalCerts = employee.additionalCertificates || [];
+    const existingTrainingCertsFromDB = employee.trainingCertificates || [];
+    const existingMedicalCertsFromDB = employee.medicalCertificates || []; // ADD THIS
+
+    // ==============================================
+    // 1. UPLOAD ADDITIONAL CERTIFICATE FILES
+    // ==============================================
+    const certsToSave = [...additionalCerts];
+    for (let i = 0; i < certsToSave.length; i++) {
+      const cert = certsToSave[i];
+      const uploadedFiles = additionalCertificateFiles[i];
+
+      if (cert.certificateName && uploadedFiles && uploadedFiles.length > 0 && uploadedFiles[0] && uploadedFiles[0].file) {
+        const uploadedKey = await handleUpload(uploadedFiles[0]);
+        if (uploadedKey) {
+          certsToSave[i].attachment = uploadedKey;
+        }
+      }
+    }
+
+    // ==============================================
+    // 2. VALIDATE CERTIFICATES WITH ATTACHMENTS
+    // ==============================================
+    let hasValidationError = false;
+    let errorCertName = "";
+    let errorCertType = "";
+
+    // Validate additional certificates
+    for (const cert of certsToSave) {
+      if (cert.certificateName &&
+        cert.certificateName.trim() !== '' &&
+        cert.attachment &&
+        cert.attachment.trim() !== '' &&
+        !cert.expiryDate) {
+        hasValidationError = true;
+        errorCertName = cert.certificateName;
+        errorCertType = "Additional";
+        break;
+      }
+    }
+
+    // Validate training certificates
+    if (!hasValidationError) {
+      for (const cert of trainingCerts) {
+        if (cert.attachment &&
+          cert.attachment.trim() !== '' &&
+          !cert.expiryDate) {
+          hasValidationError = true;
+          errorCertName = cert.certificateType;
+          errorCertType = "Training";
+          break;
+        }
+      }
+    }
+
+    // Validate medical certificates - ADD THIS
+    if (!hasValidationError) {
+      for (const cert of medicalCerts) {
+        if (cert.attachment &&
+          cert.attachment.trim() !== '' &&
+          !cert.expiryDate) {
+          hasValidationError = true;
+          errorCertName = cert.certificateType;
+          errorCertType = "Medical";
+          break;
+        }
+      }
+    }
+
+    if (hasValidationError) {
+      setMessage(`${errorCertType} Certificate "${errorCertName}" requires an expiry date since it has an attachment`);
+      setShow(true);
+      setSuccessful(false);
+      setSaving(false);
+      return;
+    }
+
+    // ==============================================
+    // 3. TRACK CHANGES FOR HISTORY
+    // ==============================================
+
+    // Track additional certificate changes
+    certsToSave.forEach(cert => {
+      const existingCert = existingAdditionalCerts.find(ec => ec.id === cert.id);
+
+      if (!cert.certificateName || cert.certificateName.trim() === '') {
+        return;
+      }
+
+      if (existingCert) {
+        if (cert.certificateName !== existingCert.certificateName) {
+          changedFields.push(`${storedName} updated Additional Certificate name from "${existingCert.certificateName}" to "${cert.certificateName}" at ${johannesburgTime}.\n`);
+        }
+        if (cert.expiryDate !== existingCert.expiryDate) {
+          changedFields.push(`${storedName} updated Additional Certificate "${cert.certificateName}" expiry from ${existingCert.expiryDate} to ${cert.expiryDate} at ${johannesburgTime}.\n`);
+        }
+        if (cert.attachment && cert.attachment !== existingCert.attachment) {
+          changedFields.push(`${storedName} updated Additional Certificate "${cert.certificateName}" attachment at ${johannesburgTime}.\n`);
+        }
+      } else if (cert.certificateName && (cert.expiryDate || cert.attachment)) {
+        changedFields.push(`${storedName} added Additional Certificate "${cert.certificateName}" at ${johannesburgTime}.\n`);
+      }
+    });
+
+    // Track training certificate changes
+    trainingCerts.forEach(cert => {
+      const existingCert = existingTrainingCertsFromDB.find(ec => ec.certificateType === cert.certificateType);
+
+      if (existingCert) {
+        if (cert.expiryDate !== existingCert.expiryDate) {
+          changedFields.push(`${storedName} updated Training ${cert.certificateType} expiry from ${existingCert.expiryDate} to ${cert.expiryDate} at ${johannesburgTime}.\n`);
+        }
+        if (cert.attachment && cert.attachment !== existingCert.attachment) {
+          changedFields.push(`${storedName} updated Training ${cert.certificateType} attachment at ${johannesburgTime}.\n`);
+        }
+      } else if (cert.expiryDate || cert.attachment) {
+        changedFields.push(`${storedName} added Training ${cert.certificateType} certificate at ${johannesburgTime}.\n`);
+      }
+    });
+
+    // Track medical certificate changes - ADD THIS
+    medicalCerts.forEach(cert => {
+      const existingCert = existingMedicalCertsFromDB.find(ec => ec.certificateType === cert.certificateType);
+
+      if (existingCert) {
+        if (cert.expiryDate !== existingCert.expiryDate) {
+          changedFields.push(`${storedName} updated Medical ${cert.certificateType} expiry from ${existingCert.expiryDate} to ${cert.expiryDate} at ${johannesburgTime}.\n`);
+        }
+        if (cert.attachment && cert.attachment !== existingCert.attachment) {
+          changedFields.push(`${storedName} updated Medical ${cert.certificateType} attachment at ${johannesburgTime}.\n`);
+        }
+      } else if (cert.expiryDate || cert.attachment) {
+        changedFields.push(`${storedName} added Medical ${cert.certificateType} certificate at ${johannesburgTime}.\n`);
+      }
+    });
+
+    // Track removed additional certificates
+    existingAdditionalCerts.forEach(existingCert => {
+      const stillExists = certsToSave.find(ac => ac.id === existingCert.id);
+      if (!stillExists) {
+        changedFields.push(`${storedName} removed Additional Certificate "${existingCert.certificateName}" at ${johannesburgTime}.\n`);
+      }
+    });
+
+    // ==============================================
+    // 4. CHECK IF ANYTHING ACTUALLY CHANGED
+    // ==============================================
+    if (changedFields.length === 0) {
+      setMessage("No changes detected. Nothing to save.");
+      setShow(true);
+      setSuccessful(true);
+      setSaving(false);
+      return;
+    }
+
+    // ==============================================
+    // 5. UPDATE MAIN EMPLOYEE RECORD (only if form data changed)
+    // ==============================================
+    const employeeData = {
+      employeeId: formData.employeeId!,
+      firstName: formData.firstName!,
+      surname: formData.surname!,
+      employeeNumber: formData.employeeNumber || null,
+      knownAs: formData.knownAs || null,
+      passportNumber: formData.passportNumber || null,
+      passportExpiry: formatDateForAmplify(formData.passportExpiry),
+      passportAttachment: formData.passportAttachment || null,
+      driversLicenseCode: formData.driversLicenseCode || null,
+      driversLicenseExpiry: formatDateForAmplify(formData.driversLicenseExpiry),
+      driversLicenseAttachment: formData.driversLicenseAttachment || null,
+      authorizedDriver: formData.authorizedDriver!,
+      pdpExpiry: formatDateForAmplify(formData.pdpExpiry),
+      pdpAttachment: formData.pdpAttachment || null,
+      cvAttachment: formData.cvAttachment || null,
+      ppeListAttachment: formData.ppeListAttachment || null,
+      ppeExpiry: formatDateForAmplify(formData.ppeExpiry),
+      employeeIdAttachment: formData.employeeIdAttachment || null,
+    };
+
+    const result = await client.models.Employee.update({
+      id: employee.id,
+      ...employeeData
+    });
+
+    if (result.errors) {
+      throw new Error("Failed to update employee");
+    }
+
+    // ==============================================
+    // 6. SAVE MEDICAL CERTIFICATES (only if changed)
+    // ==============================================
+    for (const cert of medicalCerts) {
+      const existingCert = existingMedicalCertsFromDB.find(ec => ec.certificateType === cert.certificateType);
+
+      // Skip if no attachment AND no expiry date
+      if (!cert.attachment && !cert.expiryDate) {
+        continue;
+      }
+
+      // Check if anything actually changed
+      const isNewCert = !existingCert;
+      const expiryChanged = existingCert?.expiryDate !== cert.expiryDate;
+      const attachmentChanged = existingCert?.attachment !== cert.attachment;
+      
+      // Only save if something changed or it's a new cert with data
+      if (isNewCert || expiryChanged || attachmentChanged) {
+        if (existingCert && existingCert.id) {
+          await client.models.EmployeeMedicalCertificate.update({
+            id: existingCert.id,
+            certificateType: cert.certificateType,
+            expiryDate: formatDateForAmplify(cert.expiryDate) || "",
+            attachment: cert.attachment || null
+          });
+        } else {
+          await client.models.EmployeeMedicalCertificate.create({
+            employeeId: employee.employeeId,
+            certificateType: cert.certificateType,
+            expiryDate: formatDateForAmplify(cert.expiryDate) || "",
+            attachment: cert.attachment || null
+          });
+        }
+      }
+    }
+
+    // ==============================================
+    // 7. SAVE TRAINING CERTIFICATES (only if changed)
+    // ==============================================
+    for (const cert of trainingCerts) {
+      const existingCert = existingTrainingCertsFromDB.find(ec => ec.certificateType === cert.certificateType);
+
+      // Skip if no attachment AND no expiry date
+      if (!cert.attachment && !cert.expiryDate) {
+        continue;
+      }
+
+      // Check if anything actually changed
+      const isNewCert = !existingCert;
+      const expiryChanged = existingCert?.expiryDate !== cert.expiryDate;
+      const attachmentChanged = existingCert?.attachment !== cert.attachment;
+      
+      // Only save if something changed or it's a new cert with data
+      if (isNewCert || expiryChanged || attachmentChanged) {
+        if (existingCert && existingCert.id) {
+          await client.models.EmployeeTrainingCertificate.update({
+            id: existingCert.id,
+            certificateType: cert.certificateType,
+            expiryDate: formatDateForAmplify(cert.expiryDate) || "",
+            attachment: cert.attachment || null
+          });
+        } else {
+          await client.models.EmployeeTrainingCertificate.create({
+            employeeId: employee.employeeId,
+            certificateType: cert.certificateType,
+            expiryDate: formatDateForAmplify(cert.expiryDate) || "",
+            attachment: cert.attachment || null
+          });
+        }
+      }
+    }
+
+    // ==============================================
+    // 8. SAVE ADDITIONAL CERTIFICATES (only if changed)
+    // ==============================================
+    const existingListItems = await client.models.EmployeeAdditionalList.list();
+    const existingCertificateNames = new Set(
+      existingListItems.data?.map(item => item.certificateName.toLowerCase()) || []
+    );
+
+    for (const cert of certsToSave) {
+      if (!cert.certificateName || cert.certificateName.trim() === '') {
+        continue;
+      }
+
+      if (!cert.attachment && !cert.expiryDate) {
+        continue;
+      }
+
+      const existingCert = existingAdditionalCerts.find(ec => ec.id === cert.id);
+
+      // Check if anything actually changed
+      const isNewCert = !existingCert;
+      const nameChanged = existingCert?.certificateName !== cert.certificateName;
+      const expiryChanged = existingCert?.expiryDate !== cert.expiryDate;
+      const attachmentChanged = existingCert?.attachment !== cert.attachment;
+      
+      // Only save if something changed or it's a new cert with data
+      if (isNewCert || nameChanged || expiryChanged || attachmentChanged) {
+        // Add to EmployeeAdditionalList if needed
+        if (!existingCertificateNames.has(cert.certificateName.toLowerCase())) {
+          await client.models.EmployeeAdditionalList.create({
+            certificateName: cert.certificateName.trim()
+          });
+          existingCertificateNames.add(cert.certificateName.toLowerCase());
+        }
+
+        if (existingCert && cert.id) {
+          await client.models.EmployeeAdditionalCertificate.update({
+            id: existingCert.id,
+            certificateName: cert.certificateName,
+            expiryDate: formatDateForAmplify(cert.expiryDate) || "",
+            attachment: cert.attachment || null
+          });
+        } else {
+          await client.models.EmployeeAdditionalCertificate.create({
+            employeeId: employee.employeeId,
+            certificateName: cert.certificateName,
+            expiryDate: formatDateForAmplify(cert.expiryDate) || "",
+            attachment: cert.attachment || null
+          });
+        }
+      }
+    }
+
+    // Remove deleted additional certificates
+    for (const existingCert of existingAdditionalCerts) {
+      const stillExists = certsToSave.find(ac => ac.id === existingCert.id);
+      if (!stillExists) {
+        await client.models.EmployeeAdditionalCertificate.delete({
+          id: existingCert.id
+        });
+      }
+    }
+
+    // ==============================================
+    // 9. CREATE HISTORY
+    // ==============================================
+    await client.models.History.create({
+      entityType: "EMPLOYEE",
+      entityId: employee.employeeId,
+      action: "UPDATE",
+      timestamp: new Date().toISOString(),
+      details: `\nEmployee ${formData.firstName} ${formData.surname} updated by ${storedName}. Changes:\n${changedFields.join('')}`
+    });
+
+    setHistory(prev => `Employee ${formData.firstName} ${formData.surname} updated by ${storedName}. Changes:\n${changedFields.join('')}\n${prev}`);
+
+    // Call the task checking function after all updates are complete
+    await checkAndPrintTasks(
+      employee, // oldEmployee
+      {
+        ...employeeData,
+        medicalCertificates: medicalCerts,
+        trainingCertificates: trainingCerts,
+        additionalCertificates: additionalCerts
+      },
+      storedName
+    );
+
+    setMessage("Employee data saved successfully!");
+    setShow(true);
+    setSuccessful(true);
+
+  } catch (error) {
+    console.error("❌ Error saving employee:", error);
+    setMessage(error instanceof Error ? error.message : "Error saving employee data");
+    setShow(true);
+    setSuccessful(false);
+  } finally {
+    setSaving(false);
+  }
+};
+
 
   if (loading) {
     return (
@@ -907,7 +1364,6 @@ export default function EditEmployeePage() {
                         </div>
 
                         <div className="space-y-4">
-
                           <div>
                             <Label>Employee Number</Label>
                             <Input
@@ -918,26 +1374,22 @@ export default function EditEmployeePage() {
                           </div>
 
                           <div>
-                            <HrdPDFUpload
-                              employeeID={employee.employeeId}
-                              filetitle="Employee ID Attachment"
-                              filename="employeeId"
+                            <Label>Employee ID Attachment</Label>
+                            <FileUploadUpdate
+                              assetName="employee-id"
+                              title="Employee ID Attachment"
                               folder="ID"
-                              existingFiles={employee.employeeIdAttachment ? [employee.employeeIdAttachment] : []}
-
-                              onPDFsChange={(pdfs) => {
-                                const pdfUrls = pdfs.map(pdf => pdf.s3Key);
-                                handleChange("employeeId", pdfUrls);
-                              }}
+                              existingFiles={formData.employeeIdAttachment ? [formData.employeeIdAttachment] : []}
+                              onFilesChange={handleDocumentFileChange('employeeIdAttachment')}
+                              onFileRemove={handleDocumentFileRemove('employeeIdAttachment')}
                             />
-
                           </div>
                         </div>
 
                         {/* Passport Section */}
                         <div>
                           <div className="space-y-4">
-                            <h4 className="font-semibold border-b ">Passport Details</h4>
+                            <h4 className="font-semibold border-b">Passport Details</h4>
                             <div>
                               <Label>Passport Number</Label>
                               <Input
@@ -955,33 +1407,27 @@ export default function EditEmployeePage() {
                                 onChange={(e) => handleInputChange('passportExpiry', e.target.value)}
                               />
                             </div>
-
                           </div>
 
                           <div className="space-y-4">
                             <div>
-                              <HrdPDFUpload
-                                employeeID={employee.employeeId}
-                                filetitle="Passport Attachment"
-                                filename="passport"
+                              <Label>Passport Attachment</Label>
+                              <FileUploadUpdate
+                                assetName="passport"
+                                title="Passport Attachment"
                                 folder="Passport"
-                                existingFiles={employee.passportAttachment ? [employee.passportAttachment] : []}
-                                onPDFsChange={(pdfs) => {
-                                  const pdfUrls = pdfs.map(pdf => pdf.s3Key);
-                                  handleChange("passport", pdfUrls);
-                                }}
+                                existingFiles={formData.passportAttachment ? [formData.passportAttachment] : []}
+                                onFilesChange={handleDocumentFileChange('passportAttachment')}
+                                onFileRemove={handleDocumentFileRemove('passportAttachment')}
                               />
-
                             </div>
                           </div>
-
                         </div>
-
 
                         {/* Driver's License Section */}
                         <div>
                           <div className="space-y-4">
-                            <h4 className="font-semibold border-b ">Driver's License</h4>
+                            <h4 className="font-semibold border-b">Driver's License</h4>
                             <div>
                               <Label>License Code</Label>
                               <Input
@@ -999,33 +1445,27 @@ export default function EditEmployeePage() {
                                 onChange={(e) => handleInputChange('driversLicenseExpiry', e.target.value)}
                               />
                             </div>
-
-
                           </div>
 
                           <div className="space-y-4">
                             <div>
-                              <HrdPDFUpload
-                                employeeID={employee.employeeId}
-                                filetitle="Driver's License Attachment"
-                                filename="driversLicense"
+                              <Label>Driver's License Attachment</Label>
+                              <FileUploadUpdate
+                                assetName="drivers-license"
+                                title="Driver's License Attachment"
                                 folder="License"
-                                existingFiles={employee.driversLicenseAttachment ? [employee.driversLicenseAttachment] : []}
-                                onPDFsChange={(pdfs) => {
-                                  const pdfUrls = pdfs.map(pdf => pdf.s3Key);
-                                  handleChange("driversLicense", pdfUrls);
-                                }}
+                                existingFiles={formData.driversLicenseAttachment ? [formData.driversLicenseAttachment] : []}
+                                onFilesChange={handleDocumentFileChange('driversLicenseAttachment')}
+                                onFileRemove={handleDocumentFileRemove('driversLicenseAttachment')}
                               />
-
                             </div>
                           </div>
                         </div>
 
-                        {/* Pdp and PPE Documents */}
+                        {/* PDP and CV Documents */}
                         <div>
                           <div className="space-y-4">
-                            <h4 className="font-semibold border-b ">PDP</h4>
-
+                            <h4 className="font-semibold border-b">PDP</h4>
                             <div>
                               <Label>PDP Expiry</Label>
                               <Input
@@ -1034,43 +1474,40 @@ export default function EditEmployeePage() {
                                 onChange={(e) => handleInputChange('pdpExpiry', e.target.value)}
                               />
                             </div>
-                            <HrdPDFUpload
-                              employeeID={employee.employeeId}
-                              filetitle="Pdp  Attachment"
-                              filename="pdp"
-                              folder="pdp"
-                              existingFiles={employee.pdpAttachment ? [employee.pdpAttachment] : []}
-                              onPDFsChange={(pdfs) => {
-                                const pdfUrls = pdfs.map(pdf => pdf.s3Key);
-                                handleChange("pdp", pdfUrls);
-                              }}
-                            />
+
+                            <div>
+                              <Label>PDP Attachment</Label>
+                              <FileUploadUpdate
+                                assetName="pdp"
+                                title="PDP Attachment"
+                                folder="PDP"
+                                existingFiles={formData.pdpAttachment ? [formData.pdpAttachment] : []}
+                                onFilesChange={handleDocumentFileChange('pdpAttachment')}
+                                onFileRemove={handleDocumentFileRemove('pdpAttachment')}
+                              />
+                            </div>
                           </div>
 
                           <div className="space-y-4 mt-4">
-                            <h4 className="font-semibold border-b ">Curriculum Vitae</h4>
-
-                            <Label>CV Doc</Label>
-
-                            <HrdPDFUpload
-                              employeeID={employee.employeeId}
-                              filetitle="CV  Attachment"
-                              filename="cv"
-                              folder="Cv"
-                              existingFiles={employee.cvAttachment ? [employee.cvAttachment] : []}
-                              onPDFsChange={(pdfs) => {
-                                const pdfUrls = pdfs.map(pdf => pdf.s3Key);
-                                handleChange("cv", pdfUrls);
-                              }}
-                            />
-
+                            <h4 className="font-semibold border-b">Curriculum Vitae</h4>
+                            <div>
+                              <Label>CV Attachment</Label>
+                              <FileUploadUpdate
+                                assetName="cv"
+                                title="CV Attachment"
+                                folder="CV"
+                                existingFiles={formData.cvAttachment ? [formData.cvAttachment] : []}
+                                onFilesChange={handleDocumentFileChange('cvAttachment')}
+                                onFileRemove={handleDocumentFileRemove('cvAttachment')}
+                              />
+                            </div>
                           </div>
                         </div>
 
+                        {/* PPE Documents */}
                         <div>
                           <div className="space-y-4">
-                            <h4 className="font-semibold border-b ">PPE</h4>
-
+                            <h4 className="font-semibold border-b">PPE</h4>
                             <div>
                               <Label>PPE Expiry</Label>
                               <Input
@@ -1080,23 +1517,19 @@ export default function EditEmployeePage() {
                               />
                             </div>
 
-                            <HrdPDFUpload
-                              employeeID={employee.employeeId}
-                              filetitle="PPE List  Attachment"
-                              filename="ppeList"
-                              folder="PPE"
-                              existingFiles={employee.ppeListAttachment ? [employee.ppeListAttachment] : []}
-                              onPDFsChange={(pdfs) => {
-                                const pdfUrls = pdfs.map(pdf => pdf.s3Key);
-                                handleChange("ppeList", pdfUrls);
-                              }}
-                            />
+                            <div>
+                              <Label>PPE List Attachment</Label>
+                              <FileUploadUpdate
+                                assetName="ppe-list"
+                                title="PPE List Attachment"
+                                folder="PPE"
+                                existingFiles={formData.ppeListAttachment ? [formData.ppeListAttachment] : []}
+                                onFilesChange={handleDocumentFileChange('ppeListAttachment')}
+                                onFileRemove={handleDocumentFileRemove('ppeListAttachment')}
+                              />
+                            </div>
                           </div>
                         </div>
-
-
-
-
                       </div>
                     </CardContent>
                   </Card>
@@ -1111,7 +1544,6 @@ export default function EditEmployeePage() {
                         <BriefcaseMedical className="h-5 w-5" />
                         Medical Documents
                       </CardTitle>
-
                     </CardHeader>
                     <CardContent className="p-6">
                       <div className="space-y-6">
@@ -1139,23 +1571,53 @@ export default function EditEmployeePage() {
                               </div>
                               <div className="md:col-span-2">
                                 <Label>Attachment</Label>
-                                <HrdPDFUpload
-                                  employeeID={employee.employeeId}
-                                  filetitle={`${cert.certificateType} Attachment`}
-                                  filename={`medical-${cert.certificateType}`}
+                                <FileUploadUpdate
+                                  assetName={cert.certificateType || ""}
+                                  title={`${cert.certificateType} Attachment`}
                                   folder="Medical"
                                   existingFiles={cert.attachment ? [cert.attachment] : []}
-                                  onPDFsChange={(pdfs) => {
+                                  onFilesChange={handleMedicalFileChange(index)}
+                                  onFileRemove={async (s3Key) => {
+                                    if (s3Key && cert.id) {
+                                      try {
+                                        await remove({ path: s3Key });
 
-                                    const pdfUrls = pdfs.map(pdf => pdf.s3Key);
+                                        // Update medicalCerts state
+                                        const updated = [...medicalCerts];
+                                        updated[index] = {
+                                          ...updated[index],
+                                          attachment: ""
+                                        };
+                                        setMedicalCerts(updated);
 
-                                    // Update the specific medical certificate directly
-                                    const updatedCerts = [...medicalCerts];
-                                    updatedCerts[index] = {
-                                      ...updatedCerts[index],
-                                      attachment: pdfUrls[0] || ''
-                                    };
-                                    setMedicalCerts(updatedCerts);
+                                        // Update EmployeeMedicalCertificate
+                                        await client.models.EmployeeMedicalCertificate.update({
+                                          id: cert.id,
+                                          attachment: null
+                                        });
+
+                                        const storedName = localStorage.getItem("user")?.replace(/^"|"$/g, '').trim() || "Unknown User";
+                                        const johannesburgTime = new Date().toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg" });
+
+                                        await client.models.History.create({
+                                          entityType: "EMPLOYEE",
+                                          entityId: employee.employeeId,
+                                          action: "REMOVE_MEDICAL_FILE",
+                                          timestamp: new Date().toISOString(),
+                                          details: `\n${storedName} removed file from medical certificate "${cert.certificateType}" at ${johannesburgTime}`
+                                        });
+
+                                        setHistory(prev => `\n${storedName} removed file from medical certificate "${cert.certificateType}" at ${johannesburgTime}${prev}`);
+                                        setMessage(`File deleted successfully`);
+                                        setSuccessful(true);
+                                        setShow(true);
+                                      } catch (error) {
+                                        console.error(`Failed to delete file: ${s3Key}`, error);
+                                        setMessage("Error deleting file");
+                                        setSuccessful(false);
+                                        setShow(true);
+                                      }
+                                    }
                                   }}
                                 />
                               </div>
@@ -1203,21 +1665,55 @@ export default function EditEmployeePage() {
                               </div>
                               <div className="md:col-span-2">
                                 <Label>Attachment</Label>
-                                <HrdPDFUpload
-                                  employeeID={employee.employeeId}
-                                  filetitle={`${cert.certificateType} Attachment`}
-                                  filename={`training-${cert.certificateType}`}
+
+                                <FileUploadUpdate
+                                  assetName={cert.certificateType || ""}
+                                  title={`${cert.certificateType} Attachment`}
                                   folder="Training"
                                   existingFiles={cert.attachment ? [cert.attachment] : []}
-                                  onPDFsChange={(pdfs) => {
-                                    const pdfUrls = pdfs.map(pdf => pdf.s3Key);
+                                  onFilesChange={handleTrainingFileChange(index)}  // Use separate handler
+                                  onFileRemove={async (s3Key) => {
+                                    if (s3Key && cert.id) {
+                                      try {
+                                        await remove({ path: s3Key });
 
-                                    const updatedCerts = [...trainingCerts];
-                                    updatedCerts[index] = {
-                                      ...updatedCerts[index],
-                                      attachment: pdfUrls[0] || ''
-                                    };
-                                    setTrainingCerts(updatedCerts);
+                                        //  Update trainingCerts, additionalCerts
+                                        const updated = [...trainingCerts];
+                                        updated[index] = {
+                                          ...updated[index],
+                                          attachment: ""
+                                        };
+                                        setTrainingCerts(updated);
+
+                                        // Update EmployeeTrainingCertificate, 
+                                        await client.models.EmployeeTrainingCertificate.update({
+                                          id: cert.id,
+                                          attachment: null
+                                        });
+
+                                        const storedName = localStorage.getItem("user")?.replace(/^"|"$/g, '').trim() || "Unknown User";
+                                        const johannesburgTime = new Date().toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg" });
+
+                                        // Reference cert.certificateType
+                                        await client.models.History.create({
+                                          entityType: "EMPLOYEE",
+                                          entityId: employee.employeeId,
+                                          action: "REMOVE_TRAINING_FILE",
+                                          timestamp: new Date().toISOString(),
+                                          details: `\n${storedName} removed file from training certificate "${cert.certificateType}" at ${johannesburgTime}`
+                                        });
+
+                                        setHistory(prev => `\n${storedName} removed file from training certificate "${cert.certificateType}" at ${johannesburgTime}${prev}`);
+                                        setMessage(`File deleted successfully`);
+                                        setSuccessful(true);
+                                        setShow(true);
+                                      } catch (error) {
+                                        console.error(`Failed to delete file: ${s3Key}`, error);
+                                        setMessage("Error deleting file");
+                                        setSuccessful(false);
+                                        setShow(true);
+                                      }
+                                    }
                                   }}
                                 />
                               </div>
@@ -1242,66 +1738,136 @@ export default function EditEmployeePage() {
                           Add Certificate
                         </Button>
                       </div>
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                        <Input
+                          placeholder="Search by certificate name..."
+                          value={searchCertTerm}
+                          onChange={(e) => setSearchCertTerm(e.target.value)}
+                          className="pl-10"
+                        />
+                      </div>
 
                     </CardHeader>
+
                     <CardContent className="p-6">
                       <div className="space-y-6">
-                        {additionalCerts.map((cert, index) => (
-                          <div key={index} className="p-4 border rounded-lg">
-                            <div className="flex justify-between items-start mb-4">
-                              <h4 className="font-semibold">Additional Certificate #{index + 1}</h4>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => removeAdditionalCertificate(index)}
-                                className="text-red-600 hover:text-red-800"
+
+                        {/* NEW CERTIFICATE FORM (the one user is currently adding) */}
+                        {additionalCerts
+                          .filter(cert =>
+                            cert.certificateName?.toLowerCase().includes(searchCertTerm.toLowerCase()) ||
+                            "new certificate".includes(searchCertTerm.toLowerCase())
+                          )
+                          .map((cert, index) => {
+                            // If certificate has an ID, it's from database
+                            // If no ID, it's a new one being added
+                            const isNewCertificate = !cert.id;
+
+                            return (
+                              <div
+                                key={isNewCertificate ? `new-${index}` : cert.id}
+                                className={`p-4 border rounded-lg ${isNewCertificate ? 'border-dashed border-blue-300' : ''}`}
                               >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <div>
-                                <Label>Certificate Name</Label>
-                                <Input
-                                  value={cert.certificateName || ''}
-                                  onChange={(e) => handleAdditionalCertChange(index, 'certificateName', e.target.value)}
-                                  placeholder="Enter certificate name"
-                                />
-                              </div>
-                              <div>
-                                <Label>Expiry Date</Label>
-                                <Input
-                                  type="date"
-                                  value={cert.expiryDate || ''}
-                                  onChange={(e) => handleAdditionalCertChange(index, 'expiryDate', e.target.value)}
-                                />
-                              </div>
-                              <div className="md:col-span-2">
-                                <Label>Attachment</Label>
+                                <div className="flex justify-between items-start mb-4">
+                                  <h4 className="font-semibold">
+                                    {isNewCertificate ? "New Certificate" : cert.certificateName}
+                                  </h4>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => removeAdditionalCertificate(index)}
+                                    className="text-red-600 hover:text-red-800"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <div>
+                                    <Label>Certificate Name</Label>
+                                    <Input
+                                      value={cert.certificateName || ''}
+                                      onChange={(e) => handleAdditionalCertChange(index, 'certificateName', e.target.value)}
+                                      placeholder="Enter certificate name"
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label>Expiry Date</Label>
+                                    <Input
+                                      type="date"
+                                      value={cert.expiryDate || ''}
+                                      onChange={(e) => handleAdditionalCertChange(index, 'expiryDate', e.target.value)}
+                                    />
+                                  </div>
+                                  <div className="md:col-span-2">
+                                    <Label>Attachment</Label>
 
-                                <HrdPDFUpload
-                                  employeeID={employee.employeeId}
-                                  filetitle={`${cert.certificateName || 'Additional'} Attachment`}
-                                  filename={`additional-${index}`}
-                                  folder="Additional"
-                                  existingFiles={cert.attachment ? [cert.attachment] : []}
-                                  onPDFsChange={(pdfs) => {
-                                    const pdfUrls = pdfs.map(pdf => pdf.s3Key);
-
-                                    // Update the specific additional certificate directly
-                                    const updatedCerts = [...additionalCerts];
-                                    updatedCerts[index] = {
-                                      ...updatedCerts[index],
-                                      attachment: pdfUrls[0] || ''
-                                    };
-                                    setAdditionalCerts(updatedCerts);
-                                  }}
-                                />
-
+                                    {isNewCertificate ? (
+                                      // For NEW certificates (no ID) - use FileUploadMany
+                                      <FileUploadMany
+                                        assetName={cert.certificateName}
+                                        title={cert.certificateName || "New Certificate"}
+                                        folder="additional"
+                                        onFilesChange={(files) => {
+                                          const updated = [...additionalCerts];
+                                          updated[index] = {
+                                            ...updated[index],
+                                            attachment: files[0]?.s3Key || ""
+                                          };
+                                          setAdditionalCerts(updated);
+                                        }}
+                                      />
+                                    ) : (
+                                      // For EXISTING certificates (has ID) - use FileUploadUpdate
+                                      <FileUploadUpdate
+                                        assetName={cert.certificateName || ""}
+                                        title={`${cert.certificateName || 'Additional'} Attachment`}
+                                        folder="additional"
+                                        existingFiles={cert.attachment ? [cert.attachment] : []}
+                                        onFilesChange={handleExistingFileChange(index)}
+                                        onFileRemove={async (s3Key) => {
+                                          if (s3Key && cert.id) {
+                                            try {
+                                              await remove({ path: s3Key });
+                                              const updated = [...additionalCerts];
+                                              updated[index] = {
+                                                ...updated[index],
+                                                attachment: ""
+                                              };
+                                              setAdditionalCerts(updated);
+                                              await client.models.EmployeeAdditionalCertificate.update({
+                                                id: cert.id,
+                                                attachment: null
+                                              });
+                                              const storedName = localStorage.getItem("user")?.replace(/^"|"$/g, '').trim() || "Unknown User";
+                                              const johannesburgTime = new Date().toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg" });
+                                              await client.models.History.create({
+                                                entityType: "EMPLOYEE",
+                                                entityId: employee.employeeId,
+                                                action: "REMOVE_CERTIFICATE_FILE",
+                                                timestamp: new Date().toISOString(),
+                                                details: `\n${storedName} remove file from certificate "${cert.certificateName}" at ${johannesburgTime}`
+                                              });
+                                              setHistory(prev => `\n${storedName} removed file from certificate "${cert.certificateName}" at ${johannesburgTime}${prev}`);
+                                              setMessage(`File deleted successfully`);
+                                              setSuccessful(true);
+                                              setShow(true);
+                                            } catch (error) {
+                                              console.error(`Failed to delete file: ${s3Key}`, error);
+                                              setMessage("Error deleting file");
+                                              setSuccessful(false);
+                                              setShow(true);
+                                            }
+                                          }
+                                        }}
+                                      />
+                                    )}
+                                  </div>
+                                </div>
                               </div>
-                            </div>
-                          </div>
-                        ))}
+                            );
+                          })}
+
                         {additionalCerts.length === 0 && (
                           <div className="text-center py-8 text-muted-foreground">
                             No additional certificates added yet.
@@ -1363,25 +1929,25 @@ export default function EditEmployeePage() {
                   Cancel
                 </Button>
 
-
-
-                <Button
-                  onClick={handleSave}
-                  disabled={saving || !formData.employeeId || !formData.firstName || !formData.surname}
-                  className="bg-blue-600 hover:bg-blue-700"
-                >
-                  {saving ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="h-4 w-4 mr-2" />
-                      Update Employee
-                    </>
-                  )}
-                </Button>
+                <div className="flex justify-end gap-3 mt-8">
+                  <Button
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    {saving ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="h-4 w-4 mr-2" />
+                        Update Employee
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
 
               {show && (

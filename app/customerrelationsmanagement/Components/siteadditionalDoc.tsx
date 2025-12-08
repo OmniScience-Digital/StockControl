@@ -58,7 +58,6 @@ export default function SiteAdditional({ complianceData, complianceexistingdocs,
     const contractorsItemsPerPage = 10;
 
     const [searchCertTerm, setSearchCertTerm] = useState("");
-
     const [searchContractorsTerm, setSearchContractorsTerm] = useState("");
 
 
@@ -327,7 +326,6 @@ export default function SiteAdditional({ complianceData, complianceexistingdocs,
             setUpdatingContractorsPack(false);
         }
     };
-
 
     // Handle file removal from FileUploadUpdate component
     const handleContractorsFileRemove = async (s3Key: string, index: number) => {
@@ -684,7 +682,6 @@ export default function SiteAdditional({ complianceData, complianceexistingdocs,
             </Card>
         );
     }
-
 
     return (
         <>
@@ -1151,3 +1148,4 @@ export default function SiteAdditional({ complianceData, complianceexistingdocs,
         </>
     );
 }
+

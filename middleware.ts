@@ -7,7 +7,7 @@ const protectedRoutes = [
   "/landing",
   "/inventorymanagementsystem",
   "/stockcontrolform",
-  "/vehicleinspectionsystem",
+  "/fleetmanagementsystem",
   "/forms",
   "/vehicleinspectionform",
   "/subcategories",

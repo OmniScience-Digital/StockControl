@@ -291,7 +291,7 @@ export default function InspectionEditPage() {
                             <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => router.push(`/vehicleinspectionsystem/${fleetId}`)}
+                                onClick={() => router.push(`/fleetmanagementsystem/${fleetId}`)}
                                 className="h-9 w-9 p-0 relative hover:scale-105 active:scale-95 transition-transform duration-150">
                                 <ArrowLeft className="h-5 w-5" />
                             </Button>
@@ -327,7 +327,7 @@ export default function InspectionEditPage() {
                                     <Button
                                         size="sm"
                                         variant="outline"
-                                        onClick={() => router.push(`/vehicleinspectionsystem/${fleetId}`)}
+                                        onClick={() => router.push(`/fleetmanagementsystem/${fleetId}`)}
                                         className="h-8 text-xs cursor-pointer flex-1 sm:flex-none"
                                     >
                                         <ArrowLeft className="h-3 w-3 mr-1" />

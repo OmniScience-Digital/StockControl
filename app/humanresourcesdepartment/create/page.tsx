@@ -28,6 +28,8 @@ import { formatDateForAmplify } from "@/utils/helper/time";
 import { Employee, MEDICAL_CERTIFICATE_TYPES, TRAINING_CERTIFICATE_TYPES } from "@/types/hrd.types";
 import { HrdPDFUpload } from "../components/hrdimages";
 import ResponseModal from "@/components/widgets/response";
+import { FileUploadUpdate } from "@/app/customerrelationsmanagement/Components/fileupdate";
+import { PDFState } from "@/types/schema";
 
 
 export default function CreateEmployeePage() {
@@ -91,7 +93,7 @@ export default function CreateEmployeePage() {
 
 
     const addAdditionalCertificate = () => {
-        setAdditionalCerts(prev => [...prev, { certificateName: "", expiryDate: "", attachment: "" }]);
+        setAdditionalCerts(prev => [{ certificateName: "", expiryDate: "", attachment: "" },...prev]);
 
     };
 
@@ -316,6 +318,23 @@ export default function CreateEmployeePage() {
     const getInitials = (firstName: string, surname: string) => {
         return `${firstName.charAt(0)}${surname.charAt(0)}`.toUpperCase();
     };
+
+        const handleExistingFileChange = (index: number) => (files: PDFState[]) => {
+            // setHasChanges(true);
+    
+            // // Update the certificateFiles state - THIS IS WHAT'S MISSING
+            // setCertificateFiles(prev => ({
+            //     ...prev,
+            //     [index]: files
+            // }));
+    
+            // // Also update the existingdocs if needed
+            // const updated = [...existingdocs];
+            // if (index >= 0 && index < updated.length && files.length > 0) {
+            //     updated[index].requirementDoc = files[0]?.s3Key || "";
+            //     setAdditionalDocs(updated);
+            // }
+        };
 
     return (
         <div className="flex flex-col min-h-screen bg-background">
@@ -855,15 +874,61 @@ export default function CreateEmployeePage() {
                                                                     folder="Additional"
                                                                     existingFiles={cert.attachment ? [cert.attachment] : []}
                                                                     onPDFsChange={(pdfs) => {
-                                                                        const pdfUrls = pdfs.map(pdf => pdf.s3Key);
+                                                                    const pdfUrls = pdfs.map(pdf => pdf.s3Key);
 
-                                                                        // Update the specific additional certificate directly
-                                                                        const updatedCerts = [...additionalCerts];
-                                                                        updatedCerts[index] = {
-                                                                            ...updatedCerts[index],
-                                                                            attachment: pdfUrls[0] || ''
-                                                                        };
-                                                                        setAdditionalCerts(updatedCerts);
+                                                                    // Update the specific additional certificate directly
+                                                                    const updatedCerts = [...additionalCerts];
+                                                                    updatedCerts[index] = {
+                                                                        ...updatedCerts[index],
+                                                                        attachment: pdfUrls[0] || ''
+                                                                    };
+                                                                    setAdditionalCerts(updatedCerts);
+                                                                    }}
+                                                                />
+                                                                            
+                                                                <FileUploadUpdate
+                                                                    assetName={cert.name || ""}
+                                                                    title={`${cert.certificateName || 'Additional'} Attachment`}
+                                                                     folder="Additional"
+                                                                    existingFiles={cert.attachment ? [cert.attachment] : []}
+                                                                    onFilesChange={handleExistingFileChange(1)}
+                                                                    onFileRemove={async (s3Key) => {
+                                                                        if (s3Key && cert.id) {
+                                                                             try {
+                                                                        //         setUpdating(true);
+                                                                        //         setHasChanges(false);
+                                                                        //         await remove({ path: s3Key });
+                                                                        //         await client.models.ComplianceAdditionals.update({
+                                                                        //             id: cert.id,
+                                                                        //             requirementDoc: ""
+                                                                        //         });
+                                                                        //         const updatedDocs = [...existingdocs];
+                                                                        //         updatedDocs[originalIndex] = {
+                                                                        //             ...updatedDocs[originalIndex],
+                                                                        //             requirementDoc: ""
+                                                                        //         };
+                                                                        //         setAdditionalDocs(updatedDocs);
+                                                                        //         const storedName = localStorage.getItem("user")?.replace(/^"|"$/g, '').trim() || "Unknown User";
+                                                                        //         const johannesburgTime = new Date().toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg" });
+                                                                        //         await client.models.History.create({
+                                                                        //             entityType: "COMPLIANCE",
+                                                                        //             entityId: complianceData?.customerSiteId,
+                                                                        //             action: "REMOVE_CERTIFICATE_FILE",
+                                                                        //             timestamp: new Date().toISOString(),
+                                                                        //             details: `\n${storedName} REMOVED file from certificate "${cert.name}" at ${johannesburgTime}\n`
+                                                                        //         });
+                                                                        //         setMessage(`File deleted successfully`);
+                                                                        //         setSuccessful(true);
+                                                                        //         setShow(true);
+                                                                            } catch (error) {
+                                                                                console.error(`Failed to delete file: ${s3Key}`, error);
+                                                                                setMessage("Error deleting file");
+                                                                                setSuccessful(false);
+                                                                                setShow(true);
+                                                                            } finally {
+                                                                               // setUpdating(false);
+                                                                            }
+                                                                        }
                                                                     }}
                                                                 />
 

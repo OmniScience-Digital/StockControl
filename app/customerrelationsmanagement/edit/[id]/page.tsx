@@ -131,7 +131,7 @@ export default function EditCustomerPage() {
     fetchCustomerSite();
   }, [customerSiteId]);
 
-    const handleAssetCreated = () => {
+  const handleAssetCreated = () => {
     setRefreshTrigger(prev => prev + 1);
   };
 
@@ -279,24 +279,21 @@ export default function EditCustomerPage() {
               variant="ghost"
               size="sm"
               onClick={() => router.push('/customerrelationsmanagement')}
-              className="h-9 w-9 p-0"
+              className="h-9 w-9 p-0  hover:scale-105 active:scale-95 transition-transform duration-150"
             >
               <ArrowLeft className="
                 h-5 w-5 mr-2
                 cursor-pointer
-                hover:bg-slate-100
-                active:bg-slate-200
-                active:scale-95
-                rounded
-                transition
-                inline-block
+          
               " />
             </Button>
+
+
             <div>
-              <h2 className="text-2xl font-bold mt-4">
+              <h4 className="text-xl font-bold mt-4">
                 Edit {customerSite.siteName}
-              </h2>
-              <p className="text-muted-foreground mt-1 text-base">
+              </h4>
+              <p className="text-muted-foreground text-sm">
                 Update customer site information
               </p>
             </div>
@@ -649,13 +646,11 @@ export default function EditCustomerPage() {
 
             {/* Assets */}
             <TabsContent value="assets">
-              <AssetCreate customerSiteId={customerSiteId} folder={customerSite.siteName}  onAssetCreated={handleAssetCreated} />
-              <AssetsList customerSiteId={customerSiteId}    refreshTrigger={refreshTrigger}/>
+              <AssetCreate customerSiteId={customerSiteId} folder={customerSite.siteName} onAssetCreated={handleAssetCreated} />
+              <AssetsList customerSiteId={customerSiteId} refreshTrigger={refreshTrigger} />
             </TabsContent>
           </Tabs>
         </div>
-
-
 
         {show && (
           <ResponseModal

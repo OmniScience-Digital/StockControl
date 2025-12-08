@@ -125,7 +125,7 @@ export default function InspectionsPage() {
 
     // Handle edit - navigate to edit page
     const handleEdit = (inspection: any) => {
-        router.push(`/vehicleinspectionsystem/${fleetId}/edit/${inspection.id}`);
+        router.push(`/fleetmanagementsystem/${fleetId}/edit/${inspection.id}`);
     };
 
     // Mobile-friendly columns
@@ -249,7 +249,7 @@ export default function InspectionsPage() {
                                 <Button
                                     variant="ghost"
                                     size="sm"
-                                    onClick={() => router.push('/vehicleinspectionsystem')}
+                                    onClick={() => router.push('/fleetmanagementsystem')}
                                     className="h-9 w-9 p-0 relative hover:scale-105 active:scale-95 transition-transform duration-150">
                                     <ArrowLeft className="h-5 w-5" />
                                 </Button>
