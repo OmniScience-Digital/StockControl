@@ -7,9 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { FileUpload } from "./fileUpload";
 import { handleUpload } from "@/services/s3.service";
 import { PDFState } from "@/types/schema";
+import { FileUpload } from "@/components/widgets/fileUpload";
 
 
 interface ASSETPROPS {

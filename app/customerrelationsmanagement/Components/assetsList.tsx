@@ -18,10 +18,10 @@ import { useState, useMemo, useEffect } from "react";
 import { ConfirmDialog } from "@/components/widgets/deletedialog";
 import { client } from "@/services/schema";
 import { Asset } from "@/types/assets.type";
-import { FileUploadUpdate } from "./fileupdate";
 import Loading from "@/components/widgets/loading";
 import { handleUpload } from "@/services/s3.service";
 import { remove } from 'aws-amplify/storage';
+import { FileUploadUpdate } from "@/components/widgets/fileupdate";
 
 interface AssetsListProps {
     customerSiteId: string;
@@ -181,12 +181,6 @@ export default function AssetsList({ customerSiteId, refreshTrigger = 0 }: Asset
                 asset.scaleModel?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 asset.scaleOEM?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 asset.assetPlant?.toLowerCase().includes(searchTerm.toLowerCase());
-
-            //   const matchesStatus =
-            //     statusFilter === 'all' ||
-            //     (statusFilter === 'active' && (asset.isActive !== false)) ||
-            //     (statusFilter === 'inactive' && (asset.isActive === false));
-
             return matchesSearch;
         });
     }, [assets, searchTerm, statusFilter]);
@@ -246,7 +240,6 @@ export default function AssetsList({ customerSiteId, refreshTrigger = 0 }: Asset
                 if (editedAsset.scaleOEM !== undefined && editedAsset.scaleOEM !== editingAsset.scaleOEM) {
                     historyEntries += `${storedName} updated scaleOEM from ${editingAsset.scaleOEM} to ${editedAsset.scaleOEM} at ${johannesburgTime}\n`;
                 }
-                console.log(scaleDatasheetFiles[0]);
 
                 // Create the updated asset with uploaded file URLs
                 const updatedAsset = {
@@ -372,33 +365,6 @@ export default function AssetsList({ customerSiteId, refreshTrigger = 0 }: Asset
                                 className="pl-8 h-9 text-sm"
                             />
                         </div>
-
-                        {/* <div className="flex gap-1">
-              <Button
-                variant={statusFilter === 'all' ? "default" : "outline"}
-                size="sm"
-                onClick={() => setStatusFilter('all')}
-                className="h-9 text-xs cursor-pointer"
-              >
-                All
-              </Button>
-              <Button
-                variant={statusFilter === 'active' ? "default" : "outline"}
-                size="sm"
-                onClick={() => setStatusFilter('active')}
-                className="h-9 text-xs cursor-pointer"
-              >
-                Active
-              </Button>
-              <Button
-                variant={statusFilter === 'inactive' ? "default" : "outline"}
-                size="sm"
-                onClick={() => setStatusFilter('inactive')}
-                className="h-9 text-xs cursor-pointer"
-              >
-                Inactive
-              </Button>
-            </div> */}
                     </div>
                 </div>
             </CardHeader>

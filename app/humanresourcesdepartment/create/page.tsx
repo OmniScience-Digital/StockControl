@@ -3,17 +3,7 @@
 import { client } from "@/services/schema";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-    Save,
-    ArrowLeft,
-    User,
-    Loader2,
-    Upload,
-    FileText,
-    Plus,
-    Trash2,
-    BriefcaseMedical
-} from "lucide-react";
+import { Save, ArrowLeft, User, Loader2, FileText, BriefcaseMedical } from "lucide-react";
 import Footer from "@/components/layout/footer";
 import Navbar from "@/components/layout/navbar";
 import { Button } from "@/components/ui/button";
@@ -26,10 +16,12 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { formatDateForAmplify } from "@/utils/helper/time";
 import { Employee, MEDICAL_CERTIFICATE_TYPES, TRAINING_CERTIFICATE_TYPES } from "@/types/hrd.types";
-import { HrdPDFUpload } from "../components/hrdimages";
 import ResponseModal from "@/components/widgets/response";
-import { FileUploadUpdate } from "@/app/customerrelationsmanagement/Components/fileupdate";
 import { PDFState } from "@/types/schema";
+import { remove } from "@aws-amplify/storage";
+import { getInitials } from "@/utils/helper/helper";
+import { FileUploadUpdate } from "@/components/widgets/fileupdate";
+import { handleUpload } from "@/services/s3.service";
 
 
 export default function CreateEmployeePage() {
@@ -59,15 +51,11 @@ export default function CreateEmployeePage() {
             attachment: ""
         }))
     );
-    const [additionalCerts, setAdditionalCerts] = useState<any[]>([]);
 
-
-    // Add state to track which certificate is being uploaded
-    const [uploadingCertIndex, setUploadingCertIndex] = useState<{
-        type: 'medical' | 'training' | 'additional';
-        index: number;
-    } | null>(null);
-
+    // Store full PDFState objects, not just s3Key strings
+    const [documentFiles, setDocumentFiles] = useState<Record<string, PDFState>>({});
+    const [medicalFiles, setMedicalFiles] = useState<PDFState[]>([]);
+    const [trainingFiles, setTrainingFiles] = useState<PDFState[]>([]);
 
     const handleInputChange = (field: keyof Employee, value: any) => {
         setFormData(prev => ({ ...prev, [field]: value }));
@@ -85,104 +73,71 @@ export default function CreateEmployeePage() {
         setTrainingCerts(updated);
     };
 
-    const handleAdditionalCertChange = (index: number, field: string, value: string) => {
-        const updated = [...additionalCerts];
-        updated[index] = { ...updated[index], [field]: value };
-        setAdditionalCerts(updated);
+
+
+// Update your handlers to store full PDFState objects:
+const handleDocumentFileChange = (field: keyof Employee) => (files: PDFState[]) => {
+  if (files[0]) {
+    // Store the full PDFState object
+    setDocumentFiles(prev => ({ ...prev, [field]: files[0] }));
+    
+    // Also store the s3Key in formData for display
+    const url = files[0]?.s3Key || '';
+    setFormData(prev => ({ ...prev, [field]: url }));
+  }
+};
+
+const handleMedicalFileChange = (index: number) => (files: PDFState[]) => {
+  if (files[0]) {
+    // Update medicalFiles array with full PDFState object
+    const updated = [...medicalFiles];
+    updated[index] = files[0];
+    setMedicalFiles(updated);
+    
+    // Also update medicalCerts with s3Key
+    const updatedCerts = [...medicalCerts];
+    updatedCerts[index] = {
+      ...updatedCerts[index],
+      attachment: files[0]?.s3Key || ""
     };
+    setMedicalCerts(updatedCerts);
+  }
+};
 
-
-    const addAdditionalCertificate = () => {
-        setAdditionalCerts(prev => [{ certificateName: "", expiryDate: "", attachment: "" },...prev]);
-
+const handleTrainingFileChange = (index: number) => (files: PDFState[]) => {
+  if (files[0]) {
+    // Update trainingFiles array with full PDFState object
+    const updated = [...trainingFiles];
+    updated[index] = files[0];
+    setTrainingFiles(updated);
+    
+    // Also update trainingCerts with s3Key
+    const updatedCerts = [...trainingCerts];
+    updatedCerts[index] = {
+      ...updatedCerts[index],
+      attachment: files[0]?.s3Key || ""
     };
+    setTrainingCerts(updatedCerts);
+  }
+};
+    // Generic handler for file removal
+    const handleDocumentFileRemove = (field: keyof Employee) => async (s3Key: string) => {
+        if (s3Key) {
+            try {
+                await remove({ path: s3Key });
+                setFormData(prev => ({ ...prev, [field]: '' }));
 
-    const removeAdditionalCertificate = (index: number) => {
-        setAdditionalCerts(prev => prev.filter((_, i) => i !== index));
-
-    };
-
-    const handleChange = async (dbkey: string, urls: string[]) => {
-        try {
-
-            // Take only the first URL since we're now doing single file uploads
-            const url = urls.length > 0 ? urls[0] : '';
-
-            switch (dbkey) {
-                case "employeeId":
-                    setFormData(prev => ({ ...prev, employeeIdAttachment: url }));
-                    break;
-
-                case "passport":
-                    setFormData(prev => ({ ...prev, passportAttachment: url }));
-                    break;
-
-                case "driversLicense":
-                    setFormData(prev => ({ ...prev, driversLicenseAttachment: url }));
-                    break;
-
-                case "pdp":
-                    setFormData(prev => ({ ...prev, pdpAttachment: url }));
-                    break;
-
-                case "ppeList":
-                    setFormData(prev => ({ ...prev, ppeListAttachment: url }));
-                    break;
-
-                case "cv":
-                    setFormData(prev => ({ ...prev, cvAttachment: url }));
-                    break;
-
-                case "medicalCerts":
-                    // Update the specific medical certificate that was being uploaded
-                    if (uploadingCertIndex?.type === 'medical') {
-                        const updatedCerts = [...medicalCerts];
-                        updatedCerts[uploadingCertIndex.index] = {
-                            ...updatedCerts[uploadingCertIndex.index],
-                            attachment: url
-                        };
-                        setMedicalCerts(updatedCerts);
-                    }
-                    break;
-
-                case "trainingCerts":
-                    if (uploadingCertIndex?.type === 'training') {
-                        const updatedCerts = [...trainingCerts];
-                        updatedCerts[uploadingCertIndex.index] = {
-                            ...updatedCerts[uploadingCertIndex.index],
-                            attachment: url
-                        };
-                        setTrainingCerts(updatedCerts);
-                    }
-                    break;
-
-                case "additionalCerts":
-                    if (uploadingCertIndex?.type === 'additional') {
-                        const updatedCerts = [...additionalCerts];
-                        updatedCerts[uploadingCertIndex.index] = {
-                            ...updatedCerts[uploadingCertIndex.index],
-                            attachment: url
-                        };
-                        setAdditionalCerts(updatedCerts);
-                    }
-                    break;
-
-                default:
-                    console.warn(`Unknown dbkey: ${dbkey}`);
+                setMessage(`File removed successfully`);
+                setSuccessful(true);
+                setShow(true);
+            } catch (error) {
+                console.error(`Failed to delete file: ${s3Key}`, error);
+                setMessage("Error deleting file");
+                setSuccessful(false);
+                setShow(true);
             }
-
-            // Reset uploading index
-            setUploadingCertIndex(null);
-
-        } catch (error) {
-            console.error('Error handling file change:', error);
-            setMessage("Failed to update file attachment!");
-            setShow(true);
-            setSuccessful(false);
-            setUploadingCertIndex(null);
         }
-    }
-
+    };
 
     const validateForm = (): boolean => {
         if (!formData.employeeId?.trim()) {
@@ -209,132 +164,192 @@ export default function CreateEmployeePage() {
         return true;
     };
 
-    const handleSave = async () => {
-        try {
-            if (!validateForm()) {
-                return;
-            }
 
-            setSaving(true);
+const handleSave = async () => {
+  try {
+    if (!validateForm()) {
+      return;
+    }
 
-            const storedName = localStorage.getItem("user")?.replace(/^"|"$/g, '').trim() || "Unknown User";
-            const johannesburgTime = new Date().toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg" });
-            const historyEntries = `${storedName} created new employee at ${johannesburgTime}.\n`;
+    setSaving(true);
 
-            // Upload files and get their paths
-            const employeeId = formData.employeeId!;
+    const storedName = localStorage.getItem("user")?.replace(/^"|"$/g, '').trim() || "Unknown User";
+    const johannesburgTime = new Date().toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg" });
+    const historyEntries = `${storedName} created new employee at ${johannesburgTime}.\n`;
+    
+    const employeeId = formData.employeeId!;
 
-            const employeeData = {
-                employeeId: formData.employeeId!,
-                firstName: formData.firstName!,
-                surname: formData.surname!,
-                employeeNumber: formData.employeeNumber || null,
-                knownAs: formData.knownAs || null,
-                passportNumber: formData.passportNumber || null,
-                passportExpiry: formatDateForAmplify(formData.passportExpiry),
-                passportAttachment: formData.passportAttachment || null,
-                driversLicenseCode: formData.driversLicenseCode || null,
-                driversLicenseExpiry: formatDateForAmplify(formData.driversLicenseExpiry),
-                driversLicenseAttachment: formData.driversLicenseAttachment || null,
-                authorizedDriver: formData.authorizedDriver!,
-                pdpExpiry: formatDateForAmplify(formData.pdpExpiry),
-                pdpAttachment: formData.pdpAttachment || null,
-                cvAttachment: formData.cvAttachment || null,
-                ppeListAttachment: formData.ppeListAttachment || null,
-                ppeExpiry: formatDateForAmplify(formData.ppeExpiry),
-                employeeIdAttachment: formData.employeeIdAttachment || null,
-            };
+    // ==============================================
+    // 1. UPLOAD ALL MAIN DOCUMENT FILES
+    // ==============================================
+    const s3KeyMap: Record<string, string> = {};
+    
+    // Upload main document files
+    const mainUploadPromises = Object.entries(documentFiles).map(async ([field, pdfState]) => {
+      if (pdfState && pdfState.file) {
+        const key = await handleUpload(pdfState);
+        s3KeyMap[field] = key;
+      }
+    });
 
-            const newEmployee = await client.models.Employee.create(employeeData);
+    await Promise.all(mainUploadPromises);
 
-            if (!newEmployee.errors) {
-                // Create medical certificates
-                for (const cert of medicalCerts) {
-                    if (cert.certificateType) {
-                        await client.models.EmployeeMedicalCertificate.create({
-                            employeeId: employeeId,
-                            certificateType: cert.certificateType,
-                            expiryDate: formatDateForAmplify(cert.expiryDate) || "",
-                            attachment: cert.attachment || null
-                        });
-                    }
-                }
+    // ==============================================
+    // 2. UPLOAD MEDICAL CERTIFICATE FILES
+    // ==============================================
+    const medicalKeys: string[] = [];
+    for (let i = 0; i < medicalFiles.length; i++) {
+      const pdfState = medicalFiles[i];
+      if (pdfState && pdfState.file) {
+        const key = await handleUpload(pdfState);
+        medicalKeys[i] = key;
+      }
+    }
 
-                // Create training certificates
-                for (const cert of trainingCerts) {
-                    if (cert.certificateType) {
-                        await client.models.EmployeeTrainingCertificate.create({
-                            employeeId: employeeId,
-                            certificateType: cert.certificateType,
-                            expiryDate: formatDateForAmplify(cert.expiryDate) || "",
-                            attachment: cert.attachment || null
-                        });
-                    }
-                }
+    // ==============================================
+    // 3. UPLOAD TRAINING CERTIFICATE FILES
+    // ==============================================
+    const trainingKeys: string[] = [];
+    for (let i = 0; i < trainingFiles.length; i++) {
+      const pdfState = trainingFiles[i];
+      if (pdfState && pdfState.file) {
+        const key = await handleUpload(pdfState);
+        trainingKeys[i] = key;
+      }
+    }
 
-                // Create additional certificates
-                for (const cert of additionalCerts) {
-                    if (cert.certificateName) {
-                        await client.models.EmployeeAdditionalCertificate.create({
-                            employeeId: employeeId,
-                            certificateName: cert.certificateName,
-                            expiryDate: formatDateForAmplify(cert.expiryDate) || "",
-                            attachment: cert.attachment || null
-                        });
-                    }
-                }
+    // ==============================================
+    // 4. VALIDATE CERTIFICATES WITH ATTACHMENTS
+    // ==============================================
+    let hasValidationError = false;
+    let errorCertName = "";
+    let errorCertType = "";
 
-                    // Add History table entry
-                  await client.models.History.create({
-                    entityType: "EMPLOYEE",
-                    entityId: employeeId,
-                    action: "CREATE",
-                    timestamp: new Date().toISOString(),
-                    details:historyEntries
-                    });
-                  router.push('/humanresourcesdepartment');
+    // Validate medical certificates
+    for (let i = 0; i < medicalCerts.length; i++) {
+      const cert = medicalCerts[i];
+      if ((medicalKeys[i] || cert.attachment) && !cert.expiryDate) {
+        hasValidationError = true;
+        errorCertName = cert.certificateType;
+        errorCertType = "Medical";
+        break;
+      }
+    }
 
-            } else {
-                
-                setMessage("Failed to create employee!");
-                setShow(true);
-                setSuccessful(false);
-
-
-            }
-
-        } catch (error: any) {
-            console.error("Error saving employee:", error);
-            const errorMessage = error.message || "Error creating employee. Please check the console for details.";
-            setMessage(errorMessage);
-            setShow(true);
-            setSuccessful(false);
-
-        } finally {
-            setSaving(false);
+    // Validate training certificates
+    if (!hasValidationError) {
+      for (let i = 0; i < trainingCerts.length; i++) {
+        const cert = trainingCerts[i];
+        if ((trainingKeys[i] || cert.attachment) && !cert.expiryDate) {
+          hasValidationError = true;
+          errorCertName = cert.certificateType;
+          errorCertType = "Training";
+          break;
         }
+      }
+    }
+
+    if (hasValidationError) {
+      setMessage(`${errorCertType} Certificate "${errorCertName}" requires an expiry date since it has an attachment`);
+      setShow(true);
+      setSuccessful(false);
+      setSaving(false);
+      return;
+    }
+
+    // ==============================================
+    // 5. CREATE EMPLOYEE RECORD WITH ACTUAL S3 KEYS
+    // ==============================================
+    const employeeData = {
+      employeeId: formData.employeeId!,
+      firstName: formData.firstName!,
+      surname: formData.surname!,
+      employeeNumber: formData.employeeNumber || null,
+      knownAs: formData.knownAs || null,
+      passportNumber: formData.passportNumber || null,
+      passportExpiry: formatDateForAmplify(formData.passportExpiry),
+      passportAttachment: s3KeyMap.passportAttachment || null,
+      driversLicenseCode: formData.driversLicenseCode || null,
+      driversLicenseExpiry: formatDateForAmplify(formData.driversLicenseExpiry),
+      driversLicenseAttachment: s3KeyMap.driversLicenseAttachment || null,
+      authorizedDriver: formData.authorizedDriver!,
+      pdpExpiry: formatDateForAmplify(formData.pdpExpiry),
+      pdpAttachment: s3KeyMap.pdpAttachment || null,
+      cvAttachment: s3KeyMap.cvAttachment || null,
+      ppeListAttachment: s3KeyMap.ppeListAttachment || null,
+      ppeExpiry: formatDateForAmplify(formData.ppeExpiry),
+      employeeIdAttachment: s3KeyMap.employeeIdAttachment || null,
     };
 
-    const getInitials = (firstName: string, surname: string) => {
-        return `${firstName.charAt(0)}${surname.charAt(0)}`.toUpperCase();
-    };
+    const newEmployee = await client.models.Employee.create(employeeData);
 
-        const handleExistingFileChange = (index: number) => (files: PDFState[]) => {
-            // setHasChanges(true);
-    
-            // // Update the certificateFiles state - THIS IS WHAT'S MISSING
-            // setCertificateFiles(prev => ({
-            //     ...prev,
-            //     [index]: files
-            // }));
-    
-            // // Also update the existingdocs if needed
-            // const updated = [...existingdocs];
-            // if (index >= 0 && index < updated.length && files.length > 0) {
-            //     updated[index].requirementDoc = files[0]?.s3Key || "";
-            //     setAdditionalDocs(updated);
-            // }
-        };
+    if (!newEmployee.errors) {
+      // ==============================================
+      // 6. CREATE MEDICAL CERTIFICATES
+      // ==============================================
+      for (let i = 0; i < medicalCerts.length; i++) {
+        const cert = medicalCerts[i];
+        if (cert.certificateType) {
+          await client.models.EmployeeMedicalCertificate.create({
+            employeeId: employeeId,
+            certificateType: cert.certificateType,
+            expiryDate: formatDateForAmplify(cert.expiryDate) || "",
+            attachment: medicalKeys[i] || null
+          });
+        }
+      }
+
+      // ==============================================
+      // 7. CREATE TRAINING CERTIFICATES
+      // ==============================================
+      for (let i = 0; i < trainingCerts.length; i++) {
+        const cert = trainingCerts[i];
+        if (cert.certificateType) {
+          await client.models.EmployeeTrainingCertificate.create({
+            employeeId: employeeId,
+            certificateType: cert.certificateType,
+            expiryDate: formatDateForAmplify(cert.expiryDate) || "",
+            attachment: trainingKeys[i] || null
+          });
+        }
+      }
+
+      // ==============================================
+      // 8. ADD HISTORY TABLE ENTRY
+      // ==============================================
+      await client.models.History.create({
+        entityType: "EMPLOYEE",
+        entityId: employeeId,
+        action: "CREATE",
+        timestamp: new Date().toISOString(),
+        details: historyEntries
+      });
+      
+      setMessage("Employee created successfully!");
+      setShow(true);
+      setSuccessful(true);
+      
+      // Redirect after a short delay
+      setTimeout(() => {
+        router.push('/humanresourcesdepartment');
+      }, 1500);
+
+    } else {
+      setMessage("Failed to create employee!");
+      setShow(true);
+      setSuccessful(false);
+    }
+
+  } catch (error: any) {
+    console.error("Error saving employee:", error);
+    const errorMessage = error.message || "Error creating employee. Please check the console for details.";
+    setMessage(errorMessage);
+    setShow(true);
+    setSuccessful(false);
+  } finally {
+    setSaving(false);
+  }
+};
 
     return (
         <div className="flex flex-col min-h-screen bg-background">
@@ -345,12 +360,12 @@ export default function CreateEmployeePage() {
                     {/* Header */}
                     <div className="mb-8">
                         <div className="flex items-center gap-4 mb-6">
+
                             <Button
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => router.push('/humanresourcesdepartment')}
-                                className="h-9 w-9 p-0"
-                            >
+                                className="h-9 w-9 p-0 relative hover:scale-105 active:scale-95 transition-transform duration-150">
                                 <ArrowLeft className="h-5 w-5" />
                             </Button>
                             <div>
@@ -423,12 +438,6 @@ export default function CreateEmployeePage() {
                                                         {trainingCerts.length}
                                                     </Badge>
                                                 </div>
-                                                <div className="flex justify-between">
-                                                    <span>Additional Certs:</span>
-                                                    <Badge variant={additionalCerts.length > 0 ? "default" : "secondary"}>
-                                                        {additionalCerts.length}
-                                                    </Badge>
-                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -441,16 +450,15 @@ export default function CreateEmployeePage() {
 
                             <Tabs defaultValue="personal" className="space-y-6">
 
-                                <TabsList className="grid w-full grid-cols-4">
+                                <TabsList className="grid w-full grid-cols-3">
                                     <TabsTrigger value="personal" className="cursor-pointer">Basic</TabsTrigger>
                                     <TabsTrigger value="medical" className="cursor-pointer">Medical / Induction</TabsTrigger>
                                     <TabsTrigger value="training" className="cursor-pointer">Training / Certification</TabsTrigger>
-                                    <TabsTrigger value="additional" className="cursor-pointer">Additional</TabsTrigger>
 
                                 </TabsList>
 
                                 {/* Personal Information Tab */}
-                                <TabsContent value="personal" >
+                                <TabsContent value="personal">
                                     <Card>
                                         <CardHeader>
                                             <CardTitle className="flex items-center gap-2">
@@ -499,7 +507,6 @@ export default function CreateEmployeePage() {
                                                 </div>
 
                                                 <div className="space-y-4">
-
                                                     <div>
                                                         <Label>Employee Number</Label>
                                                         <Input
@@ -510,26 +517,22 @@ export default function CreateEmployeePage() {
                                                     </div>
 
                                                     <div>
-                                                        <HrdPDFUpload
-                                                            employeeID={formData.employeeId || ""}
-                                                            filetitle="Employee ID Attachment"
-                                                            filename="employeeId"
+                                                        <Label>Employee ID Attachment</Label>
+                                                        <FileUploadUpdate
+                                                            assetName="employee-id"
+                                                            title="Employee ID Attachment"
                                                             folder="ID"
                                                             existingFiles={formData.employeeIdAttachment ? [formData.employeeIdAttachment] : []}
-
-                                                            onPDFsChange={(pdfs) => {
-                                                                const pdfUrls = pdfs.map(pdf => pdf.s3Key);
-                                                                handleChange("employeeId", pdfUrls);
-                                                            }}
+                                                            onFilesChange={handleDocumentFileChange('employeeIdAttachment')}
+                                                            onFileRemove={handleDocumentFileRemove('employeeIdAttachment')}
                                                         />
-
                                                     </div>
                                                 </div>
 
                                                 {/* Passport Section */}
                                                 <div>
                                                     <div className="space-y-4">
-                                                        <h4 className="font-semibold border-b ">Passport Details</h4>
+                                                        <h4 className="font-semibold border-b">Passport Details</h4>
                                                         <div>
                                                             <Label>Passport Number</Label>
                                                             <Input
@@ -547,33 +550,27 @@ export default function CreateEmployeePage() {
                                                                 onChange={(e) => handleInputChange('passportExpiry', e.target.value)}
                                                             />
                                                         </div>
-
                                                     </div>
 
                                                     <div className="space-y-4">
                                                         <div>
-                                                            <HrdPDFUpload
-                                                                employeeID={formData.employeeId || ""}
-                                                                filetitle="Passport Attachment"
-                                                                filename="passport"
+                                                            <Label>Passport Attachment</Label>
+                                                            <FileUploadUpdate
+                                                                assetName="passport"
+                                                                title="Passport Attachment"
                                                                 folder="Passport"
                                                                 existingFiles={formData.passportAttachment ? [formData.passportAttachment] : []}
-                                                                onPDFsChange={(pdfs) => {
-                                                                    const pdfUrls = pdfs.map(pdf => pdf.s3Key);
-                                                                    handleChange("passport", pdfUrls);
-                                                                }}
+                                                                onFilesChange={handleDocumentFileChange('passportAttachment')}
+                                                                onFileRemove={handleDocumentFileRemove('passportAttachment')}
                                                             />
-
                                                         </div>
                                                     </div>
-
                                                 </div>
-
 
                                                 {/* Driver's License Section */}
                                                 <div>
                                                     <div className="space-y-4">
-                                                        <h4 className="font-semibold border-b ">Driver's License</h4>
+                                                        <h4 className="font-semibold border-b">Driver's License</h4>
                                                         <div>
                                                             <Label>License Code</Label>
                                                             <Input
@@ -591,33 +588,27 @@ export default function CreateEmployeePage() {
                                                                 onChange={(e) => handleInputChange('driversLicenseExpiry', e.target.value)}
                                                             />
                                                         </div>
-
-
                                                     </div>
 
                                                     <div className="space-y-4">
                                                         <div>
-                                                            <HrdPDFUpload
-                                                                employeeID={formData.employeeId || ""}
-                                                                filetitle="Driver's License Attachment"
-                                                                filename="driversLicense"
+                                                            <Label>Driver's License Attachment</Label>
+                                                            <FileUploadUpdate
+                                                                assetName="drivers-license"
+                                                                title="Driver's License Attachment"
                                                                 folder="License"
                                                                 existingFiles={formData.driversLicenseAttachment ? [formData.driversLicenseAttachment] : []}
-                                                                onPDFsChange={(pdfs) => {
-                                                                    const pdfUrls = pdfs.map(pdf => pdf.s3Key);
-                                                                    handleChange("driversLicense", pdfUrls);
-                                                                }}
+                                                                onFilesChange={handleDocumentFileChange('driversLicenseAttachment')}
+                                                                onFileRemove={handleDocumentFileRemove('driversLicenseAttachment')}
                                                             />
-
                                                         </div>
                                                     </div>
                                                 </div>
 
-                                                {/* Pdp and PPE Documents */}
+                                                {/* PDP and CV Documents */}
                                                 <div>
                                                     <div className="space-y-4">
-                                                        <h4 className="font-semibold border-b ">PDP</h4>
-
+                                                        <h4 className="font-semibold border-b">PDP</h4>
                                                         <div>
                                                             <Label>PDP Expiry</Label>
                                                             <Input
@@ -626,43 +617,40 @@ export default function CreateEmployeePage() {
                                                                 onChange={(e) => handleInputChange('pdpExpiry', e.target.value)}
                                                             />
                                                         </div>
-                                                        <HrdPDFUpload
-                                                            employeeID={formData.employeeId || ""}
-                                                            filetitle="Pdp  Attachment"
-                                                            filename="pdp"
-                                                            folder="pdp"
-                                                            existingFiles={formData.pdpAttachment ? [formData.pdpAttachment] : []}
-                                                            onPDFsChange={(pdfs) => {
-                                                                const pdfUrls = pdfs.map(pdf => pdf.s3Key);
-                                                                handleChange("pdp", pdfUrls);
-                                                            }}
-                                                        />
+
+                                                        <div>
+                                                            <Label>PDP Attachment</Label>
+                                                            <FileUploadUpdate
+                                                                assetName="pdp"
+                                                                title="PDP Attachment"
+                                                                folder="PDP"
+                                                                existingFiles={formData.pdpAttachment ? [formData.pdpAttachment] : []}
+                                                                onFilesChange={handleDocumentFileChange('pdpAttachment')}
+                                                                onFileRemove={handleDocumentFileRemove('pdpAttachment')}
+                                                            />
+                                                        </div>
                                                     </div>
 
                                                     <div className="space-y-4 mt-4">
-                                                        <h4 className="font-semibold border-b ">Curriculum Vitae</h4>
-
-                                                        <Label>CV Doc</Label>
-
-                                                        <HrdPDFUpload
-                                                            employeeID={formData.employeeId || ""}
-                                                            filetitle="CV  Attachment"
-                                                            filename="cv"
-                                                            folder="Cv"
-                                                            existingFiles={formData.cvAttachment ? [formData.cvAttachment] : []}
-                                                            onPDFsChange={(pdfs) => {
-                                                                const pdfUrls = pdfs.map(pdf => pdf.s3Key);
-                                                                handleChange("cv", pdfUrls);
-                                                            }}
-                                                        />
-
+                                                        <h4 className="font-semibold border-b">Curriculum Vitae</h4>
+                                                        <div>
+                                                            <Label>CV Attachment</Label>
+                                                            <FileUploadUpdate
+                                                                assetName="cv"
+                                                                title="CV Attachment"
+                                                                folder="CV"
+                                                                existingFiles={formData.cvAttachment ? [formData.cvAttachment] : []}
+                                                                onFilesChange={handleDocumentFileChange('cvAttachment')}
+                                                                onFileRemove={handleDocumentFileRemove('cvAttachment')}
+                                                            />
+                                                        </div>
                                                     </div>
                                                 </div>
 
+                                                {/* PPE Documents */}
                                                 <div>
                                                     <div className="space-y-4">
-                                                        <h4 className="font-semibold border-b ">PPE</h4>
-
+                                                        <h4 className="font-semibold border-b">PPE</h4>
                                                         <div>
                                                             <Label>PPE Expiry</Label>
                                                             <Input
@@ -672,23 +660,19 @@ export default function CreateEmployeePage() {
                                                             />
                                                         </div>
 
-                                                        <HrdPDFUpload
-                                                            employeeID={formData.employeeId || ""}
-                                                            filetitle="PPE List  Attachment"
-                                                            filename="ppeList"
-                                                            folder="PPE"
-                                                            existingFiles={formData.ppeListAttachment ? [formData.ppeListAttachment] : []}
-                                                            onPDFsChange={(pdfs) => {
-                                                                const pdfUrls = pdfs.map(pdf => pdf.s3Key);
-                                                                handleChange("ppeList", pdfUrls);
-                                                            }}
-                                                        />
+                                                        <div>
+                                                            <Label>PPE List Attachment</Label>
+                                                            <FileUploadUpdate
+                                                                assetName="ppe-list"
+                                                                title="PPE List Attachment"
+                                                                folder="PPE"
+                                                                existingFiles={formData.ppeListAttachment ? [formData.ppeListAttachment] : []}
+                                                                onFilesChange={handleDocumentFileChange('ppeListAttachment')}
+                                                                onFileRemove={handleDocumentFileRemove('ppeListAttachment')}
+                                                            />
+                                                        </div>
                                                     </div>
                                                 </div>
-
-
-
-
                                             </div>
                                         </CardContent>
                                     </Card>
@@ -729,22 +713,35 @@ export default function CreateEmployeePage() {
                                                             </div>
                                                             <div className="md:col-span-2">
                                                                 <Label>Attachment</Label>
-                                                                <HrdPDFUpload
-                                                                    key={`medical-${cert.certificateType}-${index}`}
-                                                                    employeeID={formData.employeeId || ""}
-                                                                    filetitle={`${cert.certificateType} Attachment`}
-                                                                    filename={`medical-${cert.certificateType}`}
+                                                                <FileUploadUpdate
+                                                                    assetName={cert.certificateType || ""}
+                                                                    title={`${cert.certificateType} Attachment`}
                                                                     folder="Medical"
                                                                     existingFiles={cert.attachment ? [cert.attachment] : []}
-                                                                    onPDFsChange={(pdfs) => {
-                                                                        const pdfUrls = pdfs.map(pdf => pdf.s3Key);
-                                                                        // Update the specific medical certificate directly
-                                                                        const updatedCerts = [...medicalCerts];
-                                                                        updatedCerts[index] = {
-                                                                            ...updatedCerts[index],
-                                                                            attachment: pdfUrls[0] || ''
-                                                                        };
-                                                                        setMedicalCerts(updatedCerts);
+                                                                    onFilesChange={handleMedicalFileChange(index)}
+                                                                    onFileRemove={async (s3Key) => {
+                                                                        if (s3Key && cert.id) {
+                                                                            try {
+                                                                                await remove({ path: s3Key });
+
+                                                                                // Update medicalCerts state
+                                                                                const updated = [...medicalCerts];
+                                                                                updated[index] = {
+                                                                                    ...updated[index],
+                                                                                    attachment: ""
+                                                                                };
+                                                                                setMedicalCerts(updated);
+
+                                                                                setMessage(`File deleted successfully`);
+                                                                                setSuccessful(true);
+                                                                                setShow(true);
+                                                                            } catch (error) {
+                                                                                console.error(`Failed to delete file: ${s3Key}`, error);
+                                                                                setMessage("Error deleting file");
+                                                                                setSuccessful(false);
+                                                                                setShow(true);
+                                                                            }
+                                                                        }
                                                                     }}
                                                                 />
                                                             </div>
@@ -763,6 +760,7 @@ export default function CreateEmployeePage() {
                                                 <FileText className="h-5 w-5" />
                                                 Training Certificates
                                             </CardTitle>
+
                                         </CardHeader>
                                         <CardContent className="p-6">
                                             <div className="space-y-6">
@@ -790,157 +788,43 @@ export default function CreateEmployeePage() {
                                                             </div>
                                                             <div className="md:col-span-2">
                                                                 <Label>Attachment</Label>
-                                                                <HrdPDFUpload
-                                                                    key={`training-${cert.certificateType}-${index}`}
-                                                                    employeeID={formData.employeeId || ""}
-                                                                    filetitle={`${cert.certificateType} Attachment`}
-                                                                    filename={`training-${cert.certificateType}`}
+
+                                                                <FileUploadUpdate
+                                                                    assetName={cert.certificateType || ""}
+                                                                    title={`${cert.certificateType} Attachment`}
                                                                     folder="Training"
                                                                     existingFiles={cert.attachment ? [cert.attachment] : []}
-                                                                    onPDFsChange={(pdfs) => {
-                                                                        const pdfUrls = pdfs.map(pdf => pdf.s3Key);
-                                                                        const updatedCerts = [...trainingCerts];
-                                                                        updatedCerts[index] = {
-                                                                            ...updatedCerts[index],
-                                                                            attachment: pdfUrls[0] || ''
-                                                                        };
-                                                                        setTrainingCerts(updatedCerts);
-                                                                    }}
-                                                                />
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                </TabsContent>
-                                {/* Additional Certificates Tab */}
-                                <TabsContent value="additional">
-                                    <Card>
-                                        <CardHeader>
-                                            <div className="flex justify-between items-center">
-                                                <CardTitle className="flex items-center gap-2">
-                                                    <FileText className="h-5 w-5" />
-                                                    Additional Certificates
-                                                </CardTitle>
-                                                <Button onClick={addAdditionalCertificate} size="sm">
-                                                    <Plus className="h-4 w-4 mr-2" />
-                                                    Add Certificate
-                                                </Button>
-                                            </div>
-
-                                        </CardHeader>
-                                        <CardContent className="p-6">
-                                            <div className="space-y-6">
-                                                {additionalCerts.map((cert, index) => (
-                                                    <div key={index} className="p-4 border rounded-lg">
-                                                        <div className="flex justify-between items-start mb-4">
-                                                            <h4 className="font-semibold">Additional Certificate #{index + 1}</h4>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                onClick={() => removeAdditionalCertificate(index)}
-                                                                className="text-red-600 hover:text-red-800"
-                                                            >
-                                                                <Trash2 className="h-4 w-4" />
-                                                            </Button>
-                                                        </div>
-                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                            <div>
-                                                                <Label>Certificate Name</Label>
-                                                                <Input
-                                                                    value={cert.certificateName || ''}
-                                                                    onChange={(e) => handleAdditionalCertChange(index, 'certificateName', e.target.value)}
-                                                                    placeholder="Enter certificate name"
-                                                                />
-                                                            </div>
-                                                            <div>
-                                                                <Label>Expiry Date</Label>
-                                                                <Input
-                                                                    type="date"
-                                                                    value={cert.expiryDate || ''}
-                                                                    onChange={(e) => handleAdditionalCertChange(index, 'expiryDate', e.target.value)}
-                                                                />
-                                                            </div>
-                                                            <div className="md:col-span-2">
-                                                                <Label>Attachment</Label>
-
-                                                                <HrdPDFUpload
-                                                                    key={`additional-${index}-${cert.certificateName}`}
-                                                                    employeeID={formData.employeeId || ""}
-                                                                    filetitle={`${cert.certificateName || 'Additional'} Attachment`}
-                                                                    filename={`additional-${index}`}
-                                                                    folder="Additional"
-                                                                    existingFiles={cert.attachment ? [cert.attachment] : []}
-                                                                    onPDFsChange={(pdfs) => {
-                                                                    const pdfUrls = pdfs.map(pdf => pdf.s3Key);
-
-                                                                    // Update the specific additional certificate directly
-                                                                    const updatedCerts = [...additionalCerts];
-                                                                    updatedCerts[index] = {
-                                                                        ...updatedCerts[index],
-                                                                        attachment: pdfUrls[0] || ''
-                                                                    };
-                                                                    setAdditionalCerts(updatedCerts);
-                                                                    }}
-                                                                />
-                                                                            
-                                                                <FileUploadUpdate
-                                                                    assetName={cert.name || ""}
-                                                                    title={`${cert.certificateName || 'Additional'} Attachment`}
-                                                                     folder="Additional"
-                                                                    existingFiles={cert.attachment ? [cert.attachment] : []}
-                                                                    onFilesChange={handleExistingFileChange(1)}
+                                                                    onFilesChange={handleTrainingFileChange(index)}  // Use separate handler
                                                                     onFileRemove={async (s3Key) => {
                                                                         if (s3Key && cert.id) {
-                                                                             try {
-                                                                        //         setUpdating(true);
-                                                                        //         setHasChanges(false);
-                                                                        //         await remove({ path: s3Key });
-                                                                        //         await client.models.ComplianceAdditionals.update({
-                                                                        //             id: cert.id,
-                                                                        //             requirementDoc: ""
-                                                                        //         });
-                                                                        //         const updatedDocs = [...existingdocs];
-                                                                        //         updatedDocs[originalIndex] = {
-                                                                        //             ...updatedDocs[originalIndex],
-                                                                        //             requirementDoc: ""
-                                                                        //         };
-                                                                        //         setAdditionalDocs(updatedDocs);
-                                                                        //         const storedName = localStorage.getItem("user")?.replace(/^"|"$/g, '').trim() || "Unknown User";
-                                                                        //         const johannesburgTime = new Date().toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg" });
-                                                                        //         await client.models.History.create({
-                                                                        //             entityType: "COMPLIANCE",
-                                                                        //             entityId: complianceData?.customerSiteId,
-                                                                        //             action: "REMOVE_CERTIFICATE_FILE",
-                                                                        //             timestamp: new Date().toISOString(),
-                                                                        //             details: `\n${storedName} REMOVED file from certificate "${cert.name}" at ${johannesburgTime}\n`
-                                                                        //         });
-                                                                        //         setMessage(`File deleted successfully`);
-                                                                        //         setSuccessful(true);
-                                                                        //         setShow(true);
+                                                                            try {
+                                                                                await remove({ path: s3Key });
+
+                                                                                //  Update trainingCerts, additionalCerts
+                                                                                const updated = [...trainingCerts];
+                                                                                updated[index] = {
+                                                                                    ...updated[index],
+                                                                                    attachment: ""
+                                                                                };
+                                                                                setTrainingCerts(updated);
+
+
+                                                                                setMessage(`File deleted successfully`);
+                                                                                setSuccessful(true);
+                                                                                setShow(true);
                                                                             } catch (error) {
                                                                                 console.error(`Failed to delete file: ${s3Key}`, error);
                                                                                 setMessage("Error deleting file");
                                                                                 setSuccessful(false);
                                                                                 setShow(true);
-                                                                            } finally {
-                                                                               // setUpdating(false);
                                                                             }
                                                                         }
                                                                     }}
                                                                 />
-
                                                             </div>
                                                         </div>
                                                     </div>
                                                 ))}
-                                                {additionalCerts.length === 0 && (
-                                                    <div className="text-center py-8 text-muted-foreground">
-                                                        No additional certificates added yet.
-                                                    </div>
-                                                )}
                                             </div>
                                         </CardContent>
                                     </Card>

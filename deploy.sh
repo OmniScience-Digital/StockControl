@@ -7,7 +7,7 @@ echo "Git add"
 git add .
 
 echo "Git commit"
-git commit -m "Deploying minor fixes to crm"
+git commit -m "Deploying image cancel fixes to hrd"
 
 echo "Pushing to dev"
 git push origin dev

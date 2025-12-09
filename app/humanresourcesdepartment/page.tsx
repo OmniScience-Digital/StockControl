@@ -181,8 +181,8 @@ export default function HumanResourcesPage() {
   // Mobile-friendly columns
   const employeeColumns: ColumnDef<object, any>[] = [
     {
-      accessorKey: "employee",
-      header: "Employee",
+       accessorKey: "firstName",
+       header: "First Name",
       cell: ({ row }: { row: any }) => (
         <div className="flex items-center gap-3">
           <Avatar className="h-10 w-10 border-2 border-slate-100">
@@ -243,29 +243,7 @@ export default function HumanResourcesPage() {
         </div>
       ),
     },
-    //      {
-    //     id: "edit",
-    //     header: "Test",
-    //     cell: ({ row }: { row: any }) => (
-    //       <div
-    //         onClick={() => router.push(`/humanresourcesdepartment/certificates/${row.original.id}`)}
-    //         className="cursor-pointer text-slate-700"
 
-    //       >
-    //         <Edit className="
-    //   h-4 w-4 mr-2
-    //   cursor-pointer
-    //   hover:bg-slate-100
-    //   active:bg-slate-200
-    //   active:scale-95
-    //   rounded
-    //   transition
-    //   inline-block
-    // " />
-
-    //       </div>
-    //     ),
-    //   },
     {
       id: "edit",
       header: "Edit",
@@ -370,6 +348,7 @@ export default function HumanResourcesPage() {
     );
   }
 
+
   return (
     <div className="flex flex-col min-h-screen bg-background from-slate-50 to-blue-50/30">
       <Navbar />
@@ -380,10 +359,10 @@ export default function HumanResourcesPage() {
           <div className="mb-8">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
               <div>
-                <h1 className="text-2xl font-bold text-foreground mb-2">
+                <h1 className="text-2xl font-bold text-foreground mb-1">
                   Employee Management
                 </h1>
-                <p className="text-slate-600 max-w-2xl">
+                <p className="text-slate-600 max-w-2xl text-sm">
                   Manage your workforce, track certifications, and ensure compliance across your organization.
                 </p>
               </div>
@@ -523,7 +502,7 @@ export default function HumanResourcesPage() {
                   columns={activeTab === "expiring" ? taskColumns : employeeColumns}
                   pageSize={10}
                   storageKey={activeTab === "expiring" ? "taskTablePagination" : "employeeTablePagination"}
-                  searchColumn={activeTab === "expiring" ? "taskType" : "knownAs"}
+                  searchColumn={activeTab === "expiring" ? "taskType" : "firstName"}
                 />
               </div>
             </CardContent>

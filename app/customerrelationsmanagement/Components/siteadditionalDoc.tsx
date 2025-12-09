@@ -6,8 +6,6 @@ import ResponseModal from "@/components/widgets/response";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ChevronLeft, ChevronRight, FileText, Loader2, Plus, Save, Search, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { FileUploadUpdate } from "./fileupdate";
-import { FileUploadMany } from "./fileUpload";
 import { Checkbox } from "@/components/ui/checkbox";
 import { client } from "@/services/schema";
 import { handleUpload } from "@/services/s3.service";
@@ -17,6 +15,8 @@ import { ConfirmDialog } from "@/components/widgets/deletedialog";
 import { PDFState } from "@/types/schema";
 import { ComplianceAdditionals } from "@/types/crm.types";
 import { handleCrmTasks } from "./crmtasks";
+import { FileUploadUpdate } from "@/components/widgets/fileupdate";
+import { FileUploadMany } from "@/components/widgets/fileUpload";
 
 
 interface SiteAdditionalProps {
@@ -799,7 +799,7 @@ export default function SiteAdditional({ complianceData, complianceexistingdocs,
                                             const originalIndex = (currentPage - 1) * itemsPerPage + index;
 
                                             return (
-                                                <div key={cert.id || originalIndex} className="space-y-2">
+                                                <Card key={cert.id || originalIndex}  className="space-y-2 p-5" >
                                                
                                                 <div className="flex flex-row text-xss items-center gap-2 justify-between">
                                                     <div className="flex items-center gap-2">
@@ -888,7 +888,8 @@ export default function SiteAdditional({ complianceData, complianceexistingdocs,
                                                             }}
                                                         />
                                                     </div>
-                                                </div>
+                                           
+                                                </Card>
                                             );
                                         })
                                     }
