@@ -658,7 +658,7 @@ export default function Compliance() {
                                                                 : "bg-black dark:bg-black text-white"
                                                         }
                                                     >
-                                                        {rating}
+                                                        {rating} %
                                                     </Badge>
                                                 </div>
 
@@ -672,7 +672,7 @@ export default function Compliance() {
                                                                 : "bg-black dark:bg-black text-white"
                                                         }
                                                     >
-                                                        {thirtydayrating}
+                                                        {thirtydayrating} %
                                                     </Badge>
                                                 </div>
                                             </div>
