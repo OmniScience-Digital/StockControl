@@ -88,8 +88,8 @@ export default function Compliance() {
 
                 const firstRecord = complianceRecords?.[0];
 
-                setCompRating(parseInt(firstRecord?.complianceRating ?? "0"));
-                setthirtyCompRating(parseInt(firstRecord?.complianceRating30Days ?? "0"));
+                setCompRating(parseFloat(firstRecord?.complianceRating ?? "0"));
+                setthirtyCompRating(parseFloat(firstRecord?.complianceRating30Days ?? "0"));
 
 
                 const additionalCertNames = additionalList?.map(item => item.certificateName.toUpperCase()) || [];
